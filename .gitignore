@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-share*
+deploy_*
+배포_*
+_modiq_clean
+*.local
+.DS_Store
+.vite
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+vite.config.js.timestamp-*
