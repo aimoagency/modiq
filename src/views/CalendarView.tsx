@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, btnS, inp } from "../theme";
 import { STATUS, BOOKING_TYPES, KR_HOLIDAYS } from "../constants";
-import { visaDday, fmtTime } from "../lib/utils";
+import { visaDday, fmtTime, findConflicts } from "../lib/utils";
 import Badge from "../components/Badge";
 import Modal from "../components/Modal";
 import TypeIcon from "../components/TypeIcon";
@@ -38,6 +38,16 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
   const bookingsByDate: Record<string, any[]> = {};
   filteredBookings.forEach(b=>{ if(b.shoot_date){ if(!bookingsByDate[b.shoot_date]) bookingsByDate[b.shoot_date]=[]; bookingsByDate[b.shoot_date].push(b); }});
+
+  // ── [추가] 날짜별 충돌 정보 ──
+  // 주의: 충돌 검사는 "모델 필터와 무관하게" 전체 섭외로 해야 정확함
+  //  (필터로 한 모델만 보더라도, 충돌은 같은 모델 일정 간에 발생하므로 동일 결과지만,
+  //   전체 보기일 때 여러 모델이 섞여도 findConflicts가 모델별로 그룹핑하므로 안전)
+  const conflictByDate: Record<string, { conflictIds: Set<string>; worst: string }> = {};
+  Object.entries(bookingsByDate).forEach(([date, list]) => {
+    const r = findConflicts(list);
+    if (r.conflictIds.size > 0) conflictByDate[date] = r;
+  });
 
   const selDateBookings = selDate ? (bookingsByDate[selDate]||[]) : [];
 
@@ -118,12 +128,22 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       )}
 
       {/* 월 네비 */}
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16, flexWrap:"wrap" }}>
         <button onClick={prevMonth} style={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, borderRadius:8, padding:"6px 13px", cursor:"pointer", fontSize:16 }}>‹</button>
         <h2 style={{ margin:0, fontSize:20, fontWeight:800, color:C.text, minWidth:140, textAlign:"center" }}>{calYear}년 {calMonth+1}월</h2>
         <button onClick={nextMonth} style={{ background:C.card, border:`1px solid ${C.border}`, color:C.text, borderRadius:8, padding:"6px 13px", cursor:"pointer", fontSize:16 }}>›</button>
         <button onClick={()=>{ setCalYear(today.getFullYear()); setCalMonth(today.getMonth()); setSelDate(todayStr); }} style={{ ...btnS(C.blue), padding:"5px 14px", fontSize:12 }}>오늘</button>
         {(()=>{ const cnt=filteredBookings.filter(b=>b.shoot_date?.startsWith(monthStr)).length; return cnt>0?<span style={{ fontSize:12, color:C.muted }}>이달 <strong style={{ color:C.text }}>{cnt}건</strong></span>:null; })()}
+        {/* [추가] 이달 충돌 건수 요약 */}
+        {(()=>{
+          const monthConflicts = Object.entries(conflictByDate).filter(([d])=>d.startsWith(monthStr));
+          if (monthConflicts.length===0) return null;
+          const hasOverlap = monthConflicts.some(([,v])=>v.worst==="OVERLAP");
+          const col = hasOverlap ? C.red : C.orange;
+          return <span style={{ display:"inline-flex", alignItems:"center", gap:4, background:col+"18", border:`1px solid ${col}44`, borderRadius:20, padding:"3px 11px", fontSize:12, color:col, fontWeight:700 }}>
+            <AlertTriangle size={12} style={{ flexShrink:0 }}/> 충돌 {monthConflicts.length}일
+          </span>;
+        })()}
       </div>
 
       <div style={{ display:(!isMobile && selDate)?"flex":"block", gap:16, alignItems:"flex-start" }}>
@@ -147,13 +167,18 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
             const manHol = cell.date ? holidayByDate[cell.date] : undefined;
 
+            // ── [추가] 충돌 정보 ──
+            const dayConflict = cell.date ? conflictByDate[cell.date] : undefined;
+            const conflictColor = dayConflict ? (dayConflict.worst === "OVERLAP" ? C.red : C.orange) : null;
+
             let cellBg = "transparent";
             if (isSel)         cellBg = C.blue+"18";
             else if (isToday)  cellBg = C.card2;
 
             return (
               <div key={i} onClick={()=>{ if(cell.cur&&cell.date){ const has=(bookingsByDate[cell.date]||[]).length>0; if(has){ setSelDate(cell.date===selDate?null:cell.date); } else { onAddBooking(modelFilter||undefined, cell.date); } }}}
-                style={{ height:isMobile?52:"calc((100vh - 360px) / 6)", minHeight:isMobile?52:110, overflow:"hidden", padding:isMobile?"4px 2px":"7px 7px 5px", borderRight:col<6?`1px solid ${C.border}`:"none", borderBottom:i<35?`1px solid ${C.border}`:"none", background:cellBg, cursor:cell.cur?"pointer":"default", transition:"background 0.12s", position:"relative" }}
+                style={{ height:isMobile?52:"calc((100vh - 360px) / 6)", minHeight:isMobile?52:110, overflow:"hidden", padding:isMobile?"4px 2px":"7px 7px 5px", borderRight:col<6?`1px solid ${C.border}`:"none", borderBottom:i<35?`1px solid ${C.border}`:"none", background:cellBg, cursor:cell.cur?"pointer":"default", transition:"background 0.12s", position:"relative",
+                  ...(conflictColor ? { boxShadow:`inset 0 0 0 2px ${conflictColor}` } : {}) }}
                 onMouseEnter={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=C.card2; }}
                 onMouseLeave={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=isToday?C.card2:"transparent"; }}
               >
@@ -163,6 +188,8 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 {/* 날짜 숫자 */}
                 <div style={{ marginBottom:3, textAlign:isMobile?"center":"left" }}>
                   <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":"transparent", color:isToday?"white":isVisaExit?C.red:!cell.cur?C.border:(krHol||manHol)?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
+                  {/* [추가] 충돌 ⚠️ 배지 */}
+                  {dayConflict&&<span title={dayConflict.worst==="OVERLAP"?"시간 겹침 충돌":"완충시간 부족"} style={{ marginLeft:3, display:"inline-flex", alignItems:"center", verticalAlign:"middle" }}><AlertTriangle size={isMobile?9:11} color={conflictColor!} strokeWidth={2.4} style={{ flexShrink:0 }}/></span>}
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
                   {!isMobile&&!krHol&&manHol&&<span style={{ fontSize:9, color:C.orange, fontWeight:700, marginLeft:2 }}>{manHol.label}</span>}
@@ -172,7 +199,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 {isMobile ? (
                   dayBookings.length>0 ? (
                     <div style={{ display:"flex", gap:3, justifyContent:"center" }}>
-                      {dayBookings.slice(0,3).map((b,bi)=>{ const ds=STATUS[b.status]||STATUS.INQUIRY; return <span key={bi} style={{ width:6, height:6, borderRadius:"50%", background:ds.color, display:"inline-block" }}/>; })}
+                      {dayBookings.slice(0,3).map((b,bi)=>{ const ds=STATUS[b.status]||STATUS.INQUIRY; const isC=dayConflict?.conflictIds.has(b.id); return <span key={bi} style={{ width:6, height:6, borderRadius:"50%", background:isC?conflictColor!:ds.color, display:"inline-block", ...(isC?{boxShadow:`0 0 0 1.5px ${conflictColor}`}:{}) }}/>; })}
                       {dayBookings.length>3&&<span style={{ fontSize:8, color:C.muted, lineHeight:"6px" }}>+</span>}
                     </div>
                   ) : null
@@ -182,11 +209,13 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                     const m=models.find(mm=>mm.id===b.model_id);
                     const bt = BOOKING_TYPES[b.booking_type||"SHOOT"] || BOOKING_TYPES.SHOOT;
                     const s=STATUS[b.status]||STATUS.INQUIRY;
+                    const isConflict = dayConflict?.conflictIds.has(b.id);  // [추가]
                     return (
                       <div key={bi} onClick={e=>{ e.stopPropagation(); onSelectBooking(b); }}
-                        style={{ background:s.color+"28", color:s.color, border:`1px solid ${s.color}44`, borderRadius:4, padding:"2px 5px", fontSize:10, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}
-                        title={`${m?.name||"?"} · ${bt.label} · ${s.label}`}
+                        style={{ background:s.color+"28", color:s.color, border:`1px solid ${isConflict?(conflictColor!):s.color+"44"}`, borderRadius:4, padding:"2px 5px", fontSize:10, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}
+                        title={`${m?.name||"?"} · ${bt.label} · ${s.label}${isConflict?" · ⚠️ 일정 충돌":""}`}
                       >
+                        {isConflict&&<AlertTriangle size={9} color={conflictColor!} strokeWidth={2.6} style={{ flexShrink:0 }}/>}
                         <TypeIcon type={b.booking_type} size={9}/>
                         {m?.thumb_url
                           ? <img src={m.thumb_url} alt="" style={{ width:11, height:11, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
@@ -238,6 +267,27 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             </div>
           </div>
 
+          {/* [추가] 충돌 상세 안내 박스 */}
+          {conflictByDate[selDate]&&(()=>{
+            const cInfo = conflictByDate[selDate];
+            const col = cInfo.worst==="OVERLAP" ? C.red : C.orange;
+            return (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:8, background:col+"18", border:`1px solid ${col}44`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>
+                <AlertTriangle size={14} color={col} style={{ flexShrink:0, marginTop:1 }} />
+                <div>
+                  <p style={{ margin:0, fontSize:12, color:col, fontWeight:700 }}>
+                    {cInfo.worst==="OVERLAP" ? "일정 충돌 — 시간 겹침" : "일정 충돌 — 완충시간 부족"}
+                  </p>
+                  <p style={{ margin:"3px 0 0", fontSize:11, color:C.textSub, lineHeight:1.5 }}>
+                    {cInfo.worst==="OVERLAP"
+                      ? "같은 모델의 일정 시간이 겹칩니다. 한 건을 다른 시간·날짜로 옮기거나 취소하세요."
+                      : "같은 모델의 일정 간격이 완충시간(촬영 2h·미팅 1h, 장소 이동 시 +1h)보다 짧습니다. 이동 가능 여부를 확인하세요."}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {selDateBookings.length===0
             ? (
               <div style={{ textAlign:"center", padding:"24px 0" }}>
@@ -249,22 +299,28 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 const sorted=[...selDateBookings].sort((a,b)=>(a.start_time||"")<(b.start_time||"")?-1:1);
                 const groups:Record<string,any[]>={}; const singles:any[]=[];
                 sorted.forEach(b=>{ if(b.project_id){ (groups[b.project_id]=groups[b.project_id]||[]).push(b); } else singles.push(b); });
+                const dayConflict = conflictByDate[selDate];
                 let n=0;
                 const Card=(b:any)=>{ n+=1; const idx=n;
                   const model=models.find(m=>m.id===b.model_id); const client=customers.find(c=>c.id===b.customer_id);
                   const s=STATUS[b.status]||STATUS.INQUIRY; const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT;
+                  const isConflict = dayConflict?.conflictIds.has(b.id);  // [추가]
+                  const cCol = dayConflict?.worst==="OVERLAP" ? C.red : C.orange;
                   return (
                     <div key={b.id} onClick={()=>onSelectBooking(b)}
-                      style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", background:C.card2, borderRadius:10, border:`1px solid ${C.border}`, cursor:"pointer", transition:"border-color 0.15s" }}
-                      onMouseEnter={e=>(e.currentTarget.style.borderColor=s.color+"80")}
-                      onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
+                      style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", background:C.card2, borderRadius:10, border:`1px solid ${isConflict?cCol:C.border}`, cursor:"pointer", transition:"border-color 0.15s" }}
+                      onMouseEnter={e=>(e.currentTarget.style.borderColor=isConflict?cCol:s.color+"80")}
+                      onMouseLeave={e=>(e.currentTarget.style.borderColor=isConflict?cCol:C.border)}>
                       <span style={{ width:20, height:20, borderRadius:"50%", background:s.color+"33", color:s.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0, marginTop:2 }}>{idx}</span>
                       {model?.thumb_url
                         ? <img src={model.thumb_url} alt="" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:`2px solid ${s.color}50` }} />
                         : <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:13, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
                       }
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.text, lineHeight:1.3 }}>{model?.name||"?"} <span style={{ color:C.muted, fontWeight:400, fontSize:13 }}>→ {client?.name||"?"}</span></p>
+                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.text, lineHeight:1.3 }}>
+                          {model?.name||"?"} <span style={{ color:C.muted, fontWeight:400, fontSize:13 }}>→ {client?.name||"?"}</span>
+                          {isConflict&&<span style={{ marginLeft:6, display:"inline-flex", verticalAlign:"middle" }}><AlertTriangle size={12} color={cCol} strokeWidth={2.4} style={{ flexShrink:0 }}/></span>}
+                        </p>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:"3px 8px", marginTop:4, fontSize:13, color:C.muted }}>
                           <span style={{ color:bt.color, fontWeight:700 }}><TypeIcon type={b.booking_type} size={10}/> {bt.label}</span>
                           {b.start_time&&<span><Clock size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtTime(b.start_time,b.end_time)}</span>}
