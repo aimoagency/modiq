@@ -1,5 +1,5 @@
-import { C, inp, btnS } from "../theme";
-import { fmt, fmtDate } from "../lib/utils";
+import { C, inp } from "../theme";
+import { fmt, fmtDate, bookingTotal } from "../lib/utils";
 import Badge from "../components/Badge";
 import { Coins, Calendar, User, Folder, CheckCircle2 } from "../components/icons";
 
@@ -9,7 +9,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
   settlementModel: string; setSettlementModel: (v:string)=>void;
   settlementMgr: string; setSettlementMgr: (v:string)=>void;
   settlementProject: string; setSettlementProject: (v:string)=>void; settlementProjects: string[];
-  settlementSummary: { total:number; commission:number; modelPay:number };
+  settlementSummary: { total:number; commission:number; modelPay:number; clientPaid:number; clientUnpaid:number; modelPaidAmt:number; modelUnpaidAmt:number };
   filteredSettlement: any[]; models: any[]; customers: any[]; memberNames: string[];
   openSettlement: (b:any)=>void;
   isMobile?: boolean;
@@ -44,24 +44,34 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           {settlementProjects.map(p=><option key={p} value={p}>{p}</option>)}
         </select>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:isMobile?8:12, marginBottom:14 }}>
-        {[
-          { label:"총 촬영비",         value:fmt(settlementSummary.total),      color:C.text  },
-          { label:"수수료 (15%)",       value:fmt(settlementSummary.commission), color:C.blue  },
-          { label:"모델 수령액 (85%)", value:fmt(settlementSummary.modelPay),   color:C.green },
-        ].map(item=>(
-          <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, textAlign:"center" }}>
-            <p style={{ margin:0, fontSize:11, color:C.muted }}>{item.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:17, fontWeight:800, color:item.color }}>{item.value}</p>
-          </div>
-        ))}
+      {/* ── 두 흐름 분리: 받을 돈(고객사) / 줄 돈(모델) ── */}
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:isMobile?8:12, marginBottom:10 }}>
+        {/* 받을 돈 — 고객사 입금 */}
+        <div style={{ background:C.card, border:`1px solid ${C.blue}55`, borderRadius:10, padding:16 }}>
+          <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:800, color:C.blue }}><Coins size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금액</p>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>총 청구액</span><span style={{ fontSize:15, fontWeight:800, color:C.text }}>{fmt(settlementSummary.total)}</span></div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>입금완료</span><span style={{ fontSize:13, fontWeight:700, color:C.green }}>{fmt(settlementSummary.clientPaid)}</span></div>
+          <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12, color:C.muted }}>미입금</span><span style={{ fontSize:13, fontWeight:700, color:settlementSummary.clientUnpaid>0?C.red:C.muted }}>{fmt(settlementSummary.clientUnpaid)}</span></div>
+        </div>
+        {/* 줄 돈 — 모델 지급 */}
+        <div style={{ background:C.card, border:`1px solid #c9a96e66`, borderRadius:10, padding:16 }}>
+          <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:800, color:"#c9a96e" }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급액</p>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>총 지급액 (85%)</span><span style={{ fontSize:15, fontWeight:800, color:"#c9a96e" }}>{fmt(settlementSummary.modelPay)}</span></div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>지급완료</span><span style={{ fontSize:13, fontWeight:700, color:C.green }}>{fmt(settlementSummary.modelPaidAmt)}</span></div>
+          <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12, color:C.muted }}>미지급</span><span style={{ fontSize:13, fontWeight:700, color:settlementSummary.modelUnpaidAmt>0?C.orange:C.muted }}>{fmt(settlementSummary.modelUnpaidAmt)}</span></div>
+        </div>
+      </div>
+      {/* 에이전시 수수료(수익) */}
+      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 수수료 (수익, 15%)</span>
+        <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
       {filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
         <div style={{ display:"grid", gap:8 }}>
           {filteredSettlement.map(b=>{
             const model = models.find((m:any)=>m.id===b.model_id);
             const client = customers.find((c:any)=>c.id===b.customer_id);
-            const fee=b.shoot_fee||0, comm=Math.round(fee*0.15);
+            const fee=bookingTotal(b), comm=Math.round(fee*0.15);
             return (
               <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
@@ -89,11 +99,11 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                   </div>
                 )}
                 <Badge code={b.status} type={b.booking_type} />
-                {/* 정산처리 버튼 */}
-                {!b.is_paid&&(
-                  <button onClick={e=>{ e.stopPropagation(); openSettlement(b); }} style={{ ...btnS(C.green), padding:"6px 14px", fontSize:12, flexShrink:0 }}>정산처리</button>
-                )}
-                {b.is_paid&&<span style={{ color:C.green, fontSize:12, fontWeight:700, flexShrink:0 }}><CheckCircle2 size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 완료</span>}
+                {/* 두 흐름 상태 칩 */}
+                <div style={{ display:"flex", flexDirection:"column", gap:4, flexShrink:0, alignItems:"flex-end" }}>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급</>:"모델 미지급"}</span>
+                </div>
               </div>
             );
           })}

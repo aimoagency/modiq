@@ -1,6 +1,6 @@
 import { C, inp, btnS } from "../theme";
 import { STATUS, BOOKING_TYPES } from "../constants";
-import { fmtDate, fmtTime } from "../lib/utils";
+import { fmtDate, fmtTime, bookingTotal } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
 import { ClipboardList, Calendar, MapPin, User, Coins, Folder } from "../components/icons";
@@ -53,7 +53,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.textSub }}>
                 <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
-                {b.shoot_fee?<span style={{ marginLeft:"auto", color:C.yellow, fontWeight:700, flexShrink:0 }}>{b.shoot_fee.toLocaleString()}원</span>:null}
+                {bookingTotal(b)>0?<span style={{ marginLeft:"auto", color:C.yellow, fontWeight:700, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>:null}
               </div>
             </div>
             ) : (
@@ -71,7 +71,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
                 {b.location?<span style={{ color:C.textSub, fontWeight:700 }}> · <MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.location}</span>:null}
                 {b.manager?<span style={{ color:C.textSub, fontWeight:700 }}> · <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.manager}</span>:null}
               </p>
-              {b.shoot_fee?<span style={{ color:C.yellow, fontWeight:700, fontSize:13, flexShrink:0, marginRight:4 }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.shoot_fee.toLocaleString()}원</span>:null}
+              {bookingTotal(b)>0?<span style={{ color:C.yellow, fontWeight:700, fontSize:13, flexShrink:0, marginRight:4 }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/>{bookingTotal(b).toLocaleString()}원</span>:null}
               <Badge code={b.status} type={b.booking_type} />
             </div>
             );
@@ -79,7 +79,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
           <div style={{ display:"grid", gap:8 }}>
             {order.map((item,oi)=>{
               if(item.type==="single") return Card(item.b);
-              const bs=groups[item.pid!]; const total=bs.reduce((s,b)=>s+(b.shoot_fee||0),0);
+              const bs=groups[item.pid!]; const total=bs.reduce((s,b)=>s+bookingTotal(b),0);
               const ms=bs.map(b=>models.find((m:any)=>m.id===b.model_id)).filter(Boolean);
               return (
                 <div key={"g"+oi} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>

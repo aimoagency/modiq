@@ -149,6 +149,16 @@ export const REVENUE_STATUSES = ["CONFIRMED", "COMPLETED", "SETTLED"];
 //  - 예상매출 = 촬영확정+촬영완료+정산완료 합계
 //  - 실매출   = 정산완료(입금)만
 //  - period: {from,to} (YYYY-MM-DD, 촬영일 기준) — 없으면 전체
+// 당일 오버차지(추가금) 합계
+export const overchargeTotal = (b: any): number =>
+  Array.isArray(b?.overcharges) ? b.overcharges.reduce((s: number, o: any) => s + (o?.amount || 0), 0) : 0;
+
+// 촬영비 총액 = 기본 촬영비 + 당일 오버차지(추가금) 합계
+export const bookingTotal = (b: any): number => (b?.shoot_fee || 0) + overchargeTotal(b);
+
+// 고객사 잔금 = (계약 총액 + 추가금) − 계약금
+export const clientBalance = (b: any): number => Math.max(0, bookingTotal(b) - (b?.deposit_amt || 0));
+
 export const entityRevenue = (bookings: any[], key: string, id: string, period?: { from?: string; to?: string }) => {
   const bs = bookings.filter(b => {
     if (b[key] !== id) return false;
@@ -158,8 +168,8 @@ export const entityRevenue = (bookings: any[], key: string, id: string, period?:
     if (period?.to && d > period.to) return false;
     return true;
   });
-  const real = bs.filter(b => b.status === "SETTLED" || b.is_paid).reduce((s, b) => s + (b.shoot_fee || 0), 0);
-  const expected = bs.reduce((s, b) => s + (b.shoot_fee || 0), 0);
+  const real = bs.filter(b => b.status === "SETTLED" || b.is_paid).reduce((s, b) => s + bookingTotal(b), 0);
+  const expected = bs.reduce((s, b) => s + bookingTotal(b), 0);
   return { real, expected, count: bs.length };
 };
 

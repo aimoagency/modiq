@@ -64,6 +64,21 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
           </div>
         </div>
       )}
+
+      {/* 매출·정산 열람 권한 (대표가 담당자에게 부여) */}
+      {!isOwner && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>매출·정산 열람 권한</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>{m.can_view_finance ? "이 담당자는 매출·미수금·정산을 볼 수 있어요" : "기본: 매출·미수금·정산 메뉴 숨김"}</p>
+          </div>
+          <button onClick={() => onUpdate(m.id, { can_view_finance: !m.can_view_finance })}
+            aria-label="매출·정산 열람 권한 토글"
+            style={{ width: 46, height: 26, borderRadius: 13, border: "none", cursor: "pointer", background: m.can_view_finance ? C.green : C.border, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+            <span style={{ position: "absolute", top: 3, left: m.can_view_finance ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

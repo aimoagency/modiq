@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { C, btnS, inp } from "../theme";
 import { STATUS, BOOKING_TYPES, KR_HOLIDAYS } from "../constants";
-import { visaDday, fmtTime, findConflicts } from "../lib/utils";
+import { visaDday, fmtTime, findConflicts, bookingTotal } from "../lib/utils";
 import Badge from "../components/Badge";
 import Modal from "../components/Modal";
 import TypeIcon from "../components/TypeIcon";
@@ -169,7 +169,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
         const PXH=58, pxPerMin=PXH/60;
         const hours:number[]=[]; for(let h=minM/60; h<=maxM/60; h++) hours.push(h);
         const gridH=(maxM-minM)*pxPerMin;
-        const dayTotal=selDateBookings.reduce((s,b)=>s+(b.shoot_fee||0),0);
+        const dayTotal=selDateBookings.reduce((s,b)=>s+bookingTotal(b),0);
         const holdCnt=selDateBookings.filter(b=>b.status==="HOLD").length;
         return (
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>
@@ -440,7 +440,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                         </div>
                       </div>
                       <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-                        {b.shoot_fee>0&&<span style={{ fontSize:13, color:C.yellow, fontWeight:800, whiteSpace:"nowrap" }}>{b.shoot_fee.toLocaleString()}원</span>}
+                        {bookingTotal(b)>0&&<span style={{ fontSize:13, color:C.yellow, fontWeight:800, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>}
                         <Badge code={b.status} type={b.booking_type} />
                         {b.status==="CONFIRMED"&&!b.deposit_amt&&<span style={{ fontSize:10, color:C.red, fontWeight:700 }}>계약금 미설정</span>}
                       </div>
@@ -450,7 +450,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 return (
                   <div style={{ display:"grid", gap:10 }}>
                     {Object.entries(groups).map(([pid,bs])=>{
-                      const total=bs.reduce((sum,b)=>sum+(b.shoot_fee||0),0);
+                      const total=bs.reduce((sum,b)=>sum+bookingTotal(b),0);
                       const ms=bs.map(b=>models.find(m=>m.id===b.model_id)).filter(Boolean);
                       return (
                         <div key={pid} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>

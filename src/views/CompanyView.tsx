@@ -19,6 +19,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const [contactPhone, setContactPhone] = useState(agency?.contact_phone || "");
   const [bizNo, setBizNo]       = useState(agency?.biz_no || "");
   const [address, setAddress]   = useState(agency?.address || "");
+  const [logo, setLogo]         = useState(agency?.logo_url || "");
   const [transferTo, setTransferTo] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -29,6 +30,22 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const resetFields = () => {
     setName(agency?.name || ""); setRepName(agency?.rep_name || ""); setRepPhone(agency?.rep_phone || "");
     setContactPhone(agency?.contact_phone || ""); setBizNo(agency?.biz_no || ""); setAddress(agency?.address || "");
+    setLogo(agency?.logo_url || "");
+  };
+
+  // 로고 업로드 — 투명 배경 유지 위해 PNG로 리사이즈
+  const onLogoFile = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 240; const sc = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+      cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
+      setLogo(cv.toDataURL("image/png"));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   };
 
   // 다음(카카오) 우편번호 검색 — 스크립트 동적 로드 후 팝업
@@ -48,7 +65,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const handleSave = () => {
     const bn = bizNo.replace(/[^0-9]/g, "");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    onSave({ name: name.trim(), rep_name: repName.trim(), rep_phone: repPhone.trim(), contact_phone: contactPhone.trim(), biz_no: bn, address: address.trim() });
+    onSave({ name: name.trim(), rep_name: repName.trim(), rep_phone: repPhone.trim(), contact_phone: contactPhone.trim(), biz_no: bn, address: address.trim(), logo_url: logo });
     setEditMode(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
   };
 
@@ -78,6 +95,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
 
         {!editMode ? (
           <div>
+            {logo && <div style={{ marginBottom: 14 }}><img src={logo} alt="로고" style={{ height: 52, maxWidth: 200, objectFit: "contain" }} /></div>}
             {row("상호 (에이전시명)", name)}
             {row("대표자명", repName)}
             {row("대표 연락처", repPhone)}
@@ -88,6 +106,19 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
           </div>
         ) : (
           <div>
+            <div style={{ marginBottom: 14 }}>
+              {lbl("회사 로고 (명세서 좌측 상단에 표시)")}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 96, height: 64, borderRadius: 8, border: `1px dashed ${C.border}`, background: C.card2, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                  {logo ? <img src={logo} alt="로고" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: 11, color: C.muted }}>없음</span>}
+                </div>
+                <label style={{ ...btnS(C.blue), fontSize: 12, cursor: "pointer" }}>{logo ? "로고 변경" : "로고 업로드"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { onLogoFile(e.target.files?.[0]); e.currentTarget.value = ""; }} />
+                </label>
+                {logo && <button onClick={() => setLogo("")} style={{ ...btnS(C.red), fontSize: 12 }}>삭제</button>}
+              </div>
+              <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>PNG 권장(투명 배경).</p>
+            </div>
             <div style={{ marginBottom: 12 }}>
               {lbl("상호 (에이전시명) — 알림톡 발신명으로 사용")}
               <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="예: 아이모 에이전시" />

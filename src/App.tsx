@@ -13,6 +13,7 @@ import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
+  bookingTotal, overchargeTotal, clientBalance,
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import TypeIcon from "./components/TypeIcon";
@@ -229,6 +230,7 @@ export default function App() {
   const [selectedModel,      setSelectedModel]      = useState<any>(null);
   const [selectedCustomer,   setSelectedCustomer]   = useState<any>(null); // 고객사 상세
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
+  const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
   const [mEditMode, setMEditMode] = useState(false);
   const [modelHistAll, setModelHistAll] = useState(false);
   const [cEditMode, setCEditMode] = useState(false); // 고객사 수정 모드
@@ -263,6 +265,8 @@ export default function App() {
   const [cPhone,      setCPhone]      = useState("");
   const [cEmail,      setCEmail]      = useState("");
   const [cIndustry,   setCIndustry]   = useState("");
+  const [cBizNo,      setCBizNo]      = useState("");   // 사업자등록번호
+  const [cTaxEmail,   setCTaxEmail]   = useState("");   // 계산서 발송 이메일
   const [cMemo,       setCMemo]       = useState("");
 
   // ── 섭외 폼 ──
@@ -286,6 +290,10 @@ export default function App() {
   const [bBalance,      setBBalance]      = useState(0);
   const [bBalanceDue,   setBBalanceDue]   = useState("");
   const [bResultDrive,  setBResultDrive]  = useState("");
+  // 섭외 상세 모달 — 추가금(오버차지) 입력
+  const [bocReason,     setBocReason]     = useState("");
+  const [bocAmount,     setBocAmount]     = useState(0);
+  const [showBocInput,  setShowBocInput]  = useState(false);
   const [bMedia,        setBMedia]        = useState<string[]>([]); // 사진/영상 1차 선택
   const [bRefImages,    setBRefImages]    = useState<string[]>([]); // 촬영 레퍼런스
   const [pRefImages,    setPRefImages]    = useState<string[]>([]); // 프로젝트 레퍼런스
@@ -308,7 +316,8 @@ export default function App() {
   // ── 정산 편집 ──
   const [editFee,  setEditFee]  = useState("");
   const [editMemo, setEditMemo] = useState("");
-  const [editPaid, setEditPaid] = useState(false);
+  const [editPaid, setEditPaid] = useState(false);          // 고객사 입금완료
+  const [editModelPaid, setEditModelPaid] = useState(false); // 모델 지급완료
   const [editOvercharges, setEditOvercharges] = useState<{reason:string; amount:number}[]>([]);
   const [ocReason, setOcReason] = useState("");
   const [ocAmount, setOcAmount] = useState(0);
@@ -451,10 +460,12 @@ export default function App() {
   };
 
   // ── 고객사 추가 ──
-  const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCMemo(""); };
+  const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); };
   const handleAddCustomer = async () => {
     if (!cName||!cPhone) return alert("고객사명과 전화번호 필수");
-    const nc = { id:makeClientId(cName,cPhone.slice(-4)), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, memo:cMemo, agency_id:agency.id };
+    const bn = cBizNo.replace(/[^0-9]/g,"");
+    if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
+    const nc = { id:makeClientId(cName,cPhone.slice(-4)), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
     try {
       await sb("customers","POST",nc);
       setCustomers([nc,...customers]);
@@ -465,13 +476,16 @@ export default function App() {
   const openEditCustomer = (c: any) => {
     setSelectedCustomer(c);
     setCName(c.name||""); setCBrand(c.brand||""); setCManager(c.manager_name||"");
-    setCPhone(c.phone||""); setCEmail(c.email||""); setCIndustry(c.industry||""); setCMemo(c.memo||"");
+    setCPhone(c.phone||""); setCEmail(c.email||""); setCIndustry(c.industry||"");
+    setCBizNo(c.biz_no||""); setCTaxEmail(c.tax_email||""); setCMemo(c.memo||"");
     setCEditMode(true);
   };
 
   const handleSaveCustomer = async () => {
     if (!cName) return alert("고객사명 필수");
-    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, memo:cMemo };
+    const bn = cBizNo.replace(/[^0-9]/g,"");
+    if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
+    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo };
     try {
       await sb("customers","PATCH",updated,`?id=eq.${selectedCustomer.id}`);
       setCustomers(customers.map(c => c.id===selectedCustomer.id ? {...c,...updated} : c));
@@ -535,8 +549,9 @@ export default function App() {
       shoot_fee:    selectedBooking.shoot_fee,
       deposit_amt:  selectedBooking.deposit_amt,
       deposit_due:  selectedBooking.deposit_due,
-      balance_amt:  selectedBooking.balance_amt,
+      balance_amt:  clientBalance(selectedBooking),
       balance_due:  selectedBooking.balance_due,
+      overcharges:  selectedBooking.overcharges||[],
       memo:         selectedBooking.memo,
       status:       selectedBooking.status,
       ...(selectedBooking.reference_images!==undefined?{reference_images:selectedBooking.reference_images||[]}:{}),
@@ -734,15 +749,226 @@ export default function App() {
   };
 
   // ── 정산 ──
-  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); setEditOvercharges(b.overcharges||[]); setOcReason(""); setOcAmount(0); setShowOcInput(false); };
+  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); setEditModelPaid(b.model_paid||false); setEditOvercharges(b.overcharges||[]); setOcReason(""); setOcAmount(0); setShowOcInput(false); };
   const handleSaveSettlement = async () => {
     if (!selectedSettlement) return;
-    const updates = { shoot_fee:Number(editFee)||0, settlement_memo:editMemo, is_paid:editPaid, overcharges:editOvercharges };
+    const newFee = Number(editFee)||0;
+    const ocT = editOvercharges.reduce((s,o)=>s+(o.amount||0),0);
+    const dep = selectedSettlement.deposit_amt||0;
+    const updates = { shoot_fee:newFee, settlement_memo:editMemo, is_paid:editPaid, model_paid:editModelPaid, overcharges:editOvercharges, balance_amt: Math.max(0, newFee + ocT - dep) };
     try {
       await sb("bookings","PATCH",updates,`?id=eq.${selectedSettlement.id}`);
       setBookings(bookings.map(b=>b.id===selectedSettlement.id?{...b,...updates}:b));
       setSelectedSettlement(null);
     } catch (e) { alert("정산 저장 실패: "+String(e)); }
+  };
+
+  // ── 모달 백스택: 다른 상세에서 연 모달을 닫으면 직전 상세로 복귀 ──
+  const clearAllDetails = () => {
+    setSelectedBooking(null); setEditingBooking(false); setShowBocInput(false); setBocReason(""); setBocAmount(0);
+    setSelectedSettlement(null); setSelectedModel(null); setModelHistAll(false); setSelectedCustomer(null); setSelectedProjectId(null);
+  };
+  const openDetailById = (type: string, id: string) => {
+    if (type==="booking")        { const b=bookings.find(x=>x.id===id); if(b){ setEditingBooking(false); setSelectedBooking(b); } }
+    else if (type==="settlement"){ const b=bookings.find(x=>x.id===id); if(b) openSettlement(b); }
+    else if (type==="model")     { const m=models.find(x=>x.id===id);   if(m){ setMEditMode(false); setModelHistAll(false); setSelectedModel(m); } }
+    else if (type==="customer")  { const c=customers.find(x=>x.id===id); if(c){ setCEditMode(false); setSelectedCustomer(c); } }
+    else if (type==="project")   { setSelectedProjectId(id); }
+  };
+  const currentDetail = (): {type:string; id:string}|null => {
+    if (selectedBooking)    return { type:"booking",    id:selectedBooking.id };
+    if (selectedSettlement) return { type:"settlement", id:selectedSettlement.id };
+    if (selectedModel)      return { type:"model",      id:selectedModel.id };
+    if (selectedCustomer)   return { type:"customer",   id:selectedCustomer.id };
+    if (selectedProjectId)  return { type:"project",    id:selectedProjectId };
+    return null;
+  };
+  // 다른 상세에서 새 상세 열기(현재 모달을 스택에 push)
+  const openDetail = (type: string, id: string) => {
+    const cur = currentDetail();
+    setModalStack(cur ? [...modalStack, cur] : []);
+    clearAllDetails();
+    openDetailById(type, id);
+  };
+  // 닫기: 스택에 직전 모달이 있으면 그걸 최신 데이터로 다시 열고, 없으면 그냥 닫기
+  const closeDetail = () => {
+    clearAllDetails();
+    if (modalStack.length===0) return;
+    const back = modalStack[modalStack.length-1];
+    setModalStack(modalStack.slice(0,-1));
+    openDetailById(back.type, back.id);
+  };
+  // 리스트/페이지에서 새 상세 열기 — 스택 초기화(닫으면 그냥 닫힘)
+  const openBookingFresh    = (b:any)   => { setModalStack([]); setEditingBooking(false); setSelectedBooking(b); };
+  const openModelFresh      = (m:any)   => { setModalStack([]); setSelectedModel(m); };
+  const openCustomerFresh   = (c:any)   => { setModalStack([]); setSelectedCustomer(c); };
+  const openProjectFresh    = (pid:string) => { setModalStack([]); setSelectedProjectId(pid); };
+  const openSettlementFresh = (b:any)   => { setModalStack([]); openSettlement(b); };
+
+  // ── 섭외 명세서(바우처) 발급: 인쇄/PDF용 새 창 ──
+  const issueVoucher = (b: any) => {
+    const model  = models.find((m:any)=>m.id===b.model_id);
+    const client = customers.find((c:any)=>c.id===b.customer_id);
+    const esc = (s:any) => String(s ?? "").replace(/[&<>"]/g, (ch:string)=>(({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" } as Record<string,string>)[ch]));
+    const won = (n:number) => (n||0).toLocaleString("ko-KR") + "원";
+    const fdate = (d?:string) => d ? esc(d.replace(/-/g,".")) : "-";
+    const fbiz = (s?:string) => { const n=String(s||"").replace(/[^0-9]/g,""); return n.length===10 ? `${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}` : esc(s||"-"); };
+    const bt = BOOKING_TYPES[b.booking_type||"SHOOT"]?.label || "촬영";
+    const isConfirmed = ["CONFIRMED","COMPLETED","SETTLED"].includes(b.status);
+    const docKind = isConfirmed ? "계약 확인서" : "견적·청구용";
+    const total = bookingTotal(b), ocT = overchargeTotal(b), dep = b.deposit_amt||0, bal = clientBalance(b);
+    const ocRows = (Array.isArray(b.overcharges)?b.overcharges:[]).map((o:any)=>`<tr><td>추가금 · ${esc(o.reason)}</td><td class="num">${won(o.amount)}</td></tr>`).join("");
+    const voucherNo = `MODIQ-${(String(b.id||"").replace(/[^0-9A-Za-z]/g,"").slice(-6).toUpperCase())||"000000"}`;
+    const issuedAt = new Date().toLocaleDateString("ko-KR");
+    const timeStr = (b.start_time||b.end_time) ? `${esc(b.start_time||"")}${b.end_time?` ~ ${esc(b.end_time)}`:""}` : "-";
+    const shootTypes = Array.isArray(b.shoot_types)&&b.shoot_types.length ? esc(b.shoot_types.join(", ")) : "-";
+    const usageScope = Array.isArray(b.usage_scope)&&b.usage_scope.length ? esc(b.usage_scope.join(", ")) : "-";
+    const row = (l:string, v:string) => `<div class="r"><span class="l">${l}</span><span class="v">${v}</span></div>`;
+    // 공유용 요약 텍스트(카톡·문자·메일)
+    const rawDate = (b.shoot_date||"").replace(/-/g,".");
+    const rawTime = (b.start_time||b.end_time) ? `${b.start_time||""}${b.end_time?`~${b.end_time}`:""}` : "";
+    const summary = [
+      `[${b.project_name||"촬영 섭외"}] 촬영 섭외 명세서`,
+      `· 모델: ${model?.name||"-"}${model?.id?` (${model.id})`:""}`,
+      `· 일자: ${rawDate||"-"}${rawTime?` ${rawTime}`:""}`,
+      b.location?`· 장소: ${b.location}`:"",
+      `· 총액: ${(total||0).toLocaleString("ko-KR")}원 (계약금 ${(dep||0).toLocaleString("ko-KR")}원 / 잔금 ${(bal||0).toLocaleString("ko-KR")}원)`,
+      `· 발급: ${agency?.name||"MODIQ"} (${voucherNo})`,
+    ].filter(Boolean).join("\n");
+    const subject = `${b.project_name||"촬영 섭외"} 명세서 (${voucherNo})`;
+    const shareJS = JSON.stringify(summary).replace(/</g,"\\u003c");
+    const subjJS  = JSON.stringify(subject).replace(/</g,"\\u003c");
+    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(voucherNo)} · 촬영 섭외 명세서</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eceff3;color:#1f2430;padding:28px 16px 100px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sheet{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e6ec;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(0,0,0,.3)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:26px 30px;background:linear-gradient(120deg,#1c2330,#2b3445);color:#fff;border-bottom:4px solid #c9a96e}
+.hd{display:flex;align-items:center;gap:14px}
+.logo{height:50px;width:auto;max-width:150px;object-fit:contain;background:#fff;border-radius:7px;padding:5px 8px;flex-shrink:0}
+.brand{font-size:13px;letter-spacing:.5px;color:#c9a96e;font-weight:800}
+.ttl{font-size:23px;font-weight:800;margin-top:4px}
+.sub{font-size:12px;color:#aeb6c4;margin-top:6px}
+.tag{display:inline-block;padding:2px 9px;border-radius:6px;font-weight:800;font-size:11px;margin-right:7px;vertical-align:1px}
+.tag.ok{background:#1c8f5a;color:#fff}.tag.prov{background:#d9822b;color:#fff}
+.meta{text-align:right;font-size:12px;color:#cdd3dd;line-height:1.7}
+.meta b{color:#fff;font-size:13px}
+.body{padding:24px 30px 30px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.box{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;background:#fafbfc}
+.box h4{font-size:11px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:9px;text-transform:uppercase}
+.r{display:flex;gap:10px;font-size:13px;padding:3px 0}
+.r .l{color:#7c8595;min-width:74px;flex-shrink:0}
+.r .v{color:#1f2430;font-weight:600;word-break:break-all}
+.modelbar{display:flex;align-items:center;gap:12px;background:#1c2330;color:#fff;border-radius:10px;padding:14px 18px;margin-bottom:18px}
+.modelbar .lab{font-size:11px;color:#c9a96e;font-weight:800}
+.modelbar .nm{font-size:20px;font-weight:800}
+.sec{font-size:11px;color:#7c8595;font-weight:800;letter-spacing:.4px;margin:0 0 8px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px}
+td{padding:10px 12px;border-bottom:1px solid #eef1f5}
+td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:15px;font-weight:800;color:#8a6d2f}
+tr.due td{color:#5a6373;font-size:12px}
+.notice{font-size:10.5px;color:#6b7280;line-height:1.75;background:#f6f8fa;border-radius:8px;padding:12px 14px;margin-bottom:18px}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;min-height:96px;position:relative}
+.sigbox .who{font-size:12px;color:#7c8595;font-weight:700}
+.sigbox .nm{font-size:14px;font-weight:800;margin-top:4px;color:#1f2430}
+.sigbox .seal{position:absolute;right:14px;bottom:12px;font-size:11px;color:#b8bfca}
+.foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:12px 14px;background:rgba(20,24,32,.94);box-shadow:0 -4px 16px -6px rgba(0,0,0,.4)}
+.bb{flex:1 1 auto;min-width:84px;max-width:220px;border:none;border-radius:10px;padding:13px 14px;font-size:13px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
+.bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
+@media print{body{background:#fff;padding:0}.sheet{border:none;box-shadow:none;border-radius:0;max-width:none}.bar{display:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head><body>
+<div class="sheet">
+  <div class="top">
+    <div class="hd">${agency?.logo_url?`<img class="logo" src="${esc(agency.logo_url)}" alt="">`:""}<div><div class="brand">${esc(agency?.name||"MODIQ")}</div><div class="ttl">촬영 섭외 명세서</div><div class="sub"><span class="tag ${isConfirmed?"ok":"prov"}">${esc(docKind)}</span>Model Booking Statement</div></div></div>
+    <div class="meta"><b>${esc(voucherNo)}</b><br>발급일 ${esc(issuedAt)}${b.project_name?`<br>프로젝트 ${esc(b.project_name)}`:""}</div>
+  </div>
+  <div class="body">
+    <div class="grid2">
+      <div class="box"><h4>발급처 (에이전시)</h4>
+        ${row("상호", esc(agency?.name||"-"))}
+        ${row("대표자", esc(agency?.rep_name||"-"))}
+        ${row("연락처", esc(agency?.contact_phone||agency?.rep_phone||"-"))}
+        ${row("사업자", fbiz(agency?.biz_no))}
+        ${agency?.address?row("주소", esc(agency.address)):""}
+      </div>
+      <div class="box"><h4>고객사</h4>
+        ${row("상호", esc(client?.name||"-"))}
+        ${client?.brand?row("브랜드", esc(client.brand)):""}
+        ${row("담당자", esc(client?.manager_name||"-"))}
+        ${row("연락처", esc(client?.phone||"-"))}
+        ${client?.biz_no?row("사업자", fbiz(client.biz_no)):""}
+        ${client?.tax_email?row("계산서", esc(client.tax_email)):""}
+      </div>
+    </div>
+    <p class="sec">촬영 정보</p>
+    <div class="box" style="margin-bottom:18px">
+      ${b.project_name?row("프로젝트", esc(b.project_name)):""}
+      ${row("모델", esc((model?.name||"-") + (model?.id?` (${model.id})`:"")))}
+      ${row("구분", esc(bt))}
+      ${row("일자", fdate(b.shoot_date))}
+      ${row("시간", timeStr)}
+      ${row("장소", esc(b.location||"-"))}
+      ${row("촬영범위", shootTypes)}
+      ${row("사용범위", usageScope)}
+      ${row("사용기간", esc(b.usage_period||"-"))}
+      ${row("담당", esc(b.manager||"-"))}
+    </div>
+    <p class="sec">금액 명세</p>
+    <table>
+      <tr><td>계약 총액 (기본 촬영비)</td><td class="num">${won(b.shoot_fee||0)}</td></tr>
+      ${ocRows}
+      <tr class="tot"><td>${ocT>0?"최종 총액 (추가금 포함)":"총 계약 금액"}</td><td class="num">${won(total)}</td></tr>
+      <tr><td>계약금</td><td class="num">${won(dep)}</td></tr>
+      ${b.deposit_due?`<tr class="due"><td>계약금 입금 예정일</td><td class="num">${fdate(b.deposit_due)}</td></tr>`:""}
+      <tr><td>잔금</td><td class="num">${won(bal)}</td></tr>
+      ${b.balance_due?`<tr class="due"><td>잔금 입금 예정일</td><td class="num">${fdate(b.balance_due)}</td></tr>`:""}
+    </table>
+    <div class="notice">1. 본 명세서는 상기 촬영 섭외 건의 계약 내용을 확인·증빙하기 위한 문서이며, 양 당사자가 합의한 일정·촬영범위·사용범위 및 금액 조건을 명시합니다.<br>2. 명시된 사용 기간 및 사용 범위를 벗어나는 사용에 대해서는 반드시 사전 협의를 하여야 하며, 사전 협의 없이 사용할 경우 그에 따른 법적 피해를<br>보상하여야 합니다.<br>3. 변경 사항 발생 시 양측 협의 후 재발급됩니다.</div>
+    <div class="foot">발급일 ${esc(issuedAt)} · ${esc(agency?.name||"MODIQ")} · 본 문서는 Modiq에서 발급되었습니다.</div>
+  </div>
+</div>
+<div class="bar">
+  <button id="shareBtn" class="bb share" onclick="sharePdf()">공유하기</button>
+  <button class="bb print" onclick="window.print()">인쇄 / 저장</button>
+</div>
+<script>
+var ST=${shareJS}, SU=${subjJS};
+function fname(){ return (SU||'명세서').replace(/[\\\\/:*?"<>|]/g,'_'); }
+async function makePdfBlob(){
+  var el=document.querySelector('.sheet');
+  var canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+  var img=canvas.toDataURL('image/jpeg',0.95);
+  var jsPDF=window.jspdf.jsPDF;
+  var pdf=new jsPDF('p','mm','a4');
+  var pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+  var ih=canvas.height*pw/canvas.width;
+  if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,pw,ih); }
+  else { var pos=0, rem=ih; while(rem>0){ pdf.addImage(img,'JPEG',0,pos,pw,ih); rem-=ph; if(rem>0){ pdf.addPage(); pos-=ph; } } }
+  return pdf.output('blob');
+}
+async function sharePdf(){
+  var btn=document.getElementById('shareBtn'), t0=btn.textContent; btn.textContent='생성 중…'; btn.disabled=true;
+  try{
+    var blob=await makePdfBlob();
+    var file=new File([blob], fname()+'.pdf', {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:SU, text:ST}); }
+    else { var url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},2000); alert('이 기기는 파일 공유를 지원하지 않아 PDF를 저장했어요. 저장된 파일을 카톡·메일에 첨부해 보내세요.'); }
+  }catch(e){ alert('PDF 생성 실패: '+e); }
+  btn.textContent=t0; btn.disabled=false;
+}
+</script>
+</body></html>`;
+    const w = window.open("", "_blank", "width=840,height=1040");
+    if (!w) { alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도하세요."); return; }
+    w.document.write(html);
+    w.document.close();
   };
 
   // ── 담당자 ──
@@ -801,9 +1027,16 @@ export default function App() {
   },[settlementData,settlementTab,settlementMonth,settlementModel,settlementMgr,settlementProject]);
 
   const settlementSummary = useMemo(()=>{
-    const total = filteredSettlement.reduce((s,b)=>s+(b.shoot_fee||0),0);
+    const total = filteredSettlement.reduce((s,b)=>s+bookingTotal(b),0);
     const commission = Math.round(total*0.15);
-    return { total, commission, modelPay:total-commission };
+    const modelPay = total - commission;
+    // 고객사 입금(받을 돈) 흐름 — is_paid 기준
+    const clientPaid   = filteredSettlement.filter(b=>b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+    const clientUnpaid = total - clientPaid;
+    // 모델 지급(줄 돈) 흐름 — model_paid 기준
+    const modelPaidAmt   = filteredSettlement.filter(b=>b.model_paid).reduce((s,b)=>s+Math.round(bookingTotal(b)*0.85),0);
+    const modelUnpaidAmt = Math.max(0, modelPay - modelPaidAmt);
+    return { total, commission, modelPay, clientPaid, clientUnpaid, modelPaidAmt, modelUnpaidAmt };
   },[filteredSettlement]);
 
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
@@ -1026,7 +1259,7 @@ export default function App() {
       <div style={{ maxWidth:1560, margin:"0 auto" }}>
 
         {/* ════ 대시보드 ════ */}
-        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={setSelectedBooking} onSelectProject={setSelectedProjectId} isMobile={isMobile} canViewFinance={canViewFinance} />}
+        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} isMobile={isMobile} canViewFinance={canViewFinance} />}
 
         {/* ════ 캘린더 ════ */}
         {page==="calendar" && (
@@ -1038,7 +1271,7 @@ export default function App() {
             bookings={bookings}
             models={models}
             customers={customers}
-            onSelectBooking={setSelectedBooking}
+            onSelectBooking={openBookingFresh}
             initModelId={calInitModel}
             onAddBooking={(preModel, preDate)=>{ setAddPrefill({ date:preDate, model:preModel }); setShowAddPicker(true); }}
           />
@@ -1046,17 +1279,17 @@ export default function App() {
 
 
         {/* ════ 섭외 ════ */}
-        {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={setSelectedBooking} isMobile={isMobile} />}
+        {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
 
         {/* ════ 모델 ════ */}
-        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={setSelectedModel} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} />}
+        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} />}
 
         {/* ════ 고객사 ════ */}
-        {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={setSelectedCustomer} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} />}
+        {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} />}
 
         {/* ════ 정산 ════ */}
-        {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={setSelectedBooking} />}
-        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlement} isMobile={isMobile} />}
+        {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
+        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlementFresh} isMobile={isMobile} />}
 
         {/* ════ 담당자 ════ */}
         {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
@@ -1069,13 +1302,16 @@ export default function App() {
 
       {/* ════ 모달: 섭외 상세 ════ */}
       {selectedBooking&&(
-        <Modal onClose={()=>{ setSelectedBooking(null); setEditingBooking(false); }} wide>
+        <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
             <div style={{ display:"flex", gap:8 }}>
               {!editingBooking
-                ? <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
+                ? <>
+                    {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
+                    <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
+                  </>
                 : <>
                     <button onClick={handleSaveBookingEdit} style={{ ...btnS(C.green), fontSize:12 }}><Save size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
                     <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:12 }}>취소</button>
@@ -1115,14 +1351,14 @@ export default function App() {
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p>
                   {(()=>{ const m=models.find(m=>m.id===selectedBooking.model_id); return m
-                    ? <p onClick={()=>{ setSelectedBooking(null); setEditingBooking(false); setModelHistAll(false); setMEditMode(false); setSelectedModel(m); }} style={{ margin:"3px 0 0", fontSize:14, fontWeight:700, color:C.blue, cursor:"pointer", textDecoration:"underline" }}>{m.name} →</p>
+                    ? <p onClick={()=>openDetail("model", m.id)} style={{ margin:"3px 0 0", fontSize:14, fontWeight:700, color:C.blue, cursor:"pointer", textDecoration:"underline" }}>{m.name} →</p>
                     : <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>-</p>; })()}
                 </div>
                 {/* 고객사 (클릭 → 고객사 상세) */}
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>고객사</p>
                   {(()=>{ const c=customers.find(c=>c.id===selectedBooking.customer_id); return c
-                    ? <p onClick={()=>{ setSelectedBooking(null); setEditingBooking(false); setCEditMode(false); setSelectedCustomer(c); }} style={{ margin:"3px 0 0", fontSize:14, fontWeight:700, color:C.blue, cursor:"pointer", textDecoration:"underline" }}>{c.name} →</p>
+                    ? <p onClick={()=>openDetail("customer", c.id)} style={{ margin:"3px 0 0", fontSize:14, fontWeight:700, color:C.blue, cursor:"pointer", textDecoration:"underline" }}>{c.name} →</p>
                     : <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>-</p>; })()}
                 </div>
                 {[
@@ -1293,9 +1529,9 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>잔금 <span style={{ color:C.blue, fontSize:10 }}>(자동계산)</span></label>
+                    <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>잔금 <span style={{ color:C.blue, fontSize:10 }}>(자동계산{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span></label>
                     <div style={{ background:"#1a1e2e", border:`1px solid ${C.blue}40`, borderRadius:6, padding:"8px 10px", fontSize:13, fontWeight:700, color:C.blue }}>
-                      {((selectedBooking.shoot_fee||0)-(selectedBooking.deposit_amt||0)).toLocaleString()}원
+                      {clientBalance(selectedBooking).toLocaleString()}원
                     </div>
                   </div>
                 </div>
@@ -1315,16 +1551,56 @@ export default function App() {
                   <p style={{ margin:0, color:C.muted, fontSize:11 }}>예정일: {fmtDate(selectedBooking.deposit_due)||"-"}</p>
                 </div>
                 <div>
-                  <p style={{ margin:"0 0 4px", color:C.muted, fontSize:11 }}>잔금</p>
-                  <p style={{ margin:"0 0 4px", color:C.text, fontWeight:700 }}>{selectedBooking.balance_amt?selectedBooking.balance_amt.toLocaleString()+"원":"-"}</p>
+                  <p style={{ margin:"0 0 4px", color:C.muted, fontSize:11 }}>잔금{overchargeTotal(selectedBooking)>0?<span style={{ color:C.orange, fontSize:10 }}> (추가금 포함)</span>:null}</p>
+                  <p style={{ margin:"0 0 4px", color:C.text, fontWeight:700 }}>{clientBalance(selectedBooking)>0?clientBalance(selectedBooking).toLocaleString()+"원":"-"}</p>
                   <p style={{ margin:0, color:C.muted, fontSize:11 }}>예정일: {fmtDate(selectedBooking.balance_due)||"-"}</p>
                 </div>
               </div>
             )}
-            {selectedBooking.shoot_fee>0&&(
+            {/* 촬영 당일 추가금(오버차지) — 편집 시 입력, 조회 시 표시 */}
+            {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&(editingBooking||overchargeTotal(selectedBooking)>0)&&(
+              <div style={{ marginTop:10, background:C.card, borderRadius:8, padding:12, border:`1px solid ${C.orange}33` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:(selectedBooking.overcharges||[]).length>0||showBocInput?10:0 }}>
+                  <p style={{ margin:0, fontSize:12, fontWeight:700, color:C.orange }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영 당일 추가금</p>
+                  {overchargeTotal(selectedBooking)>0&&<span style={{ fontSize:12, color:C.orange, fontWeight:800 }}>+{overchargeTotal(selectedBooking).toLocaleString()}원</span>}
+                </div>
+                {(selectedBooking.overcharges||[]).length>0&&(
+                  <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:editingBooking?10:0 }}>
+                    {(selectedBooking.overcharges||[]).map((oc:any,i:number)=>(
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8, background:C.card2, borderRadius:6, padding:"7px 10px" }}>
+                        <span style={{ flex:1, fontSize:13, color:C.text }}>{oc.reason}</span>
+                        <span style={{ fontSize:13, color:C.orange, fontWeight:700 }}>{(oc.amount||0).toLocaleString()}원</span>
+                        {editingBooking&&<span onClick={()=>setSelectedBooking((p:any)=>({...p, overcharges:(p.overcharges||[]).filter((_:any,x:number)=>x!==i)}))} style={{ cursor:"pointer", color:C.muted, fontSize:16, lineHeight:1 }}>×</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editingBooking&&(showBocInput?(
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <input value={bocReason} onChange={e=>setBocReason(e.target.value)} placeholder="사유 (예: 시간오버 2h, 영상 추가)"
+                        style={{ flex:1, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none" }} />
+                      <input type="text" value={bocAmount?bocAmount.toLocaleString("ko-KR"):""}
+                        onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setBocAmount(Number(v)); }} placeholder="금액"
+                        style={{ width:100, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none", textAlign:"right" }} />
+                    </div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <button onClick={()=>{ if(!bocReason.trim()||bocAmount<=0) return alert("사유와 금액을 입력하세요"); setSelectedBooking((p:any)=>({...p, overcharges:[...(p.overcharges||[]),{reason:bocReason.trim(),amount:bocAmount}]})); setBocReason(""); setBocAmount(0); setShowBocInput(false); }}
+                        style={{ ...btnS(C.orange), flex:1, padding:"7px 0", fontSize:13 }}>추가</button>
+                      <button onClick={()=>{ setShowBocInput(false); setBocReason(""); setBocAmount(0); }}
+                        style={{ ...btnS("#333"), flex:1, padding:"7px 0", fontSize:13 }}>닫기</button>
+                    </div>
+                  </div>
+                ):(
+                  <button onClick={()=>setShowBocInput(true)}
+                    style={{ width:"100%", padding:"8px 0", background:"transparent", border:`1px dashed ${C.orange}66`, borderRadius:6, color:C.orange, fontSize:13, fontWeight:600, cursor:"pointer" }}>+ 추가금 입력</button>
+                ))}
+              </div>
+            )}
+            {bookingTotal(selectedBooking)>0&&(
               <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({models.find(m=>m.id===selectedBooking.model_id)?.commission||15}% 수수료 제외)</span>
-                <span style={{ color:"#c9a96e", fontWeight:800 }}>{Math.round(selectedBooking.shoot_fee*(1-(models.find(m=>m.id===selectedBooking.model_id)?.commission||15)/100)).toLocaleString()}원</span>
+                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({models.find(m=>m.id===selectedBooking.model_id)?.commission||15}% 수수료 제외{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
+                <span style={{ color:"#c9a96e", fontWeight:800 }}>{Math.round(bookingTotal(selectedBooking)*(1-(models.find(m=>m.id===selectedBooking.model_id)?.commission||15)/100)).toLocaleString()}원</span>
               </div>
             )}
           </div>
@@ -1369,7 +1645,7 @@ export default function App() {
                 onKeyDown={async e=>{ if(e.key==="Enter"&&bMsgText.trim()){ const msg={sender:"에이전시",text:bMsgText,at:new Date().toISOString().slice(0,10)}; const msgs=[...(selectedBooking.messages||[]),msg]; await sb("bookings","PATCH",{messages:msgs},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,messages:msgs}:b)); setSelectedBooking((p:any)=>({...p,messages:msgs})); setBMsgText(""); }}}
                 placeholder="메모 또는 전달사항..."
                 style={{ flex:1, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:12, outline:"none" }} />
-              <button onClick={async()=>{ if(!bMsgText.trim())return; const msg={sender:"에이전시",text:bMsgText,at:new Date().toISOString().slice(0,10)}; const msgs=[...(selectedBooking.messages||[]),msg]; await sb("bookings","PATCH",{messages:msgs},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,messages:msgs}:b)); setSelectedBooking((p:any)=>({...p,messages:msgs})); setBMsgText(""); }} style={{ ...btnS(C.purple), padding:"7px 14px", fontSize:12 }}>기록</button>
+              <button onClick={async()=>{ if(!bMsgText.trim())return; const msg={sender:"에이전시",text:bMsgText,at:new Date().toISOString().slice(0,10)}; const msgs=[...(selectedBooking.messages||[]),msg]; await sb("bookings","PATCH",{messages:msgs},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,messages:msgs}:b)); setSelectedBooking((p:any)=>({...p,messages:msgs})); setBMsgText(""); }} style={{ ...btnS(C.purple), padding:"7px 14px", fontSize:12, whiteSpace:"nowrap", flexShrink:0 }}>기록</button>
             </div>
           </div>
           {selectedBooking.result_drive_url&&(
@@ -1379,7 +1655,7 @@ export default function App() {
               </a>
             </div>
           )}
-          <button onClick={()=>{ setSelectedBooking(null); setEditingBooking(false); }} style={{ ...btnS(C.muted), width:"100%" }}>닫기</button>
+          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%" }}>닫기</button>
         </Modal>
       )}
 
@@ -1435,9 +1711,9 @@ export default function App() {
         const pbs = bookings.filter(b=>b.project_id===selectedProjectId).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||""));
         const proj = projects.find(p=>p.id===selectedProjectId);
         const client = customers.find(c=>c.id===pbs[0]?.customer_id);
-        const totalFee = pbs.reduce((sum,b)=>sum+(b.shoot_fee||0),0);
+        const totalFee = pbs.reduce((sum,b)=>sum+bookingTotal(b),0);
         return (
-          <Modal onClose={()=>setSelectedProjectId(null)} wide>
+          <Modal onClose={closeDetail} wide>
             <h3 style={{ marginTop:0, color:C.text }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>촬영일</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{fmtDate(pbs[0]?.shoot_date)}</p></div>
@@ -1449,7 +1725,7 @@ export default function App() {
               {pbs.map(b=>{
                 const m = models.find(mm=>mm.id===b.model_id);
                 return (
-                  <div key={b.id} onClick={()=>{ setSelectedProjectId(null); setEditingBooking(false); setSelectedBooking(b); }}
+                  <div key={b.id} onClick={()=>openDetail("booking", b.id)}
                     style={{ display:"flex", alignItems:"center", gap:10, background:C.card2, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", transition:"border-color 0.15s" }}
                     onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)}
                     onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
@@ -1463,23 +1739,27 @@ export default function App() {
                       {b.start_time?<span> · {fmtTime(b.start_time,b.end_time)}</span>:null}
                       {b.location?<span> · {b.location}</span>:null}
                     </p>
-                    {b.shoot_fee>0&&<span style={{ fontSize:13, fontWeight:700, color:C.yellow, flexShrink:0 }}>{b.shoot_fee.toLocaleString()}원</span>}
+                    {bookingTotal(b)>0&&<span style={{ fontSize:13, fontWeight:700, color:C.yellow, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>}
                     <Badge code={b.status} type={b.booking_type} />
                   </div>
                 );
               })}
             </div>
-            <button onClick={()=>setSelectedProjectId(null)} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
+            <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
           </Modal>
         );
       })()}
 
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
-        <Modal onClose={()=>setSelectedSettlement(null)}>
+        <Modal onClose={closeDetail}>
           <h3 style={{ marginTop:0, color:C.text }}><Coins size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
           <p style={{ color:C.text }}><strong style={{ color:C.muted }}>모델:</strong> {models.find(m=>m.id===selectedSettlement.model_id)?.name}</p>
           <p style={{ color:C.text }}><strong style={{ color:C.muted }}>고객사:</strong> {customers.find(c=>c.id===selectedSettlement.customer_id)?.name}</p>
+          <button onClick={()=>openDetail("booking", selectedSettlement.id)}
+            style={{ display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", marginBottom:12 }}>
+            <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
+          </button>
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>촬영비 (원)</p>
           <input style={inp} type="number" placeholder="촬영비 입력" value={editFee} onChange={e=>setEditFee(e.target.value)} />
 
@@ -1561,21 +1841,48 @@ export default function App() {
             );
           })()}
 
+          {/* ── 고객사 입금 (받을 돈) ── */}
+          {(()=>{
+            const base = Number(editFee)||0;
+            const ocTotal = editOvercharges.reduce((s,o)=>s+o.amount,0);
+            const billTotal = base + ocTotal;
+            if (billTotal<=0) return null;
+            const dep = selectedSettlement.deposit_amt||0;
+            const bal = Math.max(0, billTotal - dep);
+            return (
+              <div style={{ background:"rgba(59,130,246,0.08)", border:`1px solid ${C.blue}33`, borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
+                <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.blue }}>고객사 입금액</p>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>총 청구액</span><span style={{ color:C.text, fontWeight:700 }}>{billTotal.toLocaleString()}원</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>계약금</span><span style={{ color:C.text }}>{dep.toLocaleString()}원</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ color:C.muted }}>잔금{ocTotal>0?" (추가금 포함)":""}</span><span style={{ color:C.text, fontWeight:700 }}>{bal.toLocaleString()}원</span></div>
+              </div>
+            );
+          })()}
+
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>메모</p>
           <textarea style={{ ...inp, height:70, resize:"none" }} placeholder="정산 메모" value={editMemo} onChange={e=>setEditMemo(e.target.value)} />
-          <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14, cursor:"pointer", color:C.text }}>
-            <input type="checkbox" checked={editPaid} onChange={e=>setEditPaid(e.target.checked)} />입금 완료
-          </label>
+
+          {/* ── 입금/지급 상태 (두 흐름 분리) ── */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, margin:"4px 0 14px" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editPaid?C.blue:C.border}`, background:editPaid?C.blue+"18":C.card2 }}>
+              <input type="checkbox" checked={editPaid} onChange={e=>setEditPaid(e.target.checked)} />
+              <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 입금완료</span>
+            </label>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editModelPaid?"#c9a96e":C.border}`, background:editModelPaid?"rgba(201,169,110,0.15)":C.card2 }}>
+              <input type="checkbox" checked={editModelPaid} onChange={e=>setEditModelPaid(e.target.checked)} />
+              <span style={{ fontSize:12, fontWeight:700, color:editModelPaid?"#c9a96e":C.textSub, lineHeight:1.3 }}>모델 지급완료</span>
+            </label>
+          </div>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>setSelectedSettlement(null)} style={{ ...btnS("#333"), flex:1 }}>취소</button>
+            <button onClick={closeDetail} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
 
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
-        <Modal onClose={()=>{ setSelectedModel(null); setModelHistAll(false); }} wide>
+        <Modal onClose={closeDetail} wide>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -1591,7 +1898,7 @@ export default function App() {
             </div>
             <div style={{ display:"flex", gap:8, flexShrink:0 }}>
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
-              <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
+              <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
@@ -1622,8 +1929,8 @@ export default function App() {
           {(()=>{
             const comm = selectedModel.commission||15;
             const mb = bookings.filter(b=>b.model_id===selectedModel.id).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
-            const settledAmt = mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
-            const pendingAmt = mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
+            const settledAmt = mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+            const pendingAmt = mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
             const modelPay = Math.round(settledAmt*(1-comm/100));
             const shown = modelHistAll ? mb : mb.slice(0,5);
             return (
@@ -1635,7 +1942,7 @@ export default function App() {
               </div>
               <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({mb.length}건)</p>
               {shown.map(b=>(
-                <div key={b.id} onClick={()=>{ setSelectedModel(null); setModelHistAll(false); setEditingBooking(false); setSelectedBooking(b); }}
+                <div key={b.id} onClick={()=>openDetail("booking", b.id)}
                   className="hist-row"
                   style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}`, cursor:"pointer" }}
                   onMouseEnter={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.blue; }}
@@ -1645,7 +1952,7 @@ export default function App() {
                     <span style={{ fontSize:12, color:C.textSub, marginLeft:8, fontWeight:700 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                    {b.shoot_fee>0&&<span style={{ fontSize:12, color:C.yellow, fontWeight:700 }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.shoot_fee.toLocaleString()}원</span>}
+                    {bookingTotal(b)>0&&<span style={{ fontSize:12, color:C.yellow, fontWeight:700 }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{bookingTotal(b).toLocaleString()}원</span>}
                     <Badge code={b.status} type={b.booking_type} />
                   </div>
                 </div>
@@ -1659,13 +1966,13 @@ export default function App() {
             </div>
             );
           })()}
-          <button onClick={()=>{ setSelectedModel(null); setModelHistAll(false); }} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
+          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
-        <Modal onClose={()=>setSelectedCustomer(null)} wide>
+        <Modal onClose={closeDetail} wide>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -1683,6 +1990,8 @@ export default function App() {
               ["전화번호", selectedCustomer.phone?<a href={`tel:${selectedCustomer.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedCustomer.phone}</a>:null],
               ["이메일",   selectedCustomer.email],
               ["업종",     selectedCustomer.industry],
+              ["사업자등록번호", selectedCustomer.biz_no?(()=>{ const n=String(selectedCustomer.biz_no).replace(/[^0-9]/g,""); return n.length===10?`${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}`:selectedCustomer.biz_no; })():null],
+              ["계산서 이메일", selectedCustomer.tax_email],
             ].map(([k,v])=>(
               <div key={String(k)}>
                 <p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p>
@@ -1703,13 +2012,13 @@ export default function App() {
               </div>
             ))}
           </div>
-          <button onClick={()=>setSelectedCustomer(null)} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
+          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 수정 ════ */}
       {selectedCustomer&&cEditMode&&(
-        <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();}}>
+        <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}}>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
@@ -1729,16 +2038,20 @@ export default function App() {
               </select>
             </div>
           </div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
+          </div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
+            <button onClick={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
       {(showModelForm||mEditMode)&&(
-        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();}}>
+        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}}>
           <h3 style={{ marginTop:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
           {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedModel?.id}</p>}
 
@@ -1867,7 +2180,7 @@ export default function App() {
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
-            <button onClick={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
+            <button onClick={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -1906,6 +2219,16 @@ export default function App() {
                 <option value="">선택</option>
                 {CLIENT_INDUSTRIES.map(i=><option key={i} value={i}>{i}</option>)}
               </select>
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label>
+              <input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" />
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label>
+              <input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" />
             </div>
           </div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
@@ -2440,10 +2763,15 @@ export default function App() {
           {BOOKING_TYPES[bBookingType]?.hasContract&&(
           <div style={{ background:C.card2, borderRadius:8, padding:14, marginBottom:10 }}>
             <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약 금액</p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
-              <MoneyInput label="계약 총액" value={bBudget}  onChange={setBBudget}  />
-              <MoneyInput label="계약금"    value={bDeposit} onChange={setBDeposit} />
-              <MoneyInput label="잔금"      value={bBalance} onChange={setBBalance} />
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, alignItems:"end" }}>
+              <MoneyInput label="계약 총액" value={bBudget}  onChange={v=>{ setBBudget(v);  setBBalance(Math.max(0, v - bDeposit)); }} />
+              <MoneyInput label="계약금"    value={bDeposit} onChange={v=>{ setBDeposit(v); setBBalance(Math.max(0, bBudget - v)); }} />
+              <div style={{ marginBottom:10 }}>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>잔금 <span style={{ color:C.blue, fontSize:10 }}>(자동계산)</span></label>
+                <div style={{ background:"#1a1e2e", border:`1px solid ${C.blue}40`, borderRadius:6, padding:"9px 10px", fontSize:13, fontWeight:700, color:C.blue }}>
+                  {Math.max(0, bBudget - bDeposit).toLocaleString()}원
+                </div>
+              </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginTop:4 }}>
               <div>
