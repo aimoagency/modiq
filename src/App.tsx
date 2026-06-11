@@ -306,6 +306,10 @@ export default function App() {
   const [editFee,  setEditFee]  = useState("");
   const [editMemo, setEditMemo] = useState("");
   const [editPaid, setEditPaid] = useState(false);
+  const [editOvercharges, setEditOvercharges] = useState<{reason:string; amount:number}[]>([]);
+  const [ocReason, setOcReason] = useState("");
+  const [ocAmount, setOcAmount] = useState(0);
+  const [showOcInput, setShowOcInput] = useState(false);
 
   // ──────────────────────────────────────────────
   // 초기화
@@ -665,10 +669,10 @@ export default function App() {
   };
 
   // ── 정산 ──
-  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); };
+  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); setEditOvercharges(b.overcharges||[]); setOcReason(""); setOcAmount(0); setShowOcInput(false); };
   const handleSaveSettlement = async () => {
     if (!selectedSettlement) return;
-    const updates = { shoot_fee:Number(editFee)||0, settlement_memo:editMemo, is_paid:editPaid };
+    const updates = { shoot_fee:Number(editFee)||0, settlement_memo:editMemo, is_paid:editPaid, overcharges:editOvercharges };
     try {
       await sb("bookings","PATCH",updates,`?id=eq.${selectedSettlement.id}`);
       setBookings(bookings.map(b=>b.id===selectedSettlement.id?{...b,...updates}:b));
@@ -1402,12 +1406,85 @@ export default function App() {
           <p style={{ color:C.text }}><strong style={{ color:C.muted }}>고객사:</strong> {customers.find(c=>c.id===selectedSettlement.customer_id)?.name}</p>
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>촬영비 (원)</p>
           <input style={inp} type="number" placeholder="촬영비 입력" value={editFee} onChange={e=>setEditFee(e.target.value)} />
-          {editFee&&Number(editFee)>0&&(
-            <div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
-              <p style={{ margin:"0 0 4px", color:C.text }}>에이전시 수수료: <strong style={{ color:C.blue }}>{Math.round(Number(editFee)*0.15).toLocaleString()}원</strong></p>
-              <p style={{ margin:0, color:C.text }}>모델 수령액: <strong style={{ color:C.green }}>{Math.round(Number(editFee)*0.85).toLocaleString()}원</strong></p>
+
+          {/* ── 오버차지 (촬영 당일 추가 과금) ── */}
+          <div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:editOvercharges.length>0||showOcInput?10:0 }}>
+              <p style={{ margin:0, fontSize:12, fontWeight:700, color:C.orange }}>촬영 당일 오버차지</p>
+              {editOvercharges.length>0&&(
+                <span style={{ fontSize:12, color:C.orange, fontWeight:800 }}>+{editOvercharges.reduce((s,o)=>s+o.amount,0).toLocaleString()}원</span>
+              )}
             </div>
-          )}
+            {editOvercharges.length>0&&(
+              <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
+                {editOvercharges.map((oc,i)=>(
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, background:C.card, borderRadius:6, padding:"7px 10px" }}>
+                    <span style={{ flex:1, fontSize:13, color:C.text }}>{oc.reason}</span>
+                    <span style={{ fontSize:13, color:C.orange, fontWeight:700 }}>{oc.amount.toLocaleString()}원</span>
+                    <span onClick={()=>setEditOvercharges(prev=>prev.filter((_,x)=>x!==i))} style={{ cursor:"pointer", color:C.muted, fontSize:16, lineHeight:1 }}>×</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showOcInput?(
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <div style={{ display:"flex", gap:6 }}>
+                  <input value={ocReason} onChange={e=>setOcReason(e.target.value)} placeholder="사유 (예: 시간오버 2h, 영상 추가)"
+                    style={{ flex:1, background:"var(--c-card)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none" }} />
+                  <input type="text" value={ocAmount?ocAmount.toLocaleString("ko-KR"):""}
+                    onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setOcAmount(Number(v)); }} placeholder="금액"
+                    style={{ width:100, background:"var(--c-card)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none", textAlign:"right" }} />
+                </div>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={()=>{ if(!ocReason.trim()||ocAmount<=0) return alert("사유와 금액을 입력하세요"); setEditOvercharges(prev=>[...prev,{reason:ocReason.trim(),amount:ocAmount}]); setOcReason(""); setOcAmount(0); setShowOcInput(false); }}
+                    style={{ ...btnS(C.orange), flex:1, padding:"7px 0", fontSize:13 }}>추가</button>
+                  <button onClick={()=>{ setShowOcInput(false); setOcReason(""); setOcAmount(0); }}
+                    style={{ ...btnS("#333"), flex:1, padding:"7px 0", fontSize:13 }}>닫기</button>
+                </div>
+              </div>
+            ):(
+              <button onClick={()=>setShowOcInput(true)}
+                style={{ width:"100%", padding:"8px 0", background:"transparent", border:`1px dashed ${C.orange}66`, borderRadius:6, color:C.orange, fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                + 오버차지 추가
+              </button>
+            )}
+          </div>
+
+          {/* ── 정산 요약 (촬영비 + 오버차지) ── */}
+          {(()=>{
+            const base = Number(editFee)||0;
+            const ocTotal = editOvercharges.reduce((s,o)=>s+o.amount,0);
+            const finalTotal = base + ocTotal;
+            if (finalTotal<=0) return null;
+            const comm = models.find(m=>m.id===selectedSettlement.model_id)?.commission||15;
+            return (
+              <div style={{ background:"rgba(201,169,110,0.1)", borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:C.muted }}>촬영비</span>
+                  <span style={{ color:C.text }}>{base.toLocaleString()}원</span>
+                </div>
+                {ocTotal>0&&(
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>오버차지</span>
+                    <span style={{ color:C.orange }}>+{ocTotal.toLocaleString()}원</span>
+                  </div>
+                )}
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, paddingTop:4, borderTop:`1px solid ${C.border}` }}>
+                  <span style={{ color:C.text, fontWeight:700 }}>최종 총액</span>
+                  <span style={{ color:C.text, fontWeight:800 }}>{finalTotal.toLocaleString()}원</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:C.muted }}>에이전시 수수료 ({comm}%)</span>
+                  <span style={{ color:C.blue }}>{Math.round(finalTotal*comm/100).toLocaleString()}원</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ color:C.muted }}>모델 수령액</span>
+                  <span style={{ color:C.green, fontWeight:800 }}>{Math.round(finalTotal*(1-comm/100)).toLocaleString()}원</span>
+                </div>
+              </div>
+            );
+          })()}
+
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>메모</p>
           <textarea style={{ ...inp, height:70, resize:"none" }} placeholder="정산 메모" value={editMemo} onChange={e=>setEditMemo(e.target.value)} />
           <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14, cursor:"pointer", color:C.text }}>

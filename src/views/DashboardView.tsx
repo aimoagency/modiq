@@ -4,14 +4,14 @@ import { fmtDate, fmt, fmtTime } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
 import { BOOKING_TYPES } from "../constants";
-import { ClipboardList, Calendar, AlertTriangle, FolderOpen } from "../components/icons";
+import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } from "../components/icons";
 
 export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, isMobile = false, canViewFinance = false }: {
   bookings: any[]; models: any[]; customers: any[]; projects: any[];
   setPage: (p:any)=>void; setSelectedBooking: (b:any)=>void; onSelectProject: (pid:string)=>void;
   isMobile?: boolean; canViewFinance?: boolean;
 }) {
-  const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","INQUIRY","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
+  const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
   const holdBookings     = bookings.filter(b=>b.status==="HOLD");
   const unpaidDeposit    = bookings.filter(b=>b.status==="CONFIRMED"&&!b.deposit_amt);
   // 프로젝트는 1건, 단건은 각 1건으로 세기
@@ -57,6 +57,73 @@ export default function DashboardView({ bookings, models, customers, projects, s
         </div>
       ))}
     </div>
+
+    {/* ════ 신규 문의 카드 (처리 대기 INQUIRY) ════ */}
+    {(()=>{
+      const inquiries = bookings.filter(b=>b.status==="INQUIRY");
+      if (inquiries.length===0) return null;
+      const _now = new Date();
+      const todayS = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
+      const daysAgo = (iso?:string) => { if(!iso) return null; const d=new Date(iso); if(isNaN(d.getTime())) return null; return Math.floor((_now.getTime()-d.getTime())/86400000); };
+      const sorted = [...inquiries].sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+      const todayCnt = inquiries.filter(b=>(b.created_at||"").slice(0,10)===todayS).length;
+      return (
+        <div style={{ position:"relative", background:`linear-gradient(135deg, ${C.blue}24 0%, ${C.blue}0d 55%, transparent 100%)`, border:`1.5px solid ${C.blue}88`, borderRadius:14, padding:"18px 18px 16px", marginBottom:16, boxShadow:`0 0 0 1px ${C.blue}22, 0 10px 30px -12px ${C.blue}88`, overflow:"hidden" }}>
+          <style>{`
+            @keyframes modiqPulse { 0%,100%{ opacity:1; transform:scale(1);} 50%{ opacity:.5; transform:scale(.88);} }
+            @keyframes modiqGlow { 0%,100%{ box-shadow:0 0 0 0 ${C.blue}66, 0 4px 14px -2px ${C.blue}aa;} 50%{ box-shadow:0 0 0 7px ${C.blue}00, 0 4px 14px -2px ${C.blue}aa;} }
+            @keyframes modiqBlink { 0%,100%{ opacity:1;} 50%{ opacity:.25;} }
+          `}</style>
+          {/* 좌측 액센트 바 */}
+          <div style={{ position:"absolute", top:0, left:0, bottom:0, width:5, background:C.blue }} />
+
+          {/* 헤더 */}
+          <div style={{ display:"flex", alignItems:"center", gap:13, marginBottom:14, paddingLeft:6 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:C.blue, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, animation:"modiqGlow 2s ease-in-out infinite" }}>
+              <MessageSquare size={22} color="#fff" />
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ width:8, height:8, borderRadius:"50%", background:C.red, animation:"modiqBlink 1.2s ease-in-out infinite", flexShrink:0 }} />
+                <p style={{ margin:0, fontSize:15, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>신규 문의 — 처리 대기</p>
+              </div>
+              <p style={{ margin:"3px 0 0", fontSize:12, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"} · 미처리 리드를 놓치지 마세요</p>
+            </div>
+            <div style={{ textAlign:"center", flexShrink:0, lineHeight:1, paddingRight:2 }}>
+              <p style={{ margin:0, fontSize:34, fontWeight:900, color:C.blue, letterSpacing:-1 }}>{inquiries.length}</p>
+              <p style={{ margin:"1px 0 0", fontSize:10, fontWeight:700, color:C.muted }}>건 대기</p>
+            </div>
+          </div>
+
+          {/* 리스트 */}
+          <div style={{ display:"grid", gap:8 }}>
+            {sorted.map(b=>{
+              const model  = models.find(m=>m.id===b.model_id);
+              const client = customers.find(c=>c.id===b.customer_id);
+              const ty = BOOKING_TYPES[b.booking_type||"SHOOT"]?.label || "일정";
+              const dgo = daysAgo(b.created_at);
+              const isToday = (b.created_at||"").slice(0,10)===todayS;
+              return (
+                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?C.blue+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
+                  onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.blue; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${C.blue}aa`; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?C.blue+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
+                >
+                  {isToday&&<span style={{ background:C.blue, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${C.blue}` }}>NEW</span>}
+                  <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0 }}>{ty}</span>
+                  <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    <strong style={{ fontSize:14.5, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
+                    <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
+                    <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
+                  </p>
+                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
+                  <span style={{ color:C.blue, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })()}
 
     {/* 이번 주 섭외 미리보기 */}
     {(()=>{
