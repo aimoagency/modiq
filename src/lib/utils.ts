@@ -32,16 +32,53 @@ export const parseHHMM = (hhmm: string) => {
 };
 
 export const toMin = (t: string) => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-export const scheduleConflict = (aS: string, aE: string, bS: string, bE: string, typeA = "", typeB = "") => {
-  // 시간 중 하나라도 없으면 충돌 불판단 (시간 미입력 허용)
-  if (!aS||!aE||!bS||!bE) return { conflict: false, reason: "" };
+
+// 장소 정규화: 공백·대소문자 무시하고 비교용 키 생성
+const normLoc = (s?: string) => (s || "").trim().toLowerCase().replace(/\s+/g, "");
+
+// 일정 충돌 검사 (강화: 장소 이동시간 가산 + severity 구분)
+export const scheduleConflict = (aS: string, aE: string, bS: string, bE: string, typeA = "", typeB = "", locA?: string, locB?: string) => {
+  if (!aS || !aE || !bS || !bE) return { conflict: false, reason: "", severity: "" };
   const as = toMin(aS), ae = toMin(aE), bs = toMin(bS), be = toMin(bE);
-  if (as===null||ae===null||bs===null||be===null) return { conflict: false, reason: "" };
-  if (as < be && bs < ae) return { conflict: true, reason: "시간대 겹침" };
+  if (as === null || ae === null || bs === null || be === null) return { conflict: false, reason: "", severity: "" };
+  if (as < be && bs < ae) return { conflict: true, reason: "시간대 겹침", severity: "OVERLAP" };
   const gap = as >= be ? as - be : bs - ae;
-  const need = (typeA === "MEETING" || typeB === "MEETING") ? 60 : 120;
-  if (gap < need) return { conflict: true, reason: `간격 ${Math.floor(gap/60)}h ${gap%60}m (${need/60}h 미만)` };
-  return { conflict: false, reason: "" };
+  let need = (typeA === "MEETING" || typeB === "MEETING") ? 60 : 120;
+  const la = normLoc(locA), lb = normLoc(locB);
+  const differentPlace = !!la && !!lb && la !== lb;
+  if (differentPlace) need += 60;
+  if (gap < need) {
+    const gapStr = `${Math.floor(gap / 60)}h ${gap % 60}m`;
+    const needStr = `${need / 60}h`;
+    const moveNote = differentPlace ? " 장소이동" : "";
+    return { conflict: true, reason: `간격 ${gapStr} (${needStr} 미만${moveNote})`, severity: "BUFFER" };
+  }
+  return { conflict: false, reason: "", severity: "" };
+};
+
+// 같은 날 한 모델의 섭외 목록에서 충돌 쌍을 찾는 헬퍼 (캘린더 시각화용)
+export const findConflicts = (dayBookings: any[]) => {
+  const conflictIds = new Set<string>();
+  let worst = "";
+  const byModel: Record<string, any[]> = {};
+  dayBookings.forEach(b => {
+    if (b.status === "CANCELLED") return;
+    (byModel[b.model_id] = byModel[b.model_id] || []).push(b);
+  });
+  Object.values(byModel).forEach(list => {
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        const c = scheduleConflict(a.start_time, a.end_time, b.start_time, b.end_time, a.booking_type, b.booking_type, a.location, b.location);
+        if (c.conflict) {
+          conflictIds.add(a.id); conflictIds.add(b.id);
+          if (c.severity === "OVERLAP") worst = "OVERLAP";
+          else if (c.severity === "BUFFER" && worst !== "OVERLAP") worst = "BUFFER";
+        }
+      }
+    }
+  });
+  return { conflictIds, worst };
 };
 
 export const visaViolation = (model: any, date: string) => {
@@ -55,6 +92,18 @@ export const visaViolation = (model: any, date: string) => {
 
 export const makeModelId  = (name: string, ssn6: string) => `M_${name}_${ssn6}`;
 export const makeClientId = (name: string, phone4: string) => `C_${name}_${phone4}`;
+
+// 사업자등록번호 체크섬 검증 (국세청 알고리즘) — 형식·오타 검증, 실제 등록 여부는 별도 API
+export const validateBizNo = (raw: string): boolean => {
+  const n = String(raw).replace(/[^0-9]/g, "");
+  if (n.length !== 10) return false;
+  const w = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(n[i]) * w[i];
+  sum += Math.floor((Number(n[8]) * 5) / 10);
+  const check = (10 - (sum % 10)) % 10;
+  return check === Number(n[9]);
+};
 
 // 인스타그램 URL/아이디 정규화
 export const normalizeInstagram = (val: string): string => {
@@ -100,6 +149,16 @@ export const REVENUE_STATUSES = ["CONFIRMED", "COMPLETED", "SETTLED"];
 //  - 예상매출 = 촬영확정+촬영완료+정산완료 합계
 //  - 실매출   = 정산완료(입금)만
 //  - period: {from,to} (YYYY-MM-DD, 촬영일 기준) — 없으면 전체
+// 당일 오버차지(추가금) 합계
+export const overchargeTotal = (b: any): number =>
+  Array.isArray(b?.overcharges) ? b.overcharges.reduce((s: number, o: any) => s + (o?.amount || 0), 0) : 0;
+
+// 촬영비 총액 = 기본 촬영비 + 당일 오버차지(추가금) 합계
+export const bookingTotal = (b: any): number => (b?.shoot_fee || 0) + overchargeTotal(b);
+
+// 고객사 잔금 = (계약 총액 + 추가금) − 계약금
+export const clientBalance = (b: any): number => Math.max(0, bookingTotal(b) - (b?.deposit_amt || 0));
+
 export const entityRevenue = (bookings: any[], key: string, id: string, period?: { from?: string; to?: string }) => {
   const bs = bookings.filter(b => {
     if (b[key] !== id) return false;
@@ -109,8 +168,8 @@ export const entityRevenue = (bookings: any[], key: string, id: string, period?:
     if (period?.to && d > period.to) return false;
     return true;
   });
-  const real = bs.filter(b => b.status === "SETTLED" || b.is_paid).reduce((s, b) => s + (b.shoot_fee || 0), 0);
-  const expected = bs.reduce((s, b) => s + (b.shoot_fee || 0), 0);
+  const real = bs.filter(b => b.status === "SETTLED" || b.is_paid).reduce((s, b) => s + bookingTotal(b), 0);
+  const expected = bs.reduce((s, b) => s + bookingTotal(b), 0);
   return { real, expected, count: bs.length };
 };
 
@@ -119,6 +178,7 @@ export const periodRange = (preset: string): { from?: string; to?: string } => {
   const now = new Date();
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   if (preset === "month") { return { from: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01` }; }
+  if (preset === "lastmonth") { const f = new Date(now.getFullYear(), now.getMonth()-1, 1); const t = new Date(now.getFullYear(), now.getMonth(), 0); return { from: iso(f), to: iso(t) }; }
   if (preset === "3m") { const d = new Date(now); d.setMonth(d.getMonth()-3); return { from: iso(d) }; }
   if (preset === "6m") { const d = new Date(now); d.setMonth(d.getMonth()-6); return { from: iso(d) }; }
   if (preset === "1y") { const d = new Date(now); d.setMonth(d.getMonth()-12); return { from: iso(d) }; }

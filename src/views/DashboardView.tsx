@@ -1,17 +1,21 @@
 import type { ReactNode } from "react";
 import { C } from "../theme";
-import { fmtDate, fmt } from "../lib/utils";
+import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance } from "../lib/utils";
 import Badge from "../components/Badge";
-import { ClipboardList, Calendar, AlertTriangle, FolderOpen } from "../components/icons";
+import TypeIcon from "../components/TypeIcon";
+import { BOOKING_TYPES } from "../constants";
+import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } from "../components/icons";
 
 export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, isMobile = false, canViewFinance = false }: {
   bookings: any[]; models: any[]; customers: any[]; projects: any[];
   setPage: (p:any)=>void; setSelectedBooking: (b:any)=>void; onSelectProject: (pid:string)=>void;
   isMobile?: boolean; canViewFinance?: boolean;
 }) {
-  const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","INQUIRY","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
+  const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
   const holdBookings     = bookings.filter(b=>b.status==="HOLD");
   const unpaidDeposit    = bookings.filter(b=>b.status==="CONFIRMED"&&!b.deposit_amt);
+  // 프로젝트는 1건, 단건은 각 1건으로 세기
+  const unitCount = (list:any[]) => { const pj=new Set<string>(); let n=0; list.forEach(b=>{ if(b.project_id){ if(!pj.has(b.project_id)){ pj.add(b.project_id); n++; } } else n++; }); return n; };
   return (
   <div>
     <h1 style={{ margin:"0 0 20px", fontSize:22, fontWeight:800, color:C.text }}>대시보드</h1>
@@ -20,9 +24,9 @@ export default function DashboardView({ bookings, models, customers, projects, s
     {canViewFinance && (()=>{
       const now=new Date(); const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
       const mb=bookings.filter(b=>(b.shoot_date||"").startsWith(ym)&&["CONFIRMED","COMPLETED","SETTLED"].includes(b.status));
-      const real=mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
-      const expected=mb.reduce((s,b)=>s+(b.shoot_fee||0),0);
-      const unpaid=mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
+      const real=mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+      const expected=mb.reduce((s,b)=>s+bookingTotal(b),0);
+      const unpaid=mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
       return (
         <div onClick={()=>setPage("revenue")} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16, cursor:"pointer", transition:"border-color 0.2s" }}
           onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)} onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
@@ -39,20 +43,142 @@ export default function DashboardView({ bookings, models, customers, projects, s
       );
     })()}
 
-    {/* 통계 카드 4개 */}
-    <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)", gap:12, marginBottom:16 }}>
-      {[
-        { label:"진행중 섭외",  value:`${activeBookings.length}건`,  color:C.blue   },
-        { label:"HOLD",         value:`${holdBookings.length}건`,    color:C.yellow },
-        { label:"계약금 미입금", value:`${unpaidDeposit.length}건`,  color:C.red    },
-        { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
-      ].map(item=>(
-        <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
-          <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
-          <p style={{ fontSize:24, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
+    {/* 입금 확인 필요 (받을 돈) — 계약금·잔금 예정일 임박/경과 */}
+    {canViewFinance && (()=>{
+      const iso = (d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const todayStr = iso(today);
+      const horizon = new Date(today); horizon.setDate(horizon.getDate()+7); const horizonStr = iso(horizon);
+      const dday = (date:string)=>Math.round((new Date(date+"T00:00:00").getTime()-today.getTime())/86400000);
+      const items:{b:any; label:string; date:string; amount:number}[] = [];
+      bookings.filter(b=>!b.is_paid && ["CONFIRMED","COMPLETED","SETTLED"].includes(b.status)).forEach(b=>{
+        if (b.deposit_due && (b.deposit_amt||0)>0 && b.deposit_due<=horizonStr) items.push({ b, label:"계약금", date:b.deposit_due, amount:b.deposit_amt||0 });
+        if (b.balance_due && clientBalance(b)>0 && b.balance_due<=horizonStr) items.push({ b, label:"잔금", date:b.balance_due, amount:clientBalance(b) });
+      });
+      items.sort((a,b)=>a.date.localeCompare(b.date));
+      if (items.length===0) return null;
+      const overdue = items.filter(i=>i.date<todayStr).length;
+      return (
+        <div style={{ background:C.card, border:`1px solid ${overdue>0?C.red:C.yellow}55`, borderRadius:10, padding:"16px 18px", marginBottom:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}><AlertTriangle size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 입금 확인 필요 <span style={{ color:C.muted, fontWeight:600 }}>({items.length}건{overdue>0?` · 경과 ${overdue}`:""})</span></p>
+            <span style={{ fontSize:11, color:C.muted }}>고객사 입금 예정일 기준</span>
+          </div>
+          <div style={{ display:"grid", gap:8 }}>
+            {items.map((it,idx)=>{
+              const d = dday(it.date);
+              const color = d<0?C.red:d===0?C.orange:C.blue;
+              const ddayLabel = d<0?`${-d}일 지남`:d===0?"오늘":`D-${d}`;
+              const model = models.find((m:any)=>m.id===it.b.model_id);
+              const client = customers.find((c:any)=>c.id===it.b.customer_id);
+              return (
+                <div key={it.b.id+it.label+idx} onClick={()=>setSelectedBooking(it.b)}
+                  style={{ display:"flex", alignItems:"center", gap:10, background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", transition:"border-color 0.15s" }}
+                  onMouseEnter={e=>(e.currentTarget.style.borderColor=color)}
+                  onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
+                  <span style={{ flexShrink:0, fontSize:11, fontWeight:800, color, background:color+"1a", borderRadius:6, padding:"3px 8px", minWidth:54, textAlign:"center" }}>{ddayLabel}</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      {client?.name||"?"} <span style={{ color:C.muted, fontWeight:600 }}>· {model?.name||"?"}</span>
+                    </p>
+                    <p style={{ margin:"2px 0 0", fontSize:11, color:C.muted }}><Calendar size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtDate(it.date)} · {it.label}</p>
+                  </div>
+                  <span style={{ flexShrink:0, fontSize:13, fontWeight:800, color:it.label==="잔금"?C.text:C.textSub }}>{it.amount.toLocaleString()}원</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      ))}
-    </div>
+      );
+    })()}
+
+    {/* 통계 카드 (계약금 미입금은 재무 권한자만) */}
+    {(()=>{
+      const statCards = [
+        { label:"진행중 섭외",  value:`${unitCount(activeBookings)}건`,  color:C.blue   },
+        { label:"HOLD",         value:`${holdBookings.length}건`,    color:C.yellow },
+        ...(canViewFinance ? [{ label:"계약금 미입금", value:`${unitCount(unpaidDeposit)}건`, color:C.red }] : []),
+        { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
+      ];
+      return (
+        <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":`repeat(${statCards.length},1fr)`, gap:12, marginBottom:16 }}>
+          {statCards.map(item=>(
+            <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
+              <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
+              <p style={{ fontSize:24, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
+            </div>
+          ))}
+        </div>
+      );
+    })()}
+
+    {/* ════ 신규 문의 카드 (처리 대기 INQUIRY) ════ */}
+    {(()=>{
+      const inquiries = bookings.filter(b=>b.status==="INQUIRY");
+      if (inquiries.length===0) return null;
+      const _now = new Date();
+      const todayS = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
+      const daysAgo = (iso?:string) => { if(!iso) return null; const d=new Date(iso); if(isNaN(d.getTime())) return null; return Math.floor((_now.getTime()-d.getTime())/86400000); };
+      const sorted = [...inquiries].sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+      const todayCnt = inquiries.filter(b=>(b.created_at||"").slice(0,10)===todayS).length;
+      const PINK = "#ec4899";
+      return (
+        <div style={{ position:"relative", background:`linear-gradient(135deg, ${PINK}26 0%, ${PINK}0d 55%, transparent 100%)`, border:`1.5px solid ${PINK}88`, borderRadius:14, padding:"18px 18px 16px", marginBottom:16, boxShadow:`0 0 0 1px ${PINK}22, 0 10px 30px -12px ${PINK}88`, overflow:"hidden" }}>
+          <style>{`
+            @keyframes modiqPulse { 0%,100%{ opacity:1; transform:scale(1);} 50%{ opacity:.5; transform:scale(.88);} }
+            @keyframes modiqGlow { 0%,100%{ box-shadow:0 0 0 0 ${PINK}66, 0 4px 14px -2px ${PINK}aa;} 50%{ box-shadow:0 0 0 7px ${PINK}00, 0 4px 14px -2px ${PINK}aa;} }
+            @keyframes modiqBlink { 0%,100%{ opacity:1;} 50%{ opacity:.25;} }
+          `}</style>
+          {/* 좌측 액센트 바 */}
+          <div style={{ position:"absolute", top:0, left:0, bottom:0, width:5, background:PINK }} />
+
+          {/* 헤더 */}
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, paddingLeft:6 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:PINK, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, animation:"modiqGlow 2s ease-in-out infinite" }}>
+              <MessageSquare size={22} color="#fff" />
+            </div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:3, flexShrink:0 }}>
+              <span style={{ fontSize:36, fontWeight:900, color:PINK, letterSpacing:-1, lineHeight:1 }}>{inquiries.length}</span>
+              <span style={{ fontSize:14, fontWeight:800, color:PINK }}>건</span>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ width:8, height:8, borderRadius:"50%", background:PINK, animation:"modiqBlink 1.2s ease-in-out infinite", flexShrink:0 }} />
+                <p style={{ margin:0, fontSize:15, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>신규 문의</p>
+              </div>
+              <p style={{ margin:"3px 0 0", fontSize:12, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"} · 미처리 리드를 놓치지 마세요</p>
+            </div>
+          </div>
+
+          {/* 리스트 */}
+          <div style={{ display:"grid", gap:8 }}>
+            {sorted.map(b=>{
+              const model  = models.find(m=>m.id===b.model_id);
+              const client = customers.find(c=>c.id===b.customer_id);
+              const ty = BOOKING_TYPES[b.booking_type||"SHOOT"]?.label || "일정";
+              const dgo = daysAgo(b.created_at);
+              const isToday = (b.created_at||"").slice(0,10)===todayS;
+              return (
+                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
+                  onMouseEnter={e=>{ e.currentTarget.style.borderColor=PINK; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${PINK}aa`; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?PINK+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
+                >
+                  {isToday&&<span style={{ background:PINK, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${PINK}` }}>NEW</span>}
+                  <span style={{ background:PINK+"22", color:PINK, border:`1px solid ${PINK}44`, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0 }}>{ty}</span>
+                  <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    <strong style={{ fontSize:14.5, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
+                    <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
+                    <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
+                  </p>
+                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
+                  <span style={{ color:PINK, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    })()}
 
     {/* 이번 주 섭외 미리보기 */}
     {(()=>{
@@ -69,9 +195,10 @@ export default function DashboardView({ bookings, models, customers, projects, s
         const ds = toStr(d);
         weekDays.push({ label:["월","화","수","목","금","토","일"][i], date:ds, short:ds });
       }
-      const weekBookings = bookings.filter(b=>b.shoot_date>=toStr(monday)&&b.shoot_date<=toStr(sunday));
-      const todayCnt    = bookings.filter(b=>b.shoot_date===todayStr).length;
-      const tomorrowCnt = bookings.filter(b=>b.shoot_date===tomorrowStr).length;
+      const live = bookings.filter(b=>b.status!=="CANCELLED"&&b.shoot_date); // 취소·날짜미정 제외
+      const weekBookings = live.filter(b=>b.shoot_date>=toStr(monday)&&b.shoot_date<=toStr(sunday));
+      const todayCnt    = live.filter(b=>b.shoot_date===todayStr).length;
+      const tomorrowCnt = live.filter(b=>b.shoot_date===tomorrowStr).length;
       const weekTotal   = weekBookings.length;
 
       return (
@@ -102,9 +229,9 @@ export default function DashboardView({ bookings, models, customers, projects, s
           {/* 요일별 바 */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
             {weekDays.map(wd=>{
-              const cnt = bookings.filter(b=>b.shoot_date===wd.date).length;
+              const cnt = live.filter(b=>b.shoot_date===wd.date).length;
               const isToday = wd.date===todayStr;
-              const maxCnt = Math.max(...weekDays.map(w=>bookings.filter(b=>b.shoot_date===w.date).length), 1);
+              const maxCnt = Math.max(...weekDays.map(w=>live.filter(b=>b.shoot_date===w.date).length), 1);
               return (
                 <div key={wd.date} onClick={()=>setPage("calendar")} style={{ cursor:"pointer", textAlign:"center" }}>
                   <div style={{ fontSize:10, color:isToday?C.blue:C.muted, fontWeight:isToday?700:400, marginBottom:4 }}>{wd.label}</div>
@@ -179,7 +306,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                   {bs.some(x=>isOverdue(x.shoot_date))&&<p style={{ margin:"3px 0 0", fontSize:11, color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영일 지남 — 상태 업데이트 필요</p>}
                 </div>
                 <div style={{ textAlign:"right" }}>
-                  {bs.reduce((s,b)=>s+(b.shoot_fee||0),0)>0&&<p style={{ margin:0, fontSize:13, fontWeight:700, color:"#c9a96e" }}>{bs.reduce((s,b)=>s+(b.shoot_fee||0),0).toLocaleString()}원</p>}
+                  {canViewFinance&&bs.reduce((s,b)=>s+bookingTotal(b),0)>0&&<p style={{ margin:0, fontSize:13, fontWeight:700, color:"#c9a96e" }}>{bs.reduce((s,b)=>s+bookingTotal(b),0).toLocaleString()}원</p>}
                 </div>
               </div>
             </div>
@@ -192,12 +319,13 @@ export default function DashboardView({ bookings, models, customers, projects, s
           if (isMobile) { rows.push(
             <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+                <TypeIcon type={b.booking_type} size={13}/>
                 <strong style={{ flex:1, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
-                <Badge code={b.status} />
+                <Badge code={b.status} type={b.booking_type} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.textSub }}>
                 <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}{b.project_name?` · ${b.project_name}`:""}{isOverdue(b.shoot_date)?" · ":""}{isOverdue(b.shoot_date)&&<span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/>일정지남</span>}</span>
-                {b.shoot_fee>0&&<span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{b.shoot_fee.toLocaleString()}원</span>}
+                {canViewFinance&&bookingTotal(b)>0&&<span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>}
               </div>
             </div>
           ); return; }
@@ -206,6 +334,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)}
               onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
             >
+              {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ background:bt.color+"22", color:bt.color, border:`1px solid ${bt.color}44`, borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, flexShrink:0 }}><TypeIcon type={b.booking_type} size={11}/> {bt.label}</span>; })()}
               <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
                 <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"?"}</span>
@@ -215,8 +344,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
               </p>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
                 {!b.deposit_amt&&b.status==="CONFIRMED"&&<span style={{ fontSize:11, color:C.red, fontWeight:700 }}>계약금 미입금</span>}
-                {b.shoot_fee>0&&<span style={{ fontSize:13, fontWeight:700, color:"#c9a96e" }}>{b.shoot_fee.toLocaleString()}원</span>}
-                <Badge code={b.status} />
+                {canViewFinance&&bookingTotal(b)>0&&<span style={{ fontSize:13, fontWeight:700, color:"#c9a96e" }}>{bookingTotal(b).toLocaleString()}원</span>}
+                <Badge code={b.status} type={b.booking_type} />
               </div>
             </div>
           );

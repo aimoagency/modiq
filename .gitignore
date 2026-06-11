@@ -11,3 +11,10 @@ _modiq_clean
 vite.config.d.ts
 vite.config.js
 vite.config.js.timestamp-*
+
+# 백업 더미·배포 산출물 (GitHub 제외)
+A_backup/
+_bak_0610/
+backup_0608_0703/
+.versions/
+*.zip

@@ -13,6 +13,12 @@ create table if not exists holidays (
 );
 alter table bookings add column if not exists reference_images jsonb;
 alter table bookings add column if not exists reference_videos jsonb;
+alter table bookings add column if not exists overcharges jsonb;  -- 촬영 당일 오버차지(추가금) [{reason,amount}]
+alter table bookings add column if not exists model_paid boolean default false;  -- 모델 지급완료(에이전시→모델). is_paid=고객사 입금완료(고객사→에이전시)
+alter table agency_members add column if not exists can_view_finance boolean default false;  -- 대표가 담당자에게 매출·정산 열람 권한 부여
+alter table customers add column if not exists biz_no text;     -- 고객사 사업자등록번호
+alter table customers add column if not exists tax_email text;  -- 고객사 계산서(세금계산서) 발송 이메일
+alter table agencies  add column if not exists logo_url text;   -- 에이전시 로고(명세서 등 문서에 표시, base64/URL)
 
 -- ── 1. 내 소속 에이전시 헬퍼 (RLS 재귀 방지용 security definer) ──
 create or replace function public.my_agency_ids()
@@ -46,13 +52,17 @@ create policy "agencies_insert" on agencies for insert to authenticated
 create policy "agencies_update" on agencies for update to authenticated
   using (owner_id::text = auth.uid()::text) with check (owner_id::text = auth.uid()::text);
 
--- agency_members: 소속자 조회 / 대표만 추가·삭제
+-- agency_members: 소속자 조회 / 대표만 추가·수정·삭제
 drop policy if exists "members_select" on agency_members;
 drop policy if exists "members_insert" on agency_members;
+drop policy if exists "members_update" on agency_members;
 drop policy if exists "members_delete" on agency_members;
 create policy "members_select" on agency_members for select to authenticated
   using (agency_id in (select my_agency_ids()));
 create policy "members_insert" on agency_members for insert to authenticated
+  with check (agency_id in (select a.id from agencies a where a.owner_id::text = auth.uid()::text));
+create policy "members_update" on agency_members for update to authenticated
+  using (agency_id in (select a.id from agencies a where a.owner_id::text = auth.uid()::text))
   with check (agency_id in (select a.id from agencies a where a.owner_id::text = auth.uid()::text));
 create policy "members_delete" on agency_members for delete to authenticated
   using (agency_id in (select a.id from agencies a where a.owner_id::text = auth.uid()::text));

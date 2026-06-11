@@ -1,7 +1,7 @@
-export const APP_VERSION = "0.7.6";
+export const APP_VERSION = "0.9.0";
 export const SESSION_KEY = "modiq_session_v6";
 export type AuthMode = "login"|"signup";
-export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar";
+export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company";
 
 // ── 요금제 ─────────────────────────────────────────────────────
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {
@@ -72,4 +72,19 @@ export const KR_HOLIDAYS: Record<string, string> = {
   "2027-06-06":"현충일", "2027-08-15":"광복절", "2027-08-16":"대체공휴일",
   "2027-09-14":"추석연휴", "2027-09-15":"추석", "2027-09-16":"추석연휴",
   "2027-10-03":"개천절", "2027-10-04":"대체공휴일", "2027-10-09":"한글날", "2027-10-11":"대체공휴일", "2027-12-25":"성탄절",
+};
+
+// 타입별 상태: 비촬영(미팅·피팅·오디션)은 요청→확정→완료 3단계
+export const statusLabelForType = (type: string|undefined, code: string): string => {
+  const nonShoot = !!type && !BOOKING_TYPES[type]?.hasContract;
+  const ML: Record<string,string> = { INQUIRY:"요청", CONFIRMED:"확정", COMPLETED:"완료" };
+  if (nonShoot && ML[code]) return ML[code];
+  return STATUS[code]?.label || code;
+};
+export const statusOptionsForType = (type: string|undefined, current?: string): [string,string][] => {
+  const nonShoot = !!type && !BOOKING_TYPES[type]?.hasContract;
+  if (!nonShoot) return Object.entries(STATUS).map(([k,v])=>[k,v.label] as [string,string]);
+  const base: [string,string][] = [["INQUIRY","요청"],["CONFIRMED","확정"],["COMPLETED","완료"],["CANCELLED","취소"]];
+  if (current==="HOLD") base.splice(3,0,["HOLD","HOLD"]);
+  return base;
 };

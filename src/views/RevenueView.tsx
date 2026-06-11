@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, inp } from "../theme";
 import { Coins, Download } from "../components/icons";
-import { fmt, fmtDate, periodRange, REVENUE_STATUSES } from "../lib/utils";
+import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal } from "../lib/utils";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
 
@@ -23,16 +23,16 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
     return true;
   };
   const rev = bookings.filter(inPeriod).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
-  const realAmt     = rev.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
-  const expectedAmt = rev.reduce((s,b)=>s+(b.shoot_fee||0),0);
-  const unpaidAmt   = rev.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+(b.shoot_fee||0),0);
+  const realAmt     = rev.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+  const expectedAmt = rev.reduce((s,b)=>s+bookingTotal(b),0);
+  const unpaidAmt   = rev.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
 
   const exportCSV = () => {
     const head = ["촬영일","모델","고객사","프로젝트","상태","입금여부","금액"];
     const rows = rev.map(b=>[
       b.shoot_date||"", models.find((m:any)=>m.id===b.model_id)?.name||"",
       customers.find((c:any)=>c.id===b.customer_id)?.name||"", b.project_name||"",
-      b.status, (b.status==="SETTLED"||b.is_paid)?"입금":"미입금", b.shoot_fee||0,
+      b.status, (b.status==="SETTLED"||b.is_paid)?"입금":"미입금", bookingTotal(b),
     ]);
     const csv = "﻿" + [head, ...rows].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type:"text/csv;charset=utf-8;" }));
@@ -57,7 +57,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
 
       {/* 기간 필터 (칩) */}
       <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {([["month","이번 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
+        {([["month","이번 달"],["lastmonth","지난 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
           <button key={k} onClick={()=>setPreset(k)} style={{ padding:"6px 16px", borderRadius:20, border:`1px solid ${preset===k?C.blue:C.border}`, background:preset===k?C.blue+"22":"transparent", color:preset===k?C.blue:C.muted, fontSize:13, fontWeight:preset===k?700:500, cursor:"pointer" }}>{l}</button>
         ))}
         {preset==="custom"&&(
@@ -99,7 +99,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
               <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
               </span>
-              <span style={{ fontSize:13, fontWeight:700, color:(b.status==="SETTLED"||b.is_paid)?C.green:C.yellow, whiteSpace:"nowrap" }}>{(b.shoot_fee||0).toLocaleString()}원</span>
+              <span style={{ fontSize:13, fontWeight:700, color:(b.status==="SETTLED"||b.is_paid)?C.green:C.yellow, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
               <Badge code={b.status} />
             </div>
           ))}
