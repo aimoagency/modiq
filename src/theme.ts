@@ -13,11 +13,11 @@ export const C = {
 export const inp: CSSProperties = {
   width:"100%", padding:"9px 12px", background:"var(--c-card2)",
   border:`1px solid ${C.border}`, borderRadius:6, color:C.text,
-  fontSize:13, boxSizing:"border-box" as const, marginBottom:10,
+  fontSize:14, boxSizing:"border-box" as const, marginBottom:10,
 };
 
 export const btnS = (bg: string, disabled=false): CSSProperties => ({
   padding:"6px 12px", background:disabled?"#333":bg,
   color:disabled?C.muted:"white", border:"none", borderRadius:6,
-  cursor:disabled?"not-allowed":"pointer", fontWeight:600, fontSize:12, opacity:disabled?0.7:1,
+  cursor:disabled?"not-allowed":"pointer", fontWeight:600, fontSize:13, opacity:disabled?0.7:1,
 });

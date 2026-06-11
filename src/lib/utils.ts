@@ -93,6 +93,18 @@ export const visaViolation = (model: any, date: string) => {
 export const makeModelId  = (name: string, ssn6: string) => `M_${name}_${ssn6}`;
 export const makeClientId = (name: string, phone4: string) => `C_${name}_${phone4}`;
 
+// 사업자등록번호 체크섬 검증 (국세청 알고리즘) — 형식·오타 검증, 실제 등록 여부는 별도 API
+export const validateBizNo = (raw: string): boolean => {
+  const n = String(raw).replace(/[^0-9]/g, "");
+  if (n.length !== 10) return false;
+  const w = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(n[i]) * w[i];
+  sum += Math.floor((Number(n[8]) * 5) / 10);
+  const check = (10 - (sum % 10)) % 10;
+  return check === Number(n[9]);
+};
+
 // 인스타그램 URL/아이디 정규화
 export const normalizeInstagram = (val: string): string => {
   if (!val.trim()) return "";

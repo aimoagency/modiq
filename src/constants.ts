@@ -1,7 +1,7 @@
-export const APP_VERSION = "0.7.6";
+export const APP_VERSION = "0.9.0";
 export const SESSION_KEY = "modiq_session_v6";
 export type AuthMode = "login"|"signup";
-export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar";
+export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company";
 
 // ── 요금제 ─────────────────────────────────────────────────────
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {
