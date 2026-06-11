@@ -838,10 +838,10 @@ export default function App() {
     const subject = `${b.project_name||"촬영 섭외"} 명세서 (${voucherNo})`;
     const shareJS = JSON.stringify(summary).replace(/</g,"\\u003c");
     const subjJS  = JSON.stringify(subject).replace(/</g,"\\u003c");
-    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(voucherNo)} · 촬영 섭외 명세서</title>
+    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=792"><title>${esc(voucherNo)} · 촬영 섭외 명세서</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eceff3;color:#1f2430;padding:28px 16px 100px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eceff3;color:#1f2430;padding:22px 16px 30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e6ec;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(0,0,0,.3)}
 .top{display:flex;justify-content:space-between;align-items:flex-start;padding:26px 30px;background:#ffffff;color:#1f2430;border-bottom:3px solid #c9a96e}
 .hd{display:flex;align-items:center;gap:14px}
@@ -876,11 +876,10 @@ tr.due td{color:#5a6373;font-size:12px}
 .sigbox .nm{font-size:14px;font-weight:800;margin-top:4px;color:#1f2430}
 .sigbox .seal{position:absolute;right:14px;bottom:12px;font-size:11px;color:#b8bfca}
 .foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px}
-.bar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:12px 14px;background:rgba(20,24,32,.94);box-shadow:0 -4px 16px -6px rgba(0,0,0,.4)}
-.bb{flex:1 1 auto;min-width:84px;max-width:220px;border:none;border-radius:10px;padding:13px 14px;font-size:13px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
+.bar{display:flex;gap:10px;justify-content:center;max-width:760px;margin:0 auto;padding:18px 0 4px}
+.bb{flex:1 1 0;max-width:300px;border:none;border-radius:10px;padding:15px 16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
 .bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
 @media print{body{background:#fff;padding:0}.sheet{border:none;box-shadow:none;border-radius:0;max-width:none}.bar{display:none}}
-@media (max-width:640px){body{padding:14px 10px 96px}.top{flex-direction:column;gap:12px;padding:20px 18px}.meta{text-align:left}.grid2{grid-template-columns:1fr;gap:10px}.body{padding:20px 18px 24px}.ttl{font-size:21px}.r .l{min-width:64px}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
