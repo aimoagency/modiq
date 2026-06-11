@@ -875,7 +875,7 @@ tr.due td{color:#5a6373;font-size:12px}
 .sigbox .who{font-size:12px;color:#7c8595;font-weight:700}
 .sigbox .nm{font-size:14px;font-weight:800;margin-top:4px;color:#1f2430}
 .sigbox .seal{position:absolute;right:14px;bottom:12px;font-size:11px;color:#b8bfca}
-.foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px}
+.foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px;line-height:1.7}
 .bar{display:flex;gap:10px;justify-content:center;max-width:760px;margin:0 auto;padding:18px 0 4px}
 .bb{flex:1 1 0;max-width:300px;border:none;border-radius:10px;padding:15px 16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
 .bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
@@ -935,7 +935,7 @@ tr.due td{color:#5a6373;font-size:12px}
       ${b.balance_due?`<tr class="due"><td>잔금 입금 예정일</td><td class="num">${fdate(b.balance_due)}</td></tr>`:""}
     </table>
     <div class="notice">1. 본 명세서는 상기 촬영 섭외 건의 계약 내용을 확인·증빙하기 위한 문서이며, 양 당사자가 합의한 일정·촬영범위·사용범위 및 금액 조건을 명시합니다.<br>2. 명시된 사용 기간 및 사용 범위를 벗어나는 사용에 대해서는 반드시 사전 협의를 하여야 하며, 사전 협의 없이 사용할 경우 그에 따른 법적 피해를<br>보상하여야 합니다.<br>3. 변경 사항 발생 시 양측 협의 후 재발급됩니다.</div>
-    <div class="foot">발급일 ${esc(issuedAt)} · ${esc(agency?.name||"MODIQ")} · 본 문서는 Modiq에서 발급되었습니다.</div>
+    <div class="foot">본 명세서 관련 문의는 발급처(${esc(agency?.name||"에이전시")})로 연락 바랍니다.<br><span style="color:#a8842c;font-weight:800;letter-spacing:.3px">Modiq</span> · 모델 섭외 관리 플랫폼</div>
   </div>
 </div>
 <div class="bar">
