@@ -878,12 +878,16 @@ tr.due td{color:#5a6373;font-size:12px}
 .foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px}
 .bar{display:flex;gap:10px;justify-content:center;max-width:760px;margin:0 auto;padding:18px 0 4px}
 .bb{flex:1 1 0;max-width:300px;border:none;border-radius:10px;padding:15px 16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
-.bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}.bb.close{background:#6b7280;flex:0 1 120px}
+.bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
+.topbar{max-width:760px;margin:0 auto 10px;display:flex;justify-content:flex-end}
+.xbtn{display:inline-flex;align-items:center;gap:6px;background:rgba(31,36,48,.88);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
+@media print{.topbar{display:none}}
 @media print{body{background:#fff;padding:0}.sheet{border:none;box-shadow:none;border-radius:0;max-width:none}.bar{display:none}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head><body>
+<div class="topbar"><button class="xbtn" onclick="window.close()">✕ 닫기</button></div>
 <div class="sheet">
   <div class="top">
     <div class="hd">${agency?.logo_url?`<img class="logo" src="${esc(agency.logo_url)}" alt="">`:""}<div><div class="brand">${esc(agency?.name||"MODIQ")}</div><div class="ttl">촬영 섭외 명세서</div><div class="sub"><span class="tag ${isConfirmed?"ok":"prov"}">${esc(docKind)}</span>Model Booking Statement</div></div></div>
@@ -935,7 +939,6 @@ tr.due td{color:#5a6373;font-size:12px}
   </div>
 </div>
 <div class="bar">
-  <button class="bb close" onclick="window.close()">닫기</button>
   <button id="shareBtn" class="bb share" onclick="sharePdf()">공유하기</button>
   <button class="bb print" onclick="window.print()">인쇄 / 저장</button>
 </div>
