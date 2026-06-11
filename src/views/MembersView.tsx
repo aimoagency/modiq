@@ -20,7 +20,7 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
     setEdit(false);
   };
 
-  const lbl = (t: string) => <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{t}</p>;
+  const lbl = (t: string) => <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{t}</p>;
   const cardStyle = isOwner
     ? { background: "#1a2f1a", border: `1px solid ${C.green}40` }
     : { background: C.card, border: `1px solid ${C.border}` };
@@ -33,11 +33,11 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
           : <span />}
         {!edit && (
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setEdit(true)} style={{ ...btnS(C.purple), padding: "6px 12px", fontSize: 13 }}>
+            <button onClick={() => setEdit(true)} style={{ ...btnS(C.purple), padding: "6px 12px", fontSize: 12 }}>
               <Pencil size={12} style={{ verticalAlign: -2, flexShrink: 0 }} /> 수정
             </button>
             {!isOwner && onDelete && (
-              <button onClick={() => onDelete(m.id)} style={{ ...btnS(C.red), padding: "6px 12px", fontSize: 13 }}>삭제</button>
+              <button onClick={() => onDelete(m.id)} style={{ ...btnS(C.red), padding: "6px 12px", fontSize: 12 }}>삭제</button>
             )}
           </div>
         )}
@@ -45,10 +45,10 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
 
       {!edit ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>{lbl("이름")}<p style={{ margin: "3px 0 0", fontSize: 14, color: C.text }}>{m.name}</p></div>
-          <div>{lbl("직위")}<p style={{ margin: "3px 0 0", fontSize: 14, color: C.text }}>{m.position || "-"}</p></div>
-          <div>{lbl("전화번호")}<p style={{ margin: "3px 0 0", fontSize: 14, color: C.text }}>{m.phone || "-"}</p></div>
-          <div>{lbl("이메일")}<p style={{ margin: "3px 0 0", fontSize: 14, color: C.text }}>{m.email}</p></div>
+          <div>{lbl("이름")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.name}</p></div>
+          <div>{lbl("직위")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.position || "-"}</p></div>
+          <div>{lbl("전화번호")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.phone || "-"}</p></div>
+          <div>{lbl("이메일")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.email}</p></div>
         </div>
       ) : (
         <div>
@@ -56,7 +56,7 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
             <div>{lbl("이름")}<input style={{ ...inp, marginTop: 5 }} value={name} onChange={e => setName(e.target.value)} placeholder="이름" /></div>
             <div>{lbl("직위")}<input style={{ ...inp, marginTop: 5 }} value={position} onChange={e => setPosition(e.target.value)} placeholder="예: 매니저" /></div>
             <div>{lbl("전화번호 (알림톡 발송에 사용)")}<input style={{ ...inp, marginTop: 5 }} value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" /></div>
-            <div>{lbl("이메일 (로그인 계정 · 변경 불가)")}<p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>{m.email}</p></div>
+            <div>{lbl("이메일 (로그인 계정 · 변경 불가)")}<p style={{ margin: "8px 0 0", fontSize: 13, color: C.muted }}>{m.email}</p></div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <button onClick={save} style={{ ...btnS(C.green), flex: 1 }}><Save size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 저장</button>
@@ -80,7 +80,7 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: C.text }}><Users size={20} style={{ verticalAlign: -2, flexShrink: 0 }} /> 담당자 관리</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Users size={20} style={{ verticalAlign: -2, flexShrink: 0 }} /> 담당자 관리</h1>
         <button onClick={() => setShowMemberForm(true)} style={btnS(C.purple)}>+ 담당자 추가</button>
       </div>
 
@@ -98,7 +98,7 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
 
       <p style={{ fontWeight: 700, color: C.text, margin: "16px 0 10px" }}>추가 담당자 ({staff.length}명)</p>
       {staff.length === 0
-        ? <p style={{ color: C.muted, fontSize: 14 }}>추가된 담당자가 없습니다.</p>
+        ? <p style={{ color: C.muted, fontSize: 13 }}>추가된 담당자가 없습니다.</p>
         : staff.map(m => <MemberCard key={m.id} m={m} isOwner={false} onUpdate={handleUpdateMember} onDelete={handleDeleteMember} />)}
     </div>
   );

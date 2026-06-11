@@ -49,22 +49,22 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:10 }}>
-        <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 매출 현황</h1>
-        <button onClick={exportCSV} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSub, fontSize:14, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 매출 현황</h1>
+        <button onClick={exportCSV} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSub, fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
           <Download size={14}/> CSV
         </button>
       </div>
 
       {/* 기간 필터 (칩) */}
       <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {([["month","이번 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
-          <button key={k} onClick={()=>setPreset(k)} style={{ padding:"6px 16px", borderRadius:20, border:`1px solid ${preset===k?C.blue:C.border}`, background:preset===k?C.blue+"22":"transparent", color:preset===k?C.blue:C.muted, fontSize:14, fontWeight:preset===k?700:500, cursor:"pointer" }}>{l}</button>
+        {([["month","이번 달"],["lastmonth","지난 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
+          <button key={k} onClick={()=>setPreset(k)} style={{ padding:"6px 16px", borderRadius:20, border:`1px solid ${preset===k?C.blue:C.border}`, background:preset===k?C.blue+"22":"transparent", color:preset===k?C.blue:C.muted, fontSize:13, fontWeight:preset===k?700:500, cursor:"pointer" }}>{l}</button>
         ))}
         {preset==="custom"&&(
           <span style={{ display:"flex", alignItems:"center", gap:6, ...(isMobile?{width:"100%", marginTop:6}:{}) }}>
-            <input type="date" value={cFrom} onChange={e=>setCFrom(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"5px 8px", fontSize:13 }} />
+            <input type="date" value={cFrom} onChange={e=>setCFrom(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"5px 8px", fontSize:12 }} />
             <span style={{ color:C.muted }}>~</span>
-            <input type="date" value={cTo} onChange={e=>setCTo(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"5px 8px", fontSize:13 }} />
+            <input type="date" value={cTo} onChange={e=>setCTo(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"5px 8px", fontSize:12 }} />
           </span>
         )}
       </div>
@@ -73,8 +73,8 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:12, marginBottom:18 }}>
         {cards.map(c=>(
           <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
-            <p style={{ margin:0, fontSize:13, color:C.muted }}>{c.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:24, fontWeight:800, color:c.color }}>{fmt(c.value)}</p>
+            <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.label}</p>
+            <p style={{ margin:"8px 0 0", fontSize:22, fontWeight:800, color:c.color }}>{fmt(c.value)}</p>
           </div>
         ))}
       </div>
@@ -82,7 +82,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       {/* 랭킹 탭 */}
       <div style={{ display:"flex", gap:8, marginBottom:12 }}>
         {([["customer","고객사별"],["model","모델별"]] as const).map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k)} style={{ padding:"7px 18px", borderRadius:8, border:`2px solid ${tab===k?C.blue:C.border}`, background:tab===k?C.blue+"22":C.card, color:tab===k?C.blue:C.textSub, fontSize:14, fontWeight:700, cursor:"pointer" }}>{l} 매출 순위</button>
+          <button key={k} onClick={()=>setTab(k)} style={{ padding:"7px 18px", borderRadius:8, border:`2px solid ${tab===k?C.blue:C.border}`, background:tab===k?C.blue+"22":C.card, color:tab===k?C.blue:C.textSub, fontSize:13, fontWeight:700, cursor:"pointer" }}>{l} 매출 순위</button>
         ))}
       </div>
       {tab==="customer"
@@ -90,16 +90,16 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
         : <RevenueRanking items={models} bookings={bookings} idKey="model_id" basis="expected" period={period} onSelect={()=>{}} showThumb />}
 
       {/* 건별 매출 내역 */}
-      <p style={{ margin:"22px 0 10px", fontSize:15, fontWeight:700, color:C.text }}>건별 매출 내역 ({rev.length}건)</p>
+      <p style={{ margin:"22px 0 10px", fontSize:14, fontWeight:700, color:C.text }}>건별 매출 내역 ({rev.length}건)</p>
       {rev.length===0 ? <p style={{ color:C.muted }}>이 기간에 매출이 없습니다.</p> : (
         <div style={{ display:"grid", gap:6 }}>
           {rev.map(b=>(
             <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:13, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-              <span style={{ flex:1, minWidth:0, fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
+              <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
               </span>
-              <span style={{ fontSize:14, fontWeight:700, color:(b.status==="SETTLED"||b.is_paid)?C.green:C.yellow, whiteSpace:"nowrap" }}>{(b.shoot_fee||0).toLocaleString()}원</span>
+              <span style={{ fontSize:13, fontWeight:700, color:(b.status==="SETTLED"||b.is_paid)?C.green:C.yellow, whiteSpace:"nowrap" }}>{(b.shoot_fee||0).toLocaleString()}원</span>
               <Badge code={b.status} />
             </div>
           ))}

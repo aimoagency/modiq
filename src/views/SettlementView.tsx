@@ -16,14 +16,14 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
 }) {
   return (
     <div>
-      <h1 style={{ margin:"0 0 20px", fontSize:24, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 관리</h1>
+      <h1 style={{ margin:"0 0 20px", fontSize:22, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 관리</h1>
       <div style={{ display:"flex", gap:8, marginBottom:16 }}>
         {([
           { key:"PENDING", label:"정산대기",   color:C.yellow },
           { key:"SETTLED", label:"정산완료",   color:C.green  },
           { key:"UNPAID",  label:"미입금잔금", color:C.red    },
         ] as const).map(tab=>(
-          <button key={tab.key} onClick={()=>setSettlementTab(tab.key)} style={{ padding:"9px 20px", border:`2px solid ${settlementTab===tab.key?tab.color:C.border}`, borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:14, background:settlementTab===tab.key?tab.color+"22":C.card, color:settlementTab===tab.key?tab.color:C.textSub, transition:"all 0.2s" }}>{tab.label}</button>
+          <button key={tab.key} onClick={()=>setSettlementTab(tab.key)} style={{ padding:"9px 20px", border:`2px solid ${settlementTab===tab.key?tab.color:C.border}`, borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:13, background:settlementTab===tab.key?tab.color+"22":C.card, color:settlementTab===tab.key?tab.color:C.textSub, transition:"all 0.2s" }}>{tab.label}</button>
         ))}
       </div>
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:14, display:"flex", gap:10, flexWrap:"wrap" }}>
@@ -51,8 +51,8 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           { label:"모델 수령액 (85%)", value:fmt(settlementSummary.modelPay),   color:C.green },
         ].map(item=>(
           <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, textAlign:"center" }}>
-            <p style={{ margin:0, fontSize:12, color:C.muted }}>{item.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:19, fontWeight:800, color:item.color }}>{item.value}</p>
+            <p style={{ margin:0, fontSize:11, color:C.muted }}>{item.label}</p>
+            <p style={{ margin:"8px 0 0", fontSize:17, fontWeight:800, color:item.color }}>{item.value}</p>
           </div>
         ))}
       </div>
@@ -70,30 +70,30 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 {/* 아바타 */}
                 {model?.thumb_url
                   ? <img src={model.thumb_url} alt="" style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                  : <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:17, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
+                  : <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:15, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
                 }
                 {/* 정보 */}
                 <div style={{ flex:1 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                    <span style={{ color:C.text, fontWeight:700, fontSize:15 }}>{model?.name||"?"}</span>
-                    <span style={{ color:C.muted, fontSize:13 }}>· {client?.name||"?"}</span>
-                    {b.project_name&&<span style={{ color:C.blue, fontSize:13 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    <span style={{ color:C.text, fontWeight:700, fontSize:14 }}>{model?.name||"?"}</span>
+                    <span style={{ color:C.muted, fontSize:12 }}>· {client?.name||"?"}</span>
+                    {b.project_name&&<span style={{ color:C.blue, fontSize:12 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
                   </div>
-                  <span style={{ color:C.muted, fontSize:13 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}  <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager||"-"}</span>
+                  <span style={{ color:C.muted, fontSize:12 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}  <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager||"-"}</span>
                 </div>
                 {/* 금액 */}
                 {fee>0&&(
                   <div style={{ textAlign:"right" }}>
-                    <p style={{ margin:0, color:"#e8d5b7", fontWeight:800, fontSize:18 }}>{fee.toLocaleString()}원</p>
-                    <p style={{ margin:"2px 0 0", color:C.green, fontSize:13 }}>수령액 {(fee-comm).toLocaleString()}원</p>
+                    <p style={{ margin:0, color:"#e8d5b7", fontWeight:800, fontSize:16 }}>{fee.toLocaleString()}원</p>
+                    <p style={{ margin:"2px 0 0", color:C.green, fontSize:12 }}>수령액 {(fee-comm).toLocaleString()}원</p>
                   </div>
                 )}
                 <Badge code={b.status} type={b.booking_type} />
                 {/* 정산처리 버튼 */}
                 {!b.is_paid&&(
-                  <button onClick={e=>{ e.stopPropagation(); openSettlement(b); }} style={{ ...btnS(C.green), padding:"6px 14px", fontSize:13, flexShrink:0 }}>정산처리</button>
+                  <button onClick={e=>{ e.stopPropagation(); openSettlement(b); }} style={{ ...btnS(C.green), padding:"6px 14px", fontSize:12, flexShrink:0 }}>정산처리</button>
                 )}
-                {b.is_paid&&<span style={{ color:C.green, fontSize:13, fontWeight:700, flexShrink:0 }}><CheckCircle2 size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 완료</span>}
+                {b.is_paid&&<span style={{ color:C.green, fontSize:12, fontWeight:700, flexShrink:0 }}><CheckCircle2 size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 완료</span>}
               </div>
             );
           })}

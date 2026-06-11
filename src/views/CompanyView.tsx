@@ -23,7 +23,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const [saved, setSaved] = useState(false);
 
   const others = members.filter(m => m.user_id !== session?.id);
-  const lbl = (t: string) => <label style={{ fontSize: 12, color: C.muted, display: "block", marginBottom: 5 }}>{t}</label>;
+  const lbl = (t: string) => <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 5 }}>{t}</label>;
   const fmtBiz = (s: string) => { const n = String(s).replace(/[^0-9]/g, ""); return n.length === 10 ? `${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}` : (s || "-"); };
 
   const resetFields = () => {
@@ -54,23 +54,23 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
 
   const row = (k: string, v: string) => (
     <div key={k} style={{ display: "flex", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
-      <span style={{ width: 120, flexShrink: 0, color: C.muted, fontSize: 14 }}>{k}</span>
-      <span style={{ color: C.text, fontSize: 14 }}>{v || "-"}</span>
+      <span style={{ width: 120, flexShrink: 0, color: C.muted, fontSize: 13 }}>{k}</span>
+      <span style={{ color: C.text, fontSize: 13 }}>{v || "-"}</span>
     </div>
   );
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h1 style={{ margin: "0 0 20px", fontSize: 24, fontWeight: 800, color: C.text }}>회사 정보</h1>
+      <h1 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: C.text }}>회사 정보</h1>
 
       {/* 기본 정보 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: C.text }}>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: C.text }}>
             <Building2 size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 기본 정보
           </p>
           {!editMode && (
-            <button onClick={() => setEditMode(true)} style={{ ...btnS(C.purple), fontSize: 13 }}>
+            <button onClick={() => setEditMode(true)} style={{ ...btnS(C.purple), fontSize: 12 }}>
               <Pencil size={12} style={{ verticalAlign: -2, flexShrink: 0 }} /> 수정
             </button>
           )}
@@ -84,7 +84,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
             {row("알림톡 문의 연락처", contactPhone)}
             {row("사업자등록번호", fmtBiz(bizNo))}
             {row("주소", address)}
-            {saved && <p style={{ margin: "12px 0 0", color: C.green, fontSize: 14, fontWeight: 700 }}>저장되었습니다</p>}
+            {saved && <p style={{ margin: "12px 0 0", color: C.green, fontSize: 13, fontWeight: 700 }}>저장되었습니다</p>}
           </div>
         ) : (
           <div>
@@ -129,14 +129,14 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
 
       {/* 소유권 이전 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-        <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 15, color: C.text }}>
+        <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 14, color: C.text }}>
           <Crown size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 소유권 이전
         </p>
-        <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textSub }}>
+        <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textSub }}>
           소유자(대표) 권한을 다른 담당자에게 넘깁니다. 넘기면 본인은 일반 담당자가 되어 일부 권한을 잃습니다.
         </p>
         {others.length === 0 ? (
-          <p style={{ fontSize: 14, color: C.muted }}>이전할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
+          <p style={{ fontSize: 13, color: C.muted }}>이전할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
         ) : (
           <div style={{ display: "flex", gap: 10 }}>
             <select style={{ ...inp, flex: 1, marginBottom: 0 }} value={transferTo} onChange={e => setTransferTo(e.target.value)}>

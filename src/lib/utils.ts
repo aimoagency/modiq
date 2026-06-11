@@ -168,6 +168,7 @@ export const periodRange = (preset: string): { from?: string; to?: string } => {
   const now = new Date();
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   if (preset === "month") { return { from: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01` }; }
+  if (preset === "lastmonth") { const f = new Date(now.getFullYear(), now.getMonth()-1, 1); const t = new Date(now.getFullYear(), now.getMonth(), 0); return { from: iso(f), to: iso(t) }; }
   if (preset === "3m") { const d = new Date(now); d.setMonth(d.getMonth()-3); return { from: iso(d) }; }
   if (preset === "6m") { const d = new Date(now); d.setMonth(d.getMonth()-6); return { from: iso(d) }; }
   if (preset === "1y") { const d = new Date(now); d.setMonth(d.getMonth()-12); return { from: iso(d) }; }

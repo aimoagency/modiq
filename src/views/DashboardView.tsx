@@ -18,7 +18,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
   const unitCount = (list:any[]) => { const pj=new Set<string>(); let n=0; list.forEach(b=>{ if(b.project_id){ if(!pj.has(b.project_id)){ pj.add(b.project_id); n++; } } else n++; }); return n; };
   return (
   <div>
-    <h1 style={{ margin:"0 0 20px", fontSize:24, fontWeight:800, color:C.text }}>대시보드</h1>
+    <h1 style={{ margin:"0 0 20px", fontSize:22, fontWeight:800, color:C.text }}>대시보드</h1>
 
     {/* 매출 카드 (재무 권한자만) */}
     {canViewFinance && (()=>{
@@ -31,13 +31,13 @@ export default function DashboardView({ bookings, models, customers, projects, s
         <div onClick={()=>setPage("revenue")} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16, cursor:"pointer", transition:"border-color 0.2s" }}
           onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)} onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.text }}>이번 달 매출</p>
-            <span style={{ fontSize:13, color:C.blue, fontWeight:600 }}>매출 현황 전체 보기 →</span>
+            <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}>이번 달 매출</p>
+            <span style={{ fontSize:12, color:C.blue, fontWeight:600 }}>매출 현황 전체 보기 →</span>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:12 }}>
-            <div><p style={{ margin:0, fontSize:12, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:22, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
-            <div><p style={{ margin:0, fontSize:12, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:22, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
-            <div><p style={{ margin:0, fontSize:12, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:22, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
           </div>
         </div>
       );
@@ -52,8 +52,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
         { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
       ].map(item=>(
         <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
-          <p style={{ fontSize:12, color:C.muted, margin:0 }}>{item.label}</p>
-          <p style={{ fontSize:26, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
+          <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
+          <p style={{ fontSize:24, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
         </div>
       ))}
     </div>
@@ -84,15 +84,15 @@ export default function DashboardView({ bookings, models, customers, projects, s
               <MessageSquare size={22} color="#fff" />
             </div>
             <div style={{ display:"flex", alignItems:"baseline", gap:3, flexShrink:0 }}>
-              <span style={{ fontSize:40, fontWeight:900, color:PINK, letterSpacing:-1, lineHeight:1 }}>{inquiries.length}</span>
-              <span style={{ fontSize:15, fontWeight:800, color:PINK }}>건</span>
+              <span style={{ fontSize:36, fontWeight:900, color:PINK, letterSpacing:-1, lineHeight:1 }}>{inquiries.length}</span>
+              <span style={{ fontSize:14, fontWeight:800, color:PINK }}>건</span>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ width:8, height:8, borderRadius:"50%", background:PINK, animation:"modiqBlink 1.2s ease-in-out infinite", flexShrink:0 }} />
-                <p style={{ margin:0, fontSize:17, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>신규 문의</p>
+                <p style={{ margin:0, fontSize:15, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>신규 문의</p>
               </div>
-              <p style={{ margin:"3px 0 0", fontSize:13, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"} · 미처리 리드를 놓치지 마세요</p>
+              <p style={{ margin:"3px 0 0", fontSize:12, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"} · 미처리 리드를 놓치지 마세요</p>
             </div>
           </div>
 
@@ -109,15 +109,15 @@ export default function DashboardView({ bookings, models, customers, projects, s
                   onMouseEnter={e=>{ e.currentTarget.style.borderColor=PINK; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${PINK}aa`; }}
                   onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?PINK+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
                 >
-                  {isToday&&<span style={{ background:PINK, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:11, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${PINK}` }}>NEW</span>}
-                  <span style={{ background:PINK+"22", color:PINK, border:`1px solid ${PINK}44`, borderRadius:5, padding:"2px 8px", fontSize:12, fontWeight:700, flexShrink:0 }}>{ty}</span>
-                  <p style={{ flex:1, margin:0, fontSize:14, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    <strong style={{ fontSize:16, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
+                  {isToday&&<span style={{ background:PINK, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${PINK}` }}>NEW</span>}
+                  <span style={{ background:PINK+"22", color:PINK, border:`1px solid ${PINK}44`, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0 }}>{ty}</span>
+                  <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    <strong style={{ fontSize:14.5, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
                     <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
                     <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
                   </p>
-                  {dgo!==null&&dgo>0&&<span style={{ fontSize:12, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
-                  <span style={{ color:PINK, fontWeight:800, fontSize:18, flexShrink:0 }}>{"›"}</span>
+                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
+                  <span style={{ color:PINK, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
                 </div>
               );
             })}
@@ -151,8 +151,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, marginBottom:16 }}>
           {/* 헤더 */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <p style={{ margin:0, fontWeight:700, fontSize:15, color:C.text }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 이번 주 섭외</p>
-            <button onClick={()=>setPage("calendar")} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:13, fontWeight:600 }}>캘린더 전체 보기 →</button>
+            <p style={{ margin:0, fontWeight:700, fontSize:14, color:C.text }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 이번 주 섭외</p>
+            <button onClick={()=>setPage("calendar")} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:12, fontWeight:600 }}>캘린더 전체 보기 →</button>
           </div>
 
           {/* 오늘/내일 요약 */}
@@ -166,8 +166,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
                 onMouseEnter={e=>{ if(item.date) e.currentTarget.style.borderColor=item.color; }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor=item.cnt>0?item.color+"50":C.border; }}
               >
-                <p style={{ margin:0, fontSize:12, color:C.muted }}>{item.label}</p>
-                <p style={{ margin:"4px 0 0", fontSize:22, fontWeight:800, color:item.cnt>0?item.color:C.muted }}>{item.cnt}<span style={{ fontSize:13, fontWeight:400, marginLeft:3 }}>건</span></p>
+                <p style={{ margin:0, fontSize:11, color:C.muted }}>{item.label}</p>
+                <p style={{ margin:"4px 0 0", fontSize:20, fontWeight:800, color:item.cnt>0?item.color:C.muted }}>{item.cnt}<span style={{ fontSize:12, fontWeight:400, marginLeft:3 }}>건</span></p>
               </div>
             ))}
           </div>
@@ -180,12 +180,12 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const maxCnt = Math.max(...weekDays.map(w=>live.filter(b=>b.shoot_date===w.date).length), 1);
               return (
                 <div key={wd.date} onClick={()=>setPage("calendar")} style={{ cursor:"pointer", textAlign:"center" }}>
-                  <div style={{ fontSize:11, color:isToday?C.blue:C.muted, fontWeight:isToday?700:400, marginBottom:4 }}>{wd.label}</div>
+                  <div style={{ fontSize:10, color:isToday?C.blue:C.muted, fontWeight:isToday?700:400, marginBottom:4 }}>{wd.label}</div>
                   {/* 바 */}
                   <div style={{ height:32, background:C.border, borderRadius:4, overflow:"hidden", position:"relative" }}>
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, height:`${cnt===0?0:Math.max(20,(cnt/maxCnt)*100)}%`, background:isToday?C.blue:cnt>0?C.green+"99":C.border, borderRadius:4, transition:"height 0.3s" }} />
                   </div>
-                  <div style={{ fontSize:12, fontWeight:700, marginTop:3, color:cnt>0?C.text:C.muted }}>{cnt>0?cnt:"·"}</div>
+                  <div style={{ fontSize:11, fontWeight:700, marginTop:3, color:cnt>0?C.text:C.muted }}>{cnt>0?cnt:"·"}</div>
                 </div>
               );
             })}
@@ -197,7 +197,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
     {/* HOLD 경고 카드 */}
     {holdBookings.length>0&&(
       <div style={{ background:"rgba(251,191,36,0.07)", border:`1px solid ${C.yellow}50`, borderRadius:10, padding:16, marginBottom:16 }}>
-        <p style={{ margin:"0 0 12px", fontWeight:800, fontSize:14, color:C.yellow }}><AlertTriangle size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> HOLD — 동시 섭외 충돌 확인 필요</p>
+        <p style={{ margin:"0 0 12px", fontWeight:800, fontSize:13, color:C.yellow }}><AlertTriangle size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> HOLD — 동시 섭외 충돌 확인 필요</p>
         {holdBookings.map(b=>{
           const model  = models.find(m=>m.id===b.model_id);
           const client = customers.find(c=>c.id===b.customer_id);
@@ -205,7 +205,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0", borderBottom:`1px solid rgba(251,191,36,0.15)`, cursor:"pointer" }}>
               <Badge code="HOLD" />
               <span style={{ color:C.text, fontWeight:700 }}>{model?.name||"?"}</span>
-              <span style={{ color:C.muted, fontSize:13 }}>{fmtDate(b.shoot_date)} · {client?.name||"?"} · {b.project_name||b.location||""}</span>
+              <span style={{ color:C.muted, fontSize:12 }}>{fmtDate(b.shoot_date)} · {client?.name||"?"} · {b.project_name||b.location||""}</span>
             </div>
           );
         })}
@@ -215,10 +215,10 @@ export default function DashboardView({ bookings, models, customers, projects, s
     {/* 진행중 섭외 현황 */}
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-        <p style={{ margin:0, fontWeight:700, fontSize:17, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> 진행중 섭외 현황</p>
-        <button onClick={()=>setPage("bookings")} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:14, fontWeight:600 }}>전체 보기 →</button>
+        <p style={{ margin:0, fontWeight:700, fontSize:15, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> 진행중 섭외 현황</p>
+        <button onClick={()=>setPage("bookings")} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:13, fontWeight:600 }}>전체 보기 →</button>
       </div>
-      {activeBookings.length===0 ? <p style={{ color:C.muted, fontSize:14 }}>진행중인 섭외가 없습니다.</p> : (()=>{
+      {activeBookings.length===0 ? <p style={{ color:C.muted, fontSize:13 }}>진행중인 섭외가 없습니다.</p> : (()=>{
         // 프로젝트 단위 그루핑
         const projGroup: Record<string, any[]> = {};
         const singles: any[] = [];
@@ -244,15 +244,15 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
             >
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }}><FolderOpen size={10} style={{ verticalAlign:-2, flexShrink:0 }}/> 프로젝트</span>
-                {hasHold&&<span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-2, flexShrink:0 }}/>HOLD</span>}
+                <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700 }}><FolderOpen size={10} style={{ verticalAlign:-2, flexShrink:0 }}/> 프로젝트</span>
+                {hasHold&&<span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-2, flexShrink:0 }}/>HOLD</span>}
                 <div style={{ flex:1 }}>
-                  <p style={{ margin:0, fontSize:15, fontWeight:700, color:C.text }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></p>
-                  <p style={{ margin:"2px 0 0", fontSize:14, color:C.textSub }}>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명: {bs.map(b=>models.find(m=>m.id===b.model_id)?.name||"?").join(", ")}</p>
-                  {bs.some(x=>isOverdue(x.shoot_date))&&<p style={{ margin:"3px 0 0", fontSize:12, color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영일 지남 — 상태 업데이트 필요</p>}
+                  <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.text }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></p>
+                  <p style={{ margin:"2px 0 0", fontSize:13, color:C.textSub }}>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명: {bs.map(b=>models.find(m=>m.id===b.model_id)?.name||"?").join(", ")}</p>
+                  {bs.some(x=>isOverdue(x.shoot_date))&&<p style={{ margin:"3px 0 0", fontSize:11, color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영일 지남 — 상태 업데이트 필요</p>}
                 </div>
                 <div style={{ textAlign:"right" }}>
-                  {bs.reduce((s,b)=>s+(b.shoot_fee||0),0)>0&&<p style={{ margin:0, fontSize:14, fontWeight:700, color:"#c9a96e" }}>{bs.reduce((s,b)=>s+(b.shoot_fee||0),0).toLocaleString()}원</p>}
+                  {bs.reduce((s,b)=>s+(b.shoot_fee||0),0)>0&&<p style={{ margin:0, fontSize:13, fontWeight:700, color:"#c9a96e" }}>{bs.reduce((s,b)=>s+(b.shoot_fee||0),0).toLocaleString()}원</p>}
                 </div>
               </div>
             </div>
@@ -266,10 +266,10 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
                 <TypeIcon type={b.booking_type} size={13}/>
-                <strong style={{ flex:1, fontSize:15, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
+                <strong style={{ flex:1, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
                 <Badge code={b.status} type={b.booking_type} />
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.textSub }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.textSub }}>
                 <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}{b.project_name?` · ${b.project_name}`:""}{isOverdue(b.shoot_date)?" · ":""}{isOverdue(b.shoot_date)&&<span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/>일정지남</span>}</span>
                 {b.shoot_fee>0&&<span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{b.shoot_fee.toLocaleString()}원</span>}
               </div>
@@ -280,17 +280,17 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)}
               onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
             >
-              {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ background:bt.color+"22", color:bt.color, border:`1px solid ${bt.color}44`, borderRadius:4, padding:"1px 7px", fontSize:12, fontWeight:700, flexShrink:0 }}><TypeIcon type={b.booking_type} size={11}/> {bt.label}</span>; })()}
-              <p style={{ flex:1, margin:0, fontSize:14, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <strong style={{ fontSize:15, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
+              {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ background:bt.color+"22", color:bt.color, border:`1px solid ${bt.color}44`, borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, flexShrink:0 }}><TypeIcon type={b.booking_type} size={11}/> {bt.label}</span>; })()}
+              <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
                 <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"?"}</span>
                 <span> · {fmtDate(b.shoot_date)}</span>
                 {b.project_name?<span> · {b.project_name}</span>:null}
                 {isOverdue(b.shoot_date)&&<span style={{ color:C.red, fontWeight:700 }}> · <AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>촬영일지남</span>}
               </p>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                {!b.deposit_amt&&b.status==="CONFIRMED"&&<span style={{ fontSize:12, color:C.red, fontWeight:700 }}>계약금 미입금</span>}
-                {b.shoot_fee>0&&<span style={{ fontSize:14, fontWeight:700, color:"#c9a96e" }}>{b.shoot_fee.toLocaleString()}원</span>}
+                {!b.deposit_amt&&b.status==="CONFIRMED"&&<span style={{ fontSize:11, color:C.red, fontWeight:700 }}>계약금 미입금</span>}
+                {b.shoot_fee>0&&<span style={{ fontSize:13, fontWeight:700, color:"#c9a96e" }}>{b.shoot_fee.toLocaleString()}원</span>}
                 <Badge code={b.status} type={b.booking_type} />
               </div>
             </div>
