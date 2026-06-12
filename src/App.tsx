@@ -936,7 +936,7 @@ tr.due td{color:#5a6373;font-size:12px}
       ${b.balance_due?`<tr class="due"><td>잔금 입금 예정일</td><td class="num">${fdate(b.balance_due)}</td></tr>`:""}
     </table>
     <div class="notice">1. 본 명세서는 상기 촬영 섭외 건의 계약 내용을 확인·증빙하기 위한 문서이며, 양 당사자가 합의한 일정·촬영범위·사용범위 및 금액 조건을 명시합니다.<br>2. 명시된 사용 기간 및 사용 범위를 벗어나는 사용에 대해서는 반드시 사전 협의를 하여야 하며, 사전 협의 없이 사용할 경우 그에 따른 법적 피해를<br>보상하여야 합니다.<br>3. 변경 사항 발생 시 양측 협의 후 재발급됩니다.</div>
-    <div class="foot">본 명세서 관련 문의는 발급처(${esc(agency?.name||"에이전시")})로 연락 바랍니다.<br>Powered by <span style="color:#a8842c;font-weight:800;letter-spacing:.3px">Modiq</span> · 모델 섭외 관리 플랫폼</div>
+    <div class="foot">본 명세서 관련 문의는 발급처(${esc(agency?.name||"에이전시")})로 연락 바랍니다.<br>Powered by <span style="color:#a8842c;font-weight:800;letter-spacing:.3px">modiq</span> · talent agency OS</div>
   </div>
 </div>
 <div class="bar">
@@ -1112,8 +1112,9 @@ async function sharePdf(){
       <div style={{ minHeight:"100vh", width:"100vw", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:40, width:"90%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:22 }}>
-            <h1 style={{ color:C.text, fontSize:26, margin:"0 0 4px", fontWeight:800 }}>Modiq</h1>
-            <p style={{ color:C.muted, fontSize:12, margin:0 }}>모델 에이전시 관리 플랫폼 v{APP_VERSION}</p>
+            <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</h1>
+            <p style={{ color:"#A8FF00", fontSize:11, margin:0, fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase" }}>talent agency OS</p>
+            <p style={{ color:C.muted, fontSize:10, margin:"4px 0 0" }}>v{APP_VERSION}</p>
           </div>
           <div style={{ display:"flex", background:"var(--c-bg)", borderRadius:8, padding:4, marginBottom:22 }}>
             {(["login","signup"] as AuthMode[]).map(mode=>(
@@ -1203,7 +1204,10 @@ async function sharePdf(){
       {/* ── 데스크탑 상단 바 (로고 / 업체명·다크모드·로그아웃) ── */}
       {!isMobile&&(
       <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 22px", zIndex:300 }}>
-        <p style={{ margin:0, fontSize:19, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:C.blue }}>M</span>odiq <span style={{ fontSize:10, color:C.muted, fontWeight:500, marginLeft:3 }}>v{APP_VERSION}</span></p>
+        <div style={{ display:"flex", flexDirection:"column", lineHeight:1.05 }}>
+          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
+          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:"#A8FF00", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
+        </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <span style={{ display:"flex", alignItems:"center", gap:7 }}>
             <span style={{ fontSize:13, fontWeight:700, color:C.text }}>{agency.name}</span>
@@ -1255,7 +1259,7 @@ async function sharePdf(){
       {/* ── 모바일 상단 헤더 ── */}
       {isMobile&&(
         <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", zIndex:300 }}>
-          <p style={{ margin:0, fontSize:17, fontWeight:900, color:C.text }}><span style={{ color:C.blue }}>M</span>odiq</p>
+          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</p>
           <span style={{ fontSize:12, color:C.muted }}>{agency.name}</span>
         </div>
       )}
