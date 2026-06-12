@@ -1423,16 +1423,7 @@ async function sharePdf(){
                     <Badge code={selectedBooking.status} type={selectedBooking.booking_type} />
                   </span>
                 ); })()
-              : (
-                <>
-                  <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>섭외 상태</label>
-                  <select style={inp} value={selectedBooking.status} onChange={e=>setSelectedBooking((p:any)=>({...p,status:e.target.value}))}>
-                    {statusOptionsForType(selectedBooking.booking_type, selectedBooking.status).map(([k,l])=>(
-                      <option key={k} value={k}>{l}</option>
-                    ))}
-                  </select>
-                </>
-              )
+              : null
             }
           </div>
 
@@ -1504,8 +1495,11 @@ async function sharePdf(){
               <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명</label>
                   <input style={inp} value={selectedBooking.project_name||""} onChange={e=>setSelectedBooking((p:any)=>({...p,project_name:e.target.value}))} /></div>
-                <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
-                  <input style={inp} value={selectedBooking.location||""} onChange={e=>setSelectedBooking((p:any)=>({...p,location:e.target.value}))} /></div>
+                <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>고객사</label>
+                  <select style={inp} value={selectedBooking.customer_id||""} onChange={e=>setSelectedBooking((p:any)=>({...p,customer_id:e.target.value}))}>
+                    <option value="">선택</option>
+                    {customers.map(c=><option key={c.id} value={c.id}>{c.name}{c.brand?` · ${c.brand}`:""}</option>)}
+                  </select></div>
               </div>
               {/* 날짜+시간 */}
               <div style={{ background:C.card2, borderRadius:8, padding:"10px 12px", marginBottom:10 }}>
@@ -1517,45 +1511,45 @@ async function sharePdf(){
                   <TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} />
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
+                <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
+                  <input style={inp} value={selectedBooking.location||""} onChange={e=>setSelectedBooking((p:any)=>({...p,location:e.target.value}))} placeholder="예: 스튜디오 A" /></div>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>담당자</label>
                   <select style={inp} value={selectedBooking.manager||""} onChange={e=>setSelectedBooking((p:any)=>({...p,manager:e.target.value}))}>
                     <option value="">선택</option>
                     {members.map(m=><option key={m.id} value={m.name}>{m.name}</option>)}
                   </select></div>
-                <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>사용 기간</label>
-                  <select style={inp} value={selectedBooking.usage_period||""} onChange={e=>setSelectedBooking((p:any)=>({...p,usage_period:e.target.value}))}>
-                    <option value="">선택</option>
-                    {USAGE_PERIODS.map(p=><option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
+                <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>섭외 상태</label>
+                  <select style={inp} value={selectedBooking.status} onChange={e=>setSelectedBooking((p:any)=>({...p,status:e.target.value}))}>
+                    {statusOptionsForType(selectedBooking.booking_type, selectedBooking.status).map(([k,l])=><option key={k} value={k}>{l}</option>)}
+                  </select></div>
               </div>
-              {/* 촬영유형 */}
+              {/* 촬영유형 (사진/영상 그룹) */}
               {selectedBooking.booking_type==="SHOOT"&&(
                 <div style={{ marginBottom:10 }}>
-                  <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>촬영 유형</label>
-                  <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                    {[...SHOOT_TYPES_PHOTO,...SHOOT_TYPES_VIDEO].map(t=>(
-                      <button key={t} type="button"
-                        onClick={()=>setSelectedBooking((p:any)=>({ ...p, shoot_types: p.shoot_types?.includes(t) ? p.shoot_types.filter((x:string)=>x!==t) : [...(p.shoot_types||[]),t] }))}
-                        style={{ padding:"3px 10px", borderRadius:5, border:`1px solid ${(selectedBooking.shoot_types||[]).includes(t)?C.blue:C.border}`, background:(selectedBooking.shoot_types||[]).includes(t)?C.blue+"22":"transparent", color:(selectedBooking.shoot_types||[]).includes(t)?C.blue:C.muted, fontSize:11, cursor:"pointer" }}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
+                  <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>촬영 유형 (복수 선택 가능)</label>
+                  {([["사진",SHOOT_TYPES_PHOTO,C.blue],["영상",SHOOT_TYPES_VIDEO,C.purple]] as const).map(([grp,opts,col])=>(
+                    <div key={grp} style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:6 }}>
+                      <span style={{ fontSize:11, color:col, fontWeight:700, minWidth:30 }}>{grp}</span>
+                      {opts.map(t=>(
+                        <button key={t} type="button"
+                          onClick={()=>setSelectedBooking((p:any)=>({ ...p, shoot_types: p.shoot_types?.includes(t) ? p.shoot_types.filter((x:string)=>x!==t) : [...(p.shoot_types||[]),t] }))}
+                          style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${(selectedBooking.shoot_types||[]).includes(t)?col:C.border}`, background:(selectedBooking.shoot_types||[]).includes(t)?col+"22":"var(--c-card2)", color:(selectedBooking.shoot_types||[]).includes(t)?col:C.textSub, fontSize:12, fontWeight:(selectedBooking.shoot_types||[]).includes(t)?700:400, cursor:"pointer" }}>{t}</button>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               )}
-              {/* 사용 범위 */}
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>사용 범위</label>
-                <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                  {USAGE_SCOPES.map(s=>(
-                    <button key={s} type="button"
-                      onClick={()=>setSelectedBooking((p:any)=>({ ...p, usage_scope: p.usage_scope?.includes(s) ? p.usage_scope.filter((x:string)=>x!==s) : [...(p.usage_scope||[]),s] }))}
-                      style={{ padding:"3px 10px", borderRadius:5, border:`1px solid ${(selectedBooking.usage_scope||[]).includes(s)?C.blue:C.border}`, background:(selectedBooking.usage_scope||[]).includes(s)?C.blue+"22":"transparent", color:(selectedBooking.usage_scope||[]).includes(s)?C.blue:C.muted, fontSize:11, cursor:"pointer" }}>
-                      {s}
-                    </button>
-                  ))}
+              {/* 사용 범위 + 기간 (추가폼과 동일) */}
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+                <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={selectedBooking.usage_scope||[]} onChange={(v:string[])=>setSelectedBooking((p:any)=>({...p,usage_scope:v}))} />
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {USAGE_PERIODS.map(p=>(
+                      <button key={p} type="button" onClick={()=>setSelectedBooking((pp:any)=>({...pp,usage_period: pp.usage_period===p?"":p}))} style={{ padding:"5px 14px", border:`1px solid ${selectedBooking.usage_period===p?C.green:C.border}`, borderRadius:20, fontSize:12, cursor:"pointer", background:selectedBooking.usage_period===p?C.green+"22":"var(--c-card2)", color:selectedBooking.usage_period===p?C.green:C.textSub, fontWeight:selectedBooking.usage_period===p?700:400 }}>{p}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
               {/* 사용 국가 */}
