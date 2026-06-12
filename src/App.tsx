@@ -22,7 +22,7 @@ import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
 import CalendarView from "./views/CalendarView";
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, Settings } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView";
@@ -1190,7 +1190,7 @@ async function sharePdf(){
   ];
   const adminItems = [
     ...(myRole==="owner"?[{target:"members" as Page,label:"담당자",icon:Agents}]:[]),
-    ...(myRole==="owner"?[{target:"company" as Page,label:"회사정보",icon:Store}]:[]),
+    ...(myRole==="owner"?[{target:"company" as Page,label:"설정",icon:Settings}]:[]),
     { target:"plan" as Page, label:"요금제", icon:CardCheck },
   ];
 

@@ -78,7 +78,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h1 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: C.text }}>회사 정보</h1>
+      <h1 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: C.text }}>설정</h1>
 
       {/* 기본 정보 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
