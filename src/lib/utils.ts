@@ -171,6 +171,60 @@ export const bookingAgencyFee = (b: any, models: any[]): number =>
 export const bookingModelPay = (b: any, models: any[]): number =>
   bookingTotal(b) - bookingAgencyFee(b, models);
 
+// ── 정산/세무 계산 (모두 공급가=VAT제외 기준, 입금/청구만 VAT포함) ──────────────
+export const VAT_RATE = 0.10;
+const floor10 = (n: number) => Math.floor(n / 10) * 10; // 원천세 원단위 절사
+
+// 공급가 합계(촬영비+추가비용) = 기존 bookingTotal 재사용
+export const supplyTotal = (b: any): number => bookingTotal(b);
+// 고객 청구액/입금액 (VAT 10% 포함)
+export const clientCharge = (b: any): number => Math.round(supplyTotal(b) * (1 + VAT_RATE));
+export const vatAmount = (b: any): number => clientCharge(b) - supplyTotal(b);
+
+// 라인 단위 모델 몫: type 'fixed'=정액(원), 'rate'=비율(%)
+const lineShare = (base: number, type: string, value: number): number =>
+  type === "fixed" ? Math.round(value || 0) : Math.round((base || 0) * (value || 0) / 100);
+
+// 섭외/모델 폴백: 섭외에 지정 없으면 모델 기본값, 그것도 없으면 비율 15%
+const payCfg = (b: any, model: any): { type: string; value: number } => ({
+  type:  b?.model_pay_type  ?? model?.payout_pay_type  ?? "rate",
+  value: b?.model_pay_value ?? model?.payout_pay_value ?? 15,
+});
+
+// 모델 기본료 정산 몫(공급가 기준, 세전)
+export const modelBaseShare = (b: any, model: any): number => {
+  const { type, value } = payCfg(b, model);
+  return lineShare(b?.shoot_fee || 0, type, value);
+};
+// 추가비용 모델 몫 합(공급가 기준, 세전) — 항목별 model_pay_type/value, 없으면 모델 기본값
+export const modelOverShare = (b: any, model: any): number => {
+  if (!Array.isArray(b?.overcharges)) return 0;
+  const { type: dT, value: dV } = payCfg(b, model);
+  return b.overcharges.reduce((s: number, o: any) =>
+    s + lineShare(o?.amount || 0, o?.model_pay_type ?? dT, o?.model_pay_value ?? dV), 0);
+};
+// 모델 정산 기준액(세전, 공급가 기준)
+export const modelGross = (b: any, model: any): number => modelBaseShare(b, model) + modelOverShare(b, model);
+
+// 모델 세무 유형: 'company'=소속사(세금계산서 10% 가산) / 'freelancer'=프리랜서(3.3% 원천징수)
+export const isCompanyModel = (model: any): boolean => model?.payout_tax_type === "company";
+
+// 프리랜서 원천징수: 소득세 3%(원단위 절사) + 지방소득세 0.3%(소득세의 10%, 원단위 절사)
+export const modelIncomeTax = (b: any, model: any): number => isCompanyModel(model) ? 0 : floor10(modelGross(b, model) * 0.03);
+export const modelLocalTax  = (b: any, model: any): number => isCompanyModel(model) ? 0 : floor10(modelIncomeTax(b, model) * 0.1);
+export const modelWithholding = (b: any, model: any): number => modelIncomeTax(b, model) + modelLocalTax(b, model);
+
+// 모델 실지급액: 소속사=기준액+10% VAT / 프리랜서=기준액−3.3%
+export const modelPayout = (b: any, model: any): number => {
+  const g = modelGross(b, model);
+  return isCompanyModel(model) ? Math.round(g * (1 + VAT_RATE)) : g - modelWithholding(b, model);
+};
+// 에이전시 마진(공급가 기준): 모델 유형과 무관하게 동일
+export const agencyMargin = (b: any, model: any): number => supplyTotal(b) - modelGross(b, model);
+
+// 고객 잔금(VAT 포함 입금 기준) = 청구액 − 계약금
+export const clientBalanceVat = (b: any): number => Math.max(0, clientCharge(b) - (b?.deposit_amt || 0));
+
 export const entityRevenue = (bookings: any[], key: string, id: string, period?: { from?: string; to?: string }) => {
   const bs = bookings.filter(b => {
     if (b[key] !== id) return false;
