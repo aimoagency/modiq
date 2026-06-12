@@ -1843,13 +1843,17 @@ async function sharePdf(){
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
         <Modal onClose={closeDetail}>
-          <h3 style={{ marginTop:0, color:C.text }}><Coins size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
-          <p style={{ color:C.text }}><strong style={{ color:C.muted }}>모델:</strong> {models.find(m=>m.id===selectedSettlement.model_id)?.name}</p>
-          <p style={{ color:C.text }}><strong style={{ color:C.muted }}>고객사:</strong> {customers.find(c=>c.id===selectedSettlement.customer_id)?.name}</p>
-          <button onClick={()=>openDetail("booking", selectedSettlement.id)}
-            style={{ display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", marginBottom:12 }}>
-            <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
-          </button>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, marginBottom:12 }}>
+            <div style={{ minWidth:0 }}>
+              <h3 style={{ margin:"0 0 6px", color:C.text }}><Coins size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
+              <p style={{ margin:0, color:C.text }}><strong style={{ color:C.muted }}>모델:</strong> {models.find(m=>m.id===selectedSettlement.model_id)?.name}</p>
+              <p style={{ margin:"2px 0 0", color:C.text }}><strong style={{ color:C.muted }}>고객사:</strong> {customers.find(c=>c.id===selectedSettlement.customer_id)?.name}</p>
+            </div>
+            <button onClick={()=>openDetail("booking", selectedSettlement.id)}
+              style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+              <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
+            </button>
+          </div>
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>촬영비 (원)</p>
           <input style={inp} type="number" placeholder="촬영비 입력" value={editFee} onChange={e=>setEditFee(e.target.value)} />
 

@@ -177,30 +177,20 @@ export const supplyTotal = (b: any): number => bookingTotal(b);
 export const clientCharge = (b: any): number => Math.round(supplyTotal(b) * (1 + VAT_RATE));
 export const vatAmount = (b: any): number => clientCharge(b) - supplyTotal(b);
 
-// 라인 단위 모델 몫: type 'fixed'=정액(원), 'rate'=비율(%)
-const lineShare = (base: number, type: string, value: number): number =>
-  type === "fixed" ? Math.round(value || 0) : Math.round((base || 0) * (value || 0) / 100);
-
 // 섭외/모델 폴백: 섭외에 지정 없으면 모델 기본값, 그것도 없으면 비율 15%
 const payCfg = (b: any, model: any): { type: string; value: number } => ({
   type:  b?.model_pay_type  ?? model?.payout_pay_type  ?? "rate",
   value: b?.model_pay_value ?? model?.payout_pay_value ?? 15,
 });
 
-// 모델 기본료 정산 몫(공급가 기준, 세전)
-export const modelBaseShare = (b: any, model: any): number => {
-  const { type, value } = payCfg(b, model);
-  return lineShare(b?.shoot_fee || 0, type, value);
-};
-// 추가비용 모델 몫 합(공급가 기준, 세전) — 항목별 model_pay_type/value, 없으면 모델 기본값
-export const modelOverShare = (b: any, model: any): number => {
-  if (!Array.isArray(b?.overcharges)) return 0;
-  const { type: dT, value: dV } = payCfg(b, model);
-  return b.overcharges.reduce((s: number, o: any) =>
-    s + lineShare(o?.amount || 0, o?.model_pay_type ?? dT, o?.model_pay_value ?? dV), 0);
-};
 // 모델 정산 기준액(세전, 공급가 기준)
-export const modelGross = (b: any, model: any): number => modelBaseShare(b, model) + modelOverShare(b, model);
+//  - 정액(fixed): 입력한 금액 그대로 = 이 섭외의 모델 총 정산액(추가비용 중복 가산 없음)
+//  - 비율(rate) : 공급가 합계(촬영비 + 오버차지) × %
+export const modelGross = (b: any, model: any): number => {
+  const { type, value } = payCfg(b, model);
+  if (type === "fixed") return Math.round(value || 0);
+  return Math.round(supplyTotal(b) * (value || 0) / 100);
+};
 
 // 모델 세무 유형: 'foreigner'=외국인(전액 지급) / 'freelancer'=프리랜서(3.3% 원천징수) / 'company'=소속사(세금계산서 10% 가산)
 export const modelTaxType = (model: any): "foreigner" | "freelancer" | "company" => {
