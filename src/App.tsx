@@ -2013,7 +2013,7 @@ async function sharePdf(){
               </div>
               <div>
                 <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editBalancePaid?C.blue:C.muted, marginBottom:4, cursor:"pointer" }}>
-                  <input type="checkbox" checked={editBalancePaid} onChange={e=>setEditBalancePaid(e.target.checked)} /> 잔금 입금완료
+                  <input type="checkbox" checked={editBalancePaid} onChange={e=>{ setEditBalancePaid(e.target.checked); setEditPaid(e.target.checked); if(e.target.checked&&!editBalanceDate) setEditBalanceDate(new Date().toISOString().slice(0,10)); }} /> 잔금 입금완료
                 </label>
                 <input style={{ ...inp, marginBottom:0 }} type="date" value={editBalanceDate} onChange={e=>setEditBalanceDate(e.target.value)} />
               </div>
@@ -2038,7 +2038,7 @@ async function sharePdf(){
           {/* ── 고객사 전체 입금완료 (전체 수금 기준, 매출 인정) ── */}
           <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editPaid?C.blue:C.border}`, background:editPaid?C.blue+"18":C.card2, margin:"4px 0 14px" }}>
             <input type="checkbox" checked={editPaid} onChange={e=>setEditPaid(e.target.checked)} />
-            <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 전체 입금완료 (매출 인정)</span>
+            <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 전체 입금완료 (매출 인정) <span style={{ fontWeight:500, color:C.muted }}>· 잔금 입금완료 시 자동 체크</span></span>
           </label>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
