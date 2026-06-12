@@ -460,6 +460,20 @@ export default function App() {
     } catch (e) { alert("수정 실패: "+String(e)); }
   };
 
+  const handleDeleteModel = async () => {
+    if (!selectedModel) return;
+    const cnt = bookings.filter(b=>b.model_id===selectedModel.id).length;
+    const msg = cnt>0
+      ? `'${selectedModel.name}' 모델을 삭제할까요?\n⚠️ 이 모델의 섭외 이력 ${cnt}건이 있습니다. 삭제 시 모델 정보가 사라져 해당 섭외엔 '?'로 표시됩니다.`
+      : `'${selectedModel.name}' 모델을 삭제할까요?`;
+    if (!confirm(msg)) return;
+    try {
+      await sb("models","DELETE",null,`?id=eq.${selectedModel.id}`);
+      setModels(models.filter(m=>m.id!==selectedModel.id));
+      setMEditMode(false); setSelectedModel(null); resetModelForm();
+    } catch (e) { alert("삭제 실패: "+String(e)); }
+  };
+
   // ── 고객사 추가 ──
   const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); };
   const handleAddCustomer = async () => {
@@ -493,6 +507,20 @@ export default function App() {
       setCEditMode(false); setSelectedCustomer(null); resetCustomerForm();
       alert("저장되었습니다.");
     } catch (e) { alert("수정 실패: "+String(e)); }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer) return;
+    const cnt = bookings.filter(b=>b.customer_id===selectedCustomer.id).length;
+    const msg = cnt>0
+      ? `'${selectedCustomer.name}' 고객사를 삭제할까요?\n⚠️ 이 고객사의 섭외 이력 ${cnt}건이 있습니다. 삭제 시 고객사 정보가 사라져 해당 섭외엔 '?'로 표시됩니다.`
+      : `'${selectedCustomer.name}' 고객사를 삭제할까요?`;
+    if (!confirm(msg)) return;
+    try {
+      await sb("customers","DELETE",null,`?id=eq.${selectedCustomer.id}`);
+      setCustomers(customers.filter(c=>c.id!==selectedCustomer.id));
+      setCEditMode(false); setSelectedCustomer(null); resetCustomerForm();
+    } catch (e) { alert("삭제 실패: "+String(e)); }
   };
 
   // ── 섭외 추가 ──
@@ -2055,6 +2083,7 @@ async function sharePdf(){
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} />
           <div style={{ display:"flex", gap:10 }}>
+            <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
             <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
             <button onClick={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
@@ -2189,6 +2218,7 @@ async function sharePdf(){
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5, marginTop:4 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />
           <div style={{ display:"flex", gap:10 }}>
+            {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
             <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
             <button onClick={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
