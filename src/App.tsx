@@ -22,7 +22,7 @@ import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
 import CalendarView from "./views/CalendarView";
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView";
@@ -1178,20 +1178,20 @@ async function sharePdf(){
   const memberPct = (members.length/maxMembers)*100;
 
   const navItems = [
-    { target:"dashboard"  as Page, label:"대시보드", icon:Home },
-    { target:"calendar"   as Page, label:"캘린더",   icon:Calendar },
-    { target:"bookings"   as Page, label:"섭외",     icon:ClipboardList },
-    { target:"models"     as Page, label:"모델",     icon:User },
-    { target:"customers"  as Page, label:"고객사",   icon:Building2 },
+    { target:"dashboard"  as Page, label:"대시보드", icon:Gauge },
+    { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
+    { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
+    { target:"models"     as Page, label:"모델",     icon:Mannequin },
+    { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
-      { target:"revenue"    as Page, label:"매출 현황", icon:TrendingUp },
-      { target:"settlement" as Page, label:"정산",     icon:Coins },
+      { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
+      { target:"settlement" as Page, label:"정산",     icon:CoinStack },
     ]:[]),
   ];
   const adminItems = [
-    ...(myRole==="owner"?[{target:"members" as Page,label:"담당자",icon:Users}]:[]),
+    ...(myRole==="owner"?[{target:"members" as Page,label:"담당자",icon:Agents}]:[]),
     ...(myRole==="owner"?[{target:"company" as Page,label:"회사정보",icon:Store}]:[]),
-    { target:"plan" as Page, label:"요금제", icon:CreditCard },
+    { target:"plan" as Page, label:"요금제", icon:CardCheck },
   ];
 
   // ══════════════════════════════════════════════
