@@ -36,6 +36,9 @@ alter table bookings add column if not exists tax_invoice_date   text;          
 -- 모델 정산: model_paid(지급완료) 는 기존. 지급일 추가
 alter table bookings add column if not exists model_paid_date    text;                  -- 모델 정산(지급)일
 
+-- 섭외: 콘텐츠 사용 국가 범위 ('국내'|'해외')
+alter table bookings add column if not exists usage_region text default '국내';
+
 -- ── 4. overcharges(jsonb) 항목 구조 (스키마 변경 불필요, 참고용) ──
 --   기존: { reason, amount }
 --   확장: { reason, amount, model_pay_type, model_pay_value }

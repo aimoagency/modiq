@@ -5,7 +5,7 @@ import {
   APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
   MODEL_CATEGORIES, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
-  USAGE_SCOPES, USAGE_PERIODS, HOURS, MINS, statusOptionsForType,
+  USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
 } from "./constants";
 import type { AuthMode, Page } from "./constants";
 import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail } from "./lib/supabase";
@@ -123,6 +123,7 @@ export default function App() {
   const [pShootTypes, setPShootTypes] = useState<string[]>([]);
   const [pUsageScope, setPUsageScope] = useState<string[]>([]);
   const [pUsagePeriod,setPUsagePeriod]= useState("");
+  const [pUsageRegion,setPUsageRegion]= useState("국내");
   const [pMemo,       setPMemo]       = useState("");
   const [pStatus,     setPStatus]     = useState("INQUIRY");
   // 프로젝트 모델 라인 (모델별 개별 금액)
@@ -135,7 +136,7 @@ export default function App() {
   const resetProjectForm = () => {
     setPName(""); setPCustomer(""); setPCustSearch(""); setPDate(""); setPStart(""); setPEnd("");
     setPLocation(""); setPManager(""); setPBookingType("SHOOT"); setPShootTypes([]); setPUsageScope([]);
-    setPUsagePeriod(""); setPMemo(""); setPStatus("INQUIRY"); setPModelLines([]); setPModelSearch(""); setPMedia([]); setPRefImages([]); setPRefVideos([]); setPDeposit(0); setPDepositDue(""); setPBalanceDue("");
+    setPUsagePeriod(""); setPUsageRegion("국내"); setPMemo(""); setPStatus("INQUIRY"); setPModelLines([]); setPModelSearch(""); setPMedia([]); setPRefImages([]); setPRefVideos([]); setPDeposit(0); setPDepositDue(""); setPBalanceDue("");
   };
 
   const addProjectModelLine = (modelId: string) => {
@@ -175,7 +176,7 @@ export default function App() {
       id: projId, name: pName, customer_id: pCustomer, shoot_date: pDate,
       start_time: pStart, end_time: pEnd, location: pLocation, manager: pManager,
       booking_type: pBookingType, shoot_types: pShootTypes, usage_scope: pUsageScope,
-      usage_period: pUsagePeriod, memo: pMemo, status: pStatus,
+      usage_period: pUsagePeriod, usage_region: pUsageRegion, memo: pMemo, status: pStatus,
       model_count: pModelLines.length, agency_id: agency.id,
       created_at: new Date().toISOString(),
     };
@@ -206,7 +207,7 @@ export default function App() {
         customer_id: pCustomer, booking_type: pBookingType, shoot_date: lDate,
         start_time: lStart, end_time: lEnd, manager: pManager, status: finalStatus,
         project_name: pName, location: lLoc, shoot_types: pShootTypes,
-        usage_scope: pUsageScope, usage_period: pUsagePeriod,
+        usage_scope: pUsageScope, usage_period: pUsagePeriod, usage_region: pUsageRegion,
         shoot_fee: line.fee, deposit_amt: depShare, deposit_due: pDepositDue,
         balance_amt: line.fee-depShare, balance_due: pBalanceDue,
         memo: pMemo, commission_rate: 15, is_paid: false, settlement_memo: "",
@@ -252,7 +253,7 @@ export default function App() {
   const [mEmail,     setMEmail]     = useState("");
   const [mCategory,  setMCategory]  = useState("");
   const [mRate,      setMRate]      = useState(0);
-  const [mCountry,     setMCountry]     = useState("");
+  const [mCountry,     setMCountry]     = useState("대한민국");
   const [mEntry,       setMEntry]       = useState("");
   const [mExit,        setMExit]        = useState("");
   const [mInstagram,   setMInstagram]   = useState("");
@@ -293,6 +294,7 @@ export default function App() {
   const [bShootTypes, setBShootTypes] = useState<string[]>([]);
   const [bUsageScope, setBUsageScope] = useState<string[]>([]);
   const [bUsagePeriod,setBUsagePeriod]= useState("");
+  const [bUsageRegion,setBUsageRegion]= useState("국내");
   const [bBudget,       setBBudget]       = useState(0);
   const [bDeposit,      setBDeposit]      = useState(0);
   const [bDepositDue,   setBDepositDue]   = useState("");
@@ -446,11 +448,11 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMCountry(""); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
   const handleAddModel = async () => {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
     const isFgn = mTaxType==="foreigner";
-    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:isFgn?mCountry:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
+    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -462,7 +464,7 @@ export default function App() {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
     setMCategory(m.category||""); setMRate(m.rate||0);
-    setMCountry(m.country||""); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
+    setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
     setMKakao(m.kakao_id||""); setMBank(m.bank_info||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
@@ -472,7 +474,7 @@ export default function App() {
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
     const isFgn = mTaxType==="foreigner";
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:isFgn?mCountry:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -566,7 +568,7 @@ export default function App() {
   };
 
   // ── 섭외 추가 ──
-  const resetBookingForm = () => { setBModel(""); setBModels([]); setBCustomer(""); setBModelSearch(""); setBCustomerSearch(""); setBDate(""); setBStart(""); setBEnd(""); setBManager(""); setBStatus("INQUIRY"); setBProject(""); setBLocation(""); setBShootTypes([]); setBUsageScope([]); setBUsagePeriod(""); setBBudget(0); setBDeposit(0); setBDepositDue(""); setBBalance(0); setBBalanceDue(""); setBResultDrive(""); setBMemo(""); setBBookingType("SHOOT"); setBMedia([]); setBRefImages([]); setBRefVideos([]); };
+  const resetBookingForm = () => { setBModel(""); setBModels([]); setBCustomer(""); setBModelSearch(""); setBCustomerSearch(""); setBDate(""); setBStart(""); setBEnd(""); setBManager(""); setBStatus("INQUIRY"); setBProject(""); setBLocation(""); setBShootTypes([]); setBUsageScope([]); setBUsagePeriod(""); setBUsageRegion("국내"); setBBudget(0); setBDeposit(0); setBDepositDue(""); setBBalance(0); setBBalanceDue(""); setBResultDrive(""); setBMemo(""); setBBookingType("SHOOT"); setBMedia([]); setBRefImages([]); setBRefVideos([]); };
   // 레퍼런스 이미지: 캔버스 축소(긴변 900px) 후 저장
   const resizeImage = (file: File, cb: (data:string)=>void) => {
     if (!file.type.startsWith("image/")) return;
@@ -733,7 +735,7 @@ export default function App() {
       if (!ok) return;
     }
     const finalStatus = autoHold ? "HOLD" : bStatus;
-    const nb = { id:`B_${Date.now()}`, model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
+    const nb = { id:`B_${Date.now()}`, model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, usage_region:bUsageRegion, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
     try {
       await sb("bookings","POST",nb);
       let list=[nb,...bookings];
@@ -2294,7 +2296,7 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>카테고리</label>
               <select style={inp} value={mCategory} onChange={e=>setMCategory(e.target.value)}>
@@ -2303,7 +2305,13 @@ async function sharePdf(){
               </select>
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원) <span style={{ color:C.muted, fontSize:10 }}>· 참고용(정산 미반영)</span></label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>국적</label>
+              <select style={inp} value={mCountry} onChange={e=>setMCountry(e.target.value)}>
+                {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원) <span style={{ color:C.muted, fontSize:10 }}>· 참고용</span></label>
               <input style={inp} type="text" placeholder="0"
                 value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
                 onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
@@ -2339,15 +2347,11 @@ async function sharePdf(){
             </p>
           </div>
 
-          {/* 외국인 선택 시: 국가 + 비자 입출국일 */}
+          {/* 외국인 선택 시: 비자 입출국일 (국적은 위 국적 셀렉트) */}
           {mTaxType==="foreigner" && (
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
               <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 국가</label>
-                <input style={inp} value={mCountry} onChange={e=>setMCountry(e.target.value)} placeholder="예: 러시아, 우크라이나" />
-              </div>
-              <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>입국일</label>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 입국일</label>
                 <input style={inp} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
               </div>
               <div>
@@ -2705,6 +2709,15 @@ async function sharePdf(){
               </div>
             </div>
           </div>
+          {/* 사용 국가 */}
+          <div style={{ marginBottom:10 }}>
+            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 국가</label>
+            <div style={{ display:"flex", gap:6 }}>
+              {USAGE_REGIONS.map(r=>(
+                <button key={r} type="button" onClick={()=>setPUsageRegion(r)} style={{ padding:"5px 18px", border:`1px solid ${pUsageRegion===r?C.blue:C.border}`, borderRadius:20, fontSize:12, cursor:"pointer", background:pUsageRegion===r?C.blue+"22":"var(--c-card2)", color:pUsageRegion===r?C.blue:C.textSub, fontWeight:pUsageRegion===r?700:400 }}>{r}</button>
+              ))}
+            </div>
+          </div>
 
           {/* 촬영 레퍼런스 (프로젝트 전체 공통 적용) */}
           <div style={{ marginBottom:10 }}>
@@ -2953,6 +2966,15 @@ async function sharePdf(){
                   <button key={p} type="button" onClick={()=>setBUsagePeriod(bUsagePeriod===p?"":p)} style={{ padding:"5px 14px", border:`1px solid ${bUsagePeriod===p?C.green:C.border}`, borderRadius:20, fontSize:12, cursor:"pointer", background:bUsagePeriod===p?C.green+"22":"var(--c-card2)", color:bUsagePeriod===p?C.green:C.textSub, fontWeight:bUsagePeriod===p?700:400 }}>{p}</button>
                 ))}
               </div>
+            </div>
+          </div>
+          {/* 사용 국가 */}
+          <div style={{ marginBottom:10 }}>
+            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 국가</label>
+            <div style={{ display:"flex", gap:6 }}>
+              {USAGE_REGIONS.map(r=>(
+                <button key={r} type="button" onClick={()=>setBUsageRegion(r)} style={{ padding:"5px 18px", border:`1px solid ${bUsageRegion===r?C.blue:C.border}`, borderRadius:20, fontSize:12, cursor:"pointer", background:bUsageRegion===r?C.blue+"22":"var(--c-card2)", color:bUsageRegion===r?C.blue:C.textSub, fontWeight:bUsageRegion===r?700:400 }}>{r}</button>
+              ))}
             </div>
           </div>
 
