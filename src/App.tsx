@@ -231,6 +231,7 @@ export default function App() {
   const [selectedCustomer,   setSelectedCustomer]   = useState<any>(null); // 고객사 상세
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
   const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
+  const [navHover, setNavHover] = useState(false); // 좌측 메뉴 호버 시 펼침
   const [mEditMode, setMEditMode] = useState(false);
   const [modelHistAll, setModelHistAll] = useState(false);
   const [cEditMode, setCEditMode] = useState(false); // 고객사 수정 모드
@@ -1086,19 +1087,20 @@ async function sharePdf(){
   const trialExpired= trialDays!==null&&trialDays<=0&&agency?.plan==="trial";
 
   // ── 네비 탭 ──
-  const NavTab = ({ target, label, icon:Icon }: { target:Page; label:string; icon:any }) => (
-    <button onClick={()=>setPage(target)} style={{
+  const NavTab = ({ target, label, icon:Icon, expanded=true }: { target:Page; label:string; icon:any; expanded?:boolean }) => (
+    <button onClick={()=>setPage(target)} title={label} style={{
       width:"100%", display:"flex", alignItems:"center", gap:10,
-      padding:"9px 12px", borderRadius:8, border:"none", cursor:"pointer",
+      justifyContent:expanded?"flex-start":"center",
+      padding:expanded?"9px 12px":"10px 0", borderRadius:8, border:"none", cursor:"pointer",
       background:page===target?"var(--c-nav-active)":"transparent",
       color:page===target?"white":C.textSub,
       fontSize:13, fontWeight:page===target?700:500, marginBottom:2, textAlign:"left",
-      transition:"all 0.15s",
+      transition:"background 0.15s,color 0.15s", whiteSpace:"nowrap", overflow:"hidden",
     }}
       onMouseEnter={e=>{ if(page!==target){e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color="white";} }}
       onMouseLeave={e=>{ if(page!==target){e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.textSub;} }}
     >
-      <Icon size={16} strokeWidth={1.8} style={{ flexShrink:0 }} /><span>{label}</span>
+      <Icon size={18} strokeWidth={1.8} style={{ flexShrink:0 }} />{expanded&&<span>{label}</span>}
     </button>
   );
 
@@ -1198,56 +1200,55 @@ async function sharePdf(){
   return (
     <div style={{ display:"flex", minHeight:"100vh", width:"100vw", background:C.bg, color:C.text }}>
 
-      {/* ── 사이드바 ── */}
+      {/* ── 데스크탑 상단 바 (로고 / 업체명·다크모드·로그아웃) ── */}
       {!isMobile&&(
-      <div style={{ width:220, minWidth:220, background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:200 }}>
-        <div style={{ padding:"20px 16px 16px", borderBottom:`1px solid ${C.border}` }}>
-          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}>
-            <span style={{ color:C.blue }}>M</span>odiq
-          </p>
-          <p style={{ margin:"4px 0 0", fontSize:11, color:C.muted }}>v{APP_VERSION}</p>
+      <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 22px", zIndex:300 }}>
+        <p style={{ margin:0, fontSize:19, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:C.blue }}>M</span>odiq <span style={{ fontSize:10, color:C.muted, fontWeight:500, marginLeft:3 }}>v{APP_VERSION}</span></p>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <span style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:C.text }}>{agency.name}</span>
+            <span style={{ fontSize:11, color:C.muted, whiteSpace:"nowrap" }}>{myRole==="owner"?<><Crown size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 대표</>:<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 담당자</>}</span>
+          </span>
+          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} title={theme==="dark"?"라이트 모드":"다크 모드"} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:34, height:34, borderRadius:9, border:`1px solid ${C.border}`, cursor:"pointer", background:"transparent", color:C.muted, transition:"all 0.15s" }}
+            onMouseEnter={e=>{e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color=C.text;}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.muted;}}>
+            {theme==="dark"?<Sun size={15} style={{ flexShrink:0 }}/>:<Moon size={15} style={{ flexShrink:0 }}/>}
+          </button>
+          <button onClick={handleLogout} title="로그아웃" style={{ display:"flex", alignItems:"center", gap:6, padding:"0 14px", height:34, borderRadius:9, border:`1px solid ${C.border}`, cursor:"pointer", background:"transparent", color:C.muted, fontSize:12, fontWeight:600, transition:"all 0.15s" }}
+            onMouseEnter={e=>{e.currentTarget.style.color=C.red;e.currentTarget.style.borderColor=C.red+"66";}}
+            onMouseLeave={e=>{e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor=C.border;}}>
+            로그아웃
+          </button>
         </div>
-        <div style={{ padding:"12px 16px", flex:1, overflowY:"auto" }}>
-          <p style={{ margin:"0 0 6px 8px", fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.8px", textTransform:"uppercase" }}>메뉴</p>
-          {navItems.map(item=><NavTab key={item.target} {...item} />)}
-          <p style={{ margin:"16px 0 6px 8px", fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.8px", textTransform:"uppercase" }}>관리</p>
-          {adminItems.map(item=><NavTab key={item.target} {...item} />)}
-          <div style={{ borderTop:`1px solid ${C.border}`, margin:"14px 0 10px" }} />
-          <a href="https://aimo.kr/search-model?utm_source=modiq&utm_medium=sidebar" target="_blank" rel="noreferrer"
-            style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:8, textDecoration:"none", color:C.textSub, fontSize:13, fontWeight:500, transition:"all 0.15s", boxSizing:"border-box" }}
+      </div>
+      )}
+
+      {/* ── 사이드바 (아이콘 + 마우스오버 펼침) ── */}
+      {!isMobile&&(
+      <div onMouseEnter={()=>setNavHover(true)} onMouseLeave={()=>setNavHover(false)}
+        style={{ width:navHover?212:64, minWidth:navHover?212:64, background:C.sidebar, borderRight:`1px solid ${C.border}`, display:"flex", flexDirection:"column", position:"fixed", top:52, left:0, bottom:0, zIndex:250, transition:"width 0.18s ease", overflow:"hidden", boxShadow:navHover?"6px 0 24px -8px rgba(0,0,0,.45)":"none" }}>
+        <div style={{ padding:"14px 12px", flex:1, overflowY:"auto", overflowX:"hidden" }}>
+          {navHover&&<p style={{ margin:"0 0 6px 8px", fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.8px", textTransform:"uppercase" }}>메뉴</p>}
+          {navItems.map(item=><NavTab key={item.target} {...item} expanded={navHover} />)}
+          {navHover?<p style={{ margin:"16px 0 6px 8px", fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.8px", textTransform:"uppercase" }}>관리</p>:<div style={{ height:12 }} />}
+          {adminItems.map(item=><NavTab key={item.target} {...item} expanded={navHover} />)}
+          <div style={{ borderTop:`1px solid ${C.border}`, margin:"12px 4px 10px" }} />
+          <a href="https://aimo.kr/search-model?utm_source=modiq&utm_medium=sidebar" target="_blank" rel="noreferrer" title="Aimo 모델 찾기"
+            style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:navHover?"flex-start":"center", gap:10, padding:navHover?"9px 12px":"10px 0", borderRadius:8, textDecoration:"none", color:C.textSub, fontSize:13, fontWeight:500, transition:"all 0.15s", boxSizing:"border-box", whiteSpace:"nowrap", overflow:"hidden" }}
             onMouseEnter={e=>{e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color="white";}}
             onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.textSub;}}
           >
-            <Search size={16} strokeWidth={1.8} style={{ flexShrink:0 }} />
-            <span style={{ flex:1 }}>Aimo 모델 찾기</span>
-            <ExternalLink size={12} style={{ flexShrink:0, opacity:0.6 }} />
+            <Search size={18} strokeWidth={1.8} style={{ flexShrink:0 }} />
+            {navHover&&<><span style={{ flex:1 }}>Aimo 모델 찾기</span><ExternalLink size={12} style={{ flexShrink:0, opacity:0.6 }} /></>}
           </a>
-          <p style={{ margin:"4px 0 0 12px", fontSize:10, color:C.muted }}>15,000+ 모델 · AI 검색</p>
+          {navHover&&<p style={{ margin:"4px 0 0 12px", fontSize:10, color:C.muted }}>15,000+ 모델 · AI 검색</p>}
         </div>
-        {trialDays!==null&&trialDays>0&&(
-          <div style={{ margin:"0 16px 8px", padding:"10px 12px", borderRadius:8, background:trialDays<=3?"#3a1a00":"#1a3a20", border:`1px solid ${trialDays<=3?C.orange:C.green}50` }}>
+        {navHover&&trialDays!==null&&trialDays>0&&(
+          <div style={{ margin:"0 12px 12px", padding:"10px 12px", borderRadius:8, background:trialDays<=3?"#3a1a00":"#1a3a20", border:`1px solid ${trialDays<=3?C.orange:C.green}50` }}>
             <p style={{ margin:0, fontSize:12, fontWeight:700, color:trialDays<=3?C.orange:C.green }}>{trialDays<=3?<AlertTriangle size={12} style={{ verticalAlign:-2, flexShrink:0 }}/>:<PartyPopper size={12} style={{ verticalAlign:-2, flexShrink:0 }}/>} 무료 체험 D-{trialDays}</p>
             <p style={{ margin:"4px 0 0", fontSize:11, color:C.textSub }}>{trialDays<=3?"곧 만료됩니다!":"무료 체험 중"}</p>
           </div>
         )}
-        <div style={{ padding:"12px 16px", borderTop:`1px solid ${C.border}` }}>
-          <div style={{ padding:"8px 12px", borderRadius:8, marginBottom:4, display:"flex", alignItems:"center", gap:8 }}>
-            <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}>{agency.name}</p>
-            <span style={{ fontSize:11, color:C.muted, whiteSpace:"nowrap" }}>{myRole==="owner"?<><Crown size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 대표</>:<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 담당자</>}</span>
-          </div>
-          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"9px 12px", borderRadius:20, border:`1px solid ${C.border}`, cursor:"pointer", background:"transparent", color:C.muted, fontSize:13, fontWeight:600, transition:"all 0.15s", marginBottom:6 }}
-            onMouseEnter={e=>{e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color=C.text;}}
-            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.muted;}}
-          >
-            {theme==="dark"?<Sun size={13} style={{ flexShrink:0 }}/>:<Moon size={13} style={{ flexShrink:0 }}/>}<span>{theme==="dark"?"라이트 모드":"다크 모드"}</span>
-          </button>
-          <button onClick={handleLogout} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"9px 12px", borderRadius:20, border:`1px solid ${C.border}`, cursor:"pointer", background:"transparent", color:C.muted, fontSize:13, fontWeight:600, transition:"all 0.15s" }}
-            onMouseEnter={e=>{e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color=C.red;e.currentTarget.style.borderColor=C.red+"66";}}
-            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor=C.border;}}
-          >
-            <span>로그아웃</span>
-          </button>
-        </div>
       </div>
       )}
 
@@ -1260,7 +1261,7 @@ async function sharePdf(){
       )}
 
       {/* ── 메인 콘텐츠 ── */}
-      <div style={{ flex:1, marginLeft:isMobile?0:220, padding:isMobile?"68px 14px 88px":"40px 48px", overflowY:"auto", minHeight:"100vh" }}>
+      <div style={{ flex:1, marginLeft:isMobile?0:64, marginTop:isMobile?0:52, padding:isMobile?"68px 14px 88px":"32px 44px", overflowY:"auto", minHeight:isMobile?"100vh":"calc(100vh - 52px)" }}>
       <div style={{ maxWidth:1560, margin:"0 auto" }}>
 
         {/* ════ 대시보드 ════ */}
