@@ -28,8 +28,8 @@ export const CardCheck = I("<rect x=\"2.5\" y=\"5.5\" width=\"16\" height=\"11\"
 // Aimo 브랜드 마크 (라임그린 A•) — 외부 링크용, 고정 컬러
 export const AimoMark = ({ size = 18, style }: { size?: number; style?: CSSProperties }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" style={style} aria-hidden="true">
-    <path d="M8.5 4 L3 20 L14 20 Z M8.5 10 L6 16 L11 16 Z" fill="#CDF24E" fillRule="evenodd" />
-    <circle cx="17.4" cy="7" r="2.2" fill="#CDF24E" />
+    <path d="M8 3.5 L10.5 3.5 L16.5 20.5 L12.8 20.5 L10.9 16.2 L7.6 16.2 L5.7 20.5 L2 20.5 Z M9.25 9 L7.4 14.2 L11.1 14.2 Z" fill="#CDF24E" fillRule="evenodd" />
+    <circle cx="17.3" cy="6.8" r="2.5" fill="#CDF24E" />
   </svg>
 );
 export const Settings = I("<path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle>");
