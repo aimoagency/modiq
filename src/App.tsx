@@ -1992,6 +1992,13 @@ async function sharePdf(){
               )}
             </div>
             {editPayType===""&&<p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>이 섭외는 모델에 설정된 기본 정산방식을 따릅니다.</p>}
+            {/* 실시간 미리보기 (저장 전 즉시 반영) */}
+            {(()=>{
+              const mdl = models.find(m=>m.id===selectedSettlement.model_id);
+              const bb = { ...selectedSettlement, shoot_fee: Number(editFee)||0, overcharges: editOvercharges, model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null };
+              const g = modelGross(bb, mdl); const pay = bookingModelPay(bb, models); const t = modelTaxType(mdl);
+              return <p style={{ margin:"8px 0 0", fontSize:12, color:C.text }}>→ 모델 실지급 <strong style={{ color:"#c9a96e", fontSize:14 }}>{pay.toLocaleString()}원</strong> <span style={{ color:C.muted, fontSize:11 }}>(기준액 {g.toLocaleString()}원 · {t==="foreigner"?"외국인 전액":t==="company"?"+10% 계산서":"−3.3%"})</span></p>;
+            })()}
           </div>
 
           {/* ── 정산 단계: 날짜 + 상태 (정산 내역서에 반영) ── */}
