@@ -833,7 +833,7 @@ export default function App() {
     const dep = selectedSettlement.deposit_amt||0;
     const updates = { shoot_fee:newFee, settlement_memo:editMemo, is_paid:editPaid, model_paid:editModelPaid, overcharges:editOvercharges, balance_amt: Math.max(0, newFee + ocT - dep),
       model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null,
-      deposit_paid: editDepositPaid, deposit_paid_date: editDepositDate||null,
+      deposit_paid: (selectedSettlement.deposit_amt||0)>0 ? editDepositPaid : false, deposit_paid_date: (selectedSettlement.deposit_amt||0)>0 ? (editDepositDate||null) : null,
       balance_paid: editBalancePaid, balance_paid_date: editBalanceDate||null,
       tax_invoice_issued: editInvoiceIssued, tax_invoice_date: editInvoiceDate||null,
       model_paid_date: editModelPaidDate||null };
@@ -2027,12 +2027,14 @@ async function sharePdf(){
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 단계 (날짜·상태)</p>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
-              <div>
-                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editDepositPaid?C.blue:C.muted, marginBottom:4, cursor:"pointer" }}>
-                  <input type="checkbox" checked={editDepositPaid} onChange={e=>setEditDepositPaid(e.target.checked)} /> 계약금 입금완료
+              {(()=>{ const depAmt = selectedSettlement.deposit_amt||0; const hasDep = depAmt>0; return (
+              <div style={{ opacity:hasDep?1:0.5 }}>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:hasDep&&editDepositPaid?C.blue:C.muted, marginBottom:4, cursor:hasDep?"pointer":"not-allowed" }}>
+                  <input type="checkbox" disabled={!hasDep} checked={hasDep&&editDepositPaid} onChange={e=>setEditDepositPaid(e.target.checked)} /> 계약금 입금완료 {hasDep?<span style={{ color:C.textSub }}>({depAmt.toLocaleString()}원)</span>:<span style={{ color:C.muted }}>(섭외에 계약금 없음)</span>}
                 </label>
-                <input style={{ ...inp, marginBottom:0 }} type="date" value={editDepositDate} onChange={e=>setEditDepositDate(e.target.value)} />
+                <input style={{ ...inp, marginBottom:0 }} type="date" disabled={!hasDep} value={hasDep?editDepositDate:""} onChange={e=>setEditDepositDate(e.target.value)} />
               </div>
+              ); })()}
               <div>
                 <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editBalancePaid?C.blue:C.muted, marginBottom:4, cursor:"pointer" }}>
                   <input type="checkbox" checked={editBalancePaid} onChange={e=>{ setEditBalancePaid(e.target.checked); setEditPaid(e.target.checked); if(e.target.checked&&!editBalanceDate) setEditBalanceDate(new Date().toISOString().slice(0,10)); }} /> 잔금 입금완료
