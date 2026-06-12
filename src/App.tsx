@@ -1903,7 +1903,7 @@ async function sharePdf(){
             const finalTotal = base + ocTotal;
             if (finalTotal<=0) return null;
             const mdl = models.find(m=>m.id===selectedSettlement.model_id);
-            const bb = { ...selectedSettlement, shoot_fee: base, overcharges: editOvercharges };
+            const bb = { ...selectedSettlement, shoot_fee: base, overcharges: editOvercharges, model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null };
             const t = modelTaxType(mdl);
             const gross = modelGross(bb, mdl);
             const wh = modelWithholding(bb, mdl);
@@ -1982,10 +1982,13 @@ async function sharePdf(){
                 <button key={k} type="button" onClick={()=>setEditPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${editPayType===k?C.green:C.border}`, background:editPayType===k?C.green+"22":"transparent", color:editPayType===k?C.green:C.muted, fontSize:12, fontWeight:editPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
               {editPayType!==""&&(
-                <input style={{ ...inp, marginBottom:0, width:130 }} type="text" inputMode="numeric"
-                  placeholder={editPayType==="rate"?"모델 몫 %":"정액(원)"}
-                  value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
-                  onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
+                <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                  <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
+                    placeholder={editPayType==="rate"?"모델 몫":"정액"}
+                    value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
+                    onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
+                  <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{editPayType==="rate"?"%":"원"}</span>
+                </span>
               )}
             </div>
             {editPayType===""&&<p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>이 섭외는 모델에 설정된 기본 정산방식을 따릅니다.</p>}
@@ -2289,11 +2292,14 @@ async function sharePdf(){
               {([["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mPayType===k?C.green:C.border}`, background:mPayType===k?C.green+"22":"transparent", color:mPayType===k?C.green:C.muted, fontSize:12, fontWeight:mPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
-              <input style={{ ...inp, marginBottom:0, width:140 }} type="text" inputMode="numeric"
-                placeholder={mPayType==="rate"?"모델 몫 %":"모델 정산 정액(원)"}
-                value={mPayValue ? (mPayType==="fixed"? Number(mPayValue).toLocaleString("ko-KR") : String(mPayValue)) : ""}
-                onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"계약금액(공급가)의 모델 몫(%)":"건당 모델 정산액(원, 부가세 제외)"}</span>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                <input style={{ ...inp, marginBottom:0, width:130 }} type="text" inputMode="numeric"
+                  placeholder={mPayType==="rate"?"모델 몫":"정액"}
+                  value={mPayValue ? (mPayType==="fixed"? Number(mPayValue).toLocaleString("ko-KR") : String(mPayValue)) : ""}
+                  onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
+                <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
+              </span>
+              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"계약금액(공급가)의 모델 몫":"건당 모델 정산액(부가세 제외)"}</span>
             </div>
             <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
               {mTaxType==="foreigner" ? "지급: 정산 기준액 전액 (원천징수·부가세 없음)"
