@@ -6,8 +6,10 @@
 -- ═══════════════════════════════════════════════════════════════
 
 -- ── 1. 모델: 정산 세무 유형 + 기본 정산 조건 ──
--- payout_tax_type : 'freelancer'(3.3% 원천징수)  |  'company'(소속사, 세금계산서 10% 가산)
+-- payout_tax_type : 'foreigner'(외국인, 전액 지급) | 'freelancer'(3.3% 원천징수) | 'company'(소속사, 세금계산서 10% 가산)
 alter table models add column if not exists payout_tax_type text default 'freelancer';
+-- 외국인 모델 국가(예: 러시아). 외국인 선택 시에만 사용
+alter table models add column if not exists country text;
 -- payout_pay_type : 'rate'(비율 %)  |  'fixed'(정액 원)  — 섭외에서 미지정 시 이 기본값 사용
 alter table models add column if not exists payout_pay_type text default 'rate';
 -- payout_pay_value: 비율(%) 또는 정액(원). 비율이면 15 권장, 정액이면 금액

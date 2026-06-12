@@ -4,7 +4,7 @@ import { fmt, fmtDate, bookingTotal, bookingAgencyFee, bookingModelPay } from ".
 import Badge from "../components/Badge";
 import { Coins, Calendar, User, Folder, CheckCircle2 } from "../components/icons";
 
-export default function SettlementView({ settlementTab, setSettlementTab, settlementMonth, setSettlementMonth, settlementMonths, settlementModel, setSettlementModel, settlementMgr, setSettlementMgr, settlementProject, setSettlementProject, settlementProjects, settlementSummary, filteredSettlement, models, customers, memberNames, openSettlement, isMobile = false }: {
+export default function SettlementView({ settlementTab, setSettlementTab, settlementMonth, setSettlementMonth, settlementMonths, settlementModel, setSettlementModel, settlementMgr, setSettlementMgr, settlementProject, setSettlementProject, settlementProjects, settlementSummary, filteredSettlement, models, customers, memberNames, openSettlement, onOpenStatement, isMobile = false }: {
   settlementTab: "PENDING"|"SETTLED"|"UNPAID"; setSettlementTab: (v:"PENDING"|"SETTLED"|"UNPAID")=>void;
   settlementMonth: string; setSettlementMonth: (v:string)=>void; settlementMonths: string[];
   settlementModel: string; setSettlementModel: (v:string)=>void;
@@ -13,6 +13,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
   settlementSummary: { total:number; commission:number; modelPay:number; clientPaid:number; clientUnpaid:number; modelPaidAmt:number; modelUnpaidAmt:number };
   filteredSettlement: any[]; models: any[]; customers: any[]; memberNames: string[];
   openSettlement: (b:any)=>void;
+  onOpenStatement?: ()=>void;
   isMobile?: boolean;
 }) {
   const [view, setView] = useState<"item"|"model"|"client">("item");
@@ -35,7 +36,10 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
   const numCell = { ...cell, textAlign:"right" as const, fontVariantNumeric:"tabular-nums" as const };
   return (
     <div>
-      <h1 style={{ margin:"0 0 20px", fontSize:22, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 관리</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", margin:"0 0 20px" }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 관리</h1>
+        {onOpenStatement&&<button onClick={onOpenStatement} style={{ padding:"7px 14px", background:C.green, color:"white", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor:"pointer" }}>📑 정산 내역서 · 엑셀</button>}
+      </div>
       <div style={{ display:"flex", gap:8, marginBottom:16 }}>
         {([
           { key:"PENDING", label:"정산대기",   color:C.yellow },
@@ -80,9 +84,9 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12, color:C.muted }}>미지급</span><span style={{ fontSize:13, fontWeight:700, color:settlementSummary.modelUnpaidAmt>0?C.orange:C.muted }}>{fmt(settlementSummary.modelUnpaidAmt)}</span></div>
         </div>
       </div>
-      {/* 에이전시 수수료(수익) */}
+      {/* 에이전시 마진(수익) */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 수수료 (수익)</span>
+        <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 마진 (수익)</span>
         <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
       {/* 보기 전환: 건별 / 모델별 / 고객사별 */}
@@ -145,7 +149,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           {filteredSettlement.map(b=>{
             const model = models.find((m:any)=>m.id===b.model_id);
             const client = customers.find((c:any)=>c.id===b.customer_id);
-            const fee=bookingTotal(b), comm=bookingAgencyFee(b,models);
+            const fee=bookingTotal(b), pay=bookingModelPay(b,models);
             return (
               <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
@@ -169,7 +173,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 {fee>0&&(
                   <div style={{ textAlign:"right" }}>
                     <p style={{ margin:0, color:"#e8d5b7", fontWeight:800, fontSize:16 }}>{fee.toLocaleString()}원</p>
-                    <p style={{ margin:"2px 0 0", color:C.green, fontSize:12 }}>수령액 {(fee-comm).toLocaleString()}원</p>
+                    <p style={{ margin:"2px 0 0", color:C.green, fontSize:12 }}>모델 실지급 {pay.toLocaleString()}원</p>
                   </div>
                 )}
                 <Badge code={b.status} type={b.booking_type} />

@@ -159,17 +159,13 @@ export const bookingTotal = (b: any): number => (b?.shoot_fee || 0) + overcharge
 // 고객사 잔금 = (계약 총액 + 추가금) − 계약금
 export const clientBalance = (b: any): number => Math.max(0, bookingTotal(b) - (b?.deposit_amt || 0));
 
-// 모델 수수료율(%) — 모델별 commission 사용, 미설정 시 15
-export const commissionRate = (model: any): number => {
-  const n = Number(model?.commission);
-  return Number.isFinite(n) ? n : 15;
-};
-// 에이전시 수수료(수익) = 총액 × 모델수수료율
+// (구 commission 제거) 정산 로직 기반 재정의 — 아래 modelPayout/agencyMargin 사용(런타임 호출)
+// 에이전시 마진 = 공급가 − 모델 정산 기준액
 export const bookingAgencyFee = (b: any, models: any[]): number =>
-  Math.round(bookingTotal(b) * commissionRate(models.find((m) => m.id === b?.model_id)) / 100);
-// 모델 지급액 = 총액 − 에이전시 수수료
+  agencyMargin(b, models.find((m) => m.id === b?.model_id));
+// 모델 실지급액 (세무유형별 가감 반영)
 export const bookingModelPay = (b: any, models: any[]): number =>
-  bookingTotal(b) - bookingAgencyFee(b, models);
+  modelPayout(b, models.find((m) => m.id === b?.model_id));
 
 // ── 정산/세무 계산 (모두 공급가=VAT제외 기준, 입금/청구만 VAT포함) ──────────────
 export const VAT_RATE = 0.10;
@@ -206,18 +202,26 @@ export const modelOverShare = (b: any, model: any): number => {
 // 모델 정산 기준액(세전, 공급가 기준)
 export const modelGross = (b: any, model: any): number => modelBaseShare(b, model) + modelOverShare(b, model);
 
-// 모델 세무 유형: 'company'=소속사(세금계산서 10% 가산) / 'freelancer'=프리랜서(3.3% 원천징수)
-export const isCompanyModel = (model: any): boolean => model?.payout_tax_type === "company";
+// 모델 세무 유형: 'foreigner'=외국인(전액 지급) / 'freelancer'=프리랜서(3.3% 원천징수) / 'company'=소속사(세금계산서 10% 가산)
+export const modelTaxType = (model: any): "foreigner" | "freelancer" | "company" => {
+  const t = model?.payout_tax_type;
+  return t === "foreigner" || t === "company" ? t : "freelancer";
+};
+export const isForeignerModel = (model: any): boolean => modelTaxType(model) === "foreigner";
+export const isCompanyModel   = (model: any): boolean => modelTaxType(model) === "company";
 
-// 프리랜서 원천징수: 소득세 3%(원단위 절사) + 지방소득세 0.3%(소득세의 10%, 원단위 절사)
-export const modelIncomeTax = (b: any, model: any): number => isCompanyModel(model) ? 0 : floor10(modelGross(b, model) * 0.03);
-export const modelLocalTax  = (b: any, model: any): number => isCompanyModel(model) ? 0 : floor10(modelIncomeTax(b, model) * 0.1);
+// 프리랜서만 원천징수: 소득세 3%(원단위 절사) + 지방소득세 0.3%(소득세의 10%, 원단위 절사)
+export const modelIncomeTax = (b: any, model: any): number => modelTaxType(model) !== "freelancer" ? 0 : floor10(modelGross(b, model) * 0.03);
+export const modelLocalTax  = (b: any, model: any): number => modelTaxType(model) !== "freelancer" ? 0 : floor10(modelIncomeTax(b, model) * 0.1);
 export const modelWithholding = (b: any, model: any): number => modelIncomeTax(b, model) + modelLocalTax(b, model);
 
-// 모델 실지급액: 소속사=기준액+10% VAT / 프리랜서=기준액−3.3%
+// 모델 실지급액: 외국인=기준액 전액 / 프리랜서=기준액−3.3% / 소속사=기준액+10% VAT(세금계산서)
 export const modelPayout = (b: any, model: any): number => {
   const g = modelGross(b, model);
-  return isCompanyModel(model) ? Math.round(g * (1 + VAT_RATE)) : g - modelWithholding(b, model);
+  const t = modelTaxType(model);
+  if (t === "company")   return Math.round(g * (1 + VAT_RATE));
+  if (t === "foreigner") return g;
+  return g - modelWithholding(b, model); // freelancer
 };
 // 에이전시 마진(공급가 기준): 모델 유형과 무관하게 동일
 export const agencyMargin = (b: any, model: any): number => supplyTotal(b) - modelGross(b, model);

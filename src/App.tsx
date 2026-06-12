@@ -13,7 +13,8 @@ import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
-  bookingTotal, overchargeTotal, clientBalance, commissionRate, bookingAgencyFee, bookingModelPay,
+  bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
+  modelTaxType, modelGross, modelWithholding, clientCharge,
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import TypeIcon from "./components/TypeIcon";
@@ -35,6 +36,7 @@ import PlanView from "./views/PlanView";
 import RevenueView from "./views/RevenueView";
 import CompanyView from "./views/CompanyView";
 import BulkUploadModal from "./components/BulkUploadModal";
+import SettlementStatementModal from "./components/SettlementStatementModal";
 
 // ── 프리텐다드 폰트 로드 ──
 (()=>{
@@ -101,6 +103,7 @@ export default function App() {
   const [showModelForm,    setShowModelForm]    = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [bulkEntity,       setBulkEntity]       = useState<null|"model"|"customer">(null); // 대량 등록 모달
+  const [showStatement,    setShowStatement]    = useState(false); // 정산 내역서 모달
   const [showBookingForm,  setShowBookingForm]  = useState(false);
   const [showAddPicker,    setShowAddPicker]    = useState(false);
   const [addPrefill,       setAddPrefill]       = useState<{date?:string; model?:string}>({});
@@ -249,8 +252,7 @@ export default function App() {
   const [mEmail,     setMEmail]     = useState("");
   const [mCategory,  setMCategory]  = useState("");
   const [mRate,      setMRate]      = useState(0);
-  const [mCommission,setMCommission]= useState(15);
-  const [mForeigner,   setMForeigner]   = useState(false);
+  const [mCountry,     setMCountry]     = useState("");
   const [mEntry,       setMEntry]       = useState("");
   const [mExit,        setMExit]        = useState("");
   const [mInstagram,   setMInstagram]   = useState("");
@@ -261,7 +263,7 @@ export default function App() {
   const [mAimoUrl,     setMAimoUrl]     = useState("");
   const [mMemo,        setMMemo]        = useState("");
   // 정산 세무: 유형 + 기본 정산방식(섭외에서 미지정 시 사용)
-  const [mTaxType,  setMTaxType]  = useState<"freelancer"|"company">("freelancer");
+  const [mTaxType,  setMTaxType]  = useState<"foreigner"|"freelancer"|"company">("freelancer");
   const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
   const [mPayValue, setMPayValue] = useState(0);
 
@@ -329,6 +331,16 @@ export default function App() {
   const [ocReason, setOcReason] = useState("");
   const [ocAmount, setOcAmount] = useState(0);
   const [showOcInput, setShowOcInput] = useState(false);
+  // 정산 내역서용: 섭외별 정산방식 override + 단계별 날짜·상태
+  const [editPayType,    setEditPayType]    = useState<""|"rate"|"fixed">("");  // ""=모델 기본값 사용
+  const [editPayValue,   setEditPayValue]   = useState("");
+  const [editDepositPaid,setEditDepositPaid]= useState(false);
+  const [editDepositDate,setEditDepositDate]= useState("");
+  const [editBalancePaid,setEditBalancePaid]= useState(false);
+  const [editBalanceDate,setEditBalanceDate]= useState("");
+  const [editInvoiceIssued,setEditInvoiceIssued]= useState(false);
+  const [editInvoiceDate,setEditInvoiceDate]= useState("");
+  const [editModelPaidDate,setEditModelPaidDate]= useState("");
 
   // ──────────────────────────────────────────────
   // 초기화
@@ -434,10 +446,11 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMCommission(15); setMForeigner(false); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMCountry(""); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
   const handleAddModel = async () => {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
-    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, commission:mCommission, is_foreigner:mForeigner, visa_entry:mForeigner?mEntry:null, visa_exit:mForeigner?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
+    const isFgn = mTaxType==="foreigner";
+    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:isFgn?mCountry:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -448,17 +461,18 @@ export default function App() {
   const openEditModel = (m: any) => {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
-    setMCategory(m.category||""); setMRate(m.rate||0); setMCommission(m.commission||15);
-    setMForeigner(m.is_foreigner||false); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
+    setMCategory(m.category||""); setMRate(m.rate||0);
+    setMCountry(m.country||""); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
     setMKakao(m.kakao_id||""); setMBank(m.bank_info||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
-    setMTaxType(m.payout_tax_type==="company"?"company":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
+    setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMEditMode(true);
   };
 
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, commission:mCommission, is_foreigner:mForeigner, visa_entry:mForeigner?mEntry:null, visa_exit:mForeigner?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
+    const isFgn = mTaxType==="foreigner";
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:isFgn?mCountry:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -679,7 +693,7 @@ export default function App() {
   // 미등록 모델/고객 즉시 등록(이름만) — 상세는 나중에 보완
   const quickAddModel = async (name: string): Promise<string|null> => {
     const nm=name.trim(); if(!nm) return null;
-    const m:any = { id:`M_${Date.now()}`, name:nm, agency_id:agency.id, commission:15, created_at:new Date().toISOString() };
+    const m:any = { id:`M_${Date.now()}`, name:nm, agency_id:agency.id, payout_tax_type:"freelancer", payout_pay_type:"rate", payout_pay_value:0, created_at:new Date().toISOString() };
     try { await sb("models","POST",m); setModels(prev=>[m,...prev]); return m.id; }
     catch(e){ alert("모델 등록 실패: "+String(e)); return null; }
   };
@@ -806,13 +820,23 @@ export default function App() {
   };
 
   // ── 정산 ──
-  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); setEditModelPaid(b.model_paid||false); setEditOvercharges(b.overcharges||[]); setOcReason(""); setOcAmount(0); setShowOcInput(false); };
+  const openSettlement = (b: any) => { setSelectedSettlement(b); setEditFee(String(b.shoot_fee||"")); setEditMemo(b.settlement_memo||""); setEditPaid(b.is_paid||false); setEditModelPaid(b.model_paid||false); setEditOvercharges(b.overcharges||[]); setOcReason(""); setOcAmount(0); setShowOcInput(false);
+    setEditPayType(b.model_pay_type||""); setEditPayValue(b.model_pay_value!=null?String(b.model_pay_value):"");
+    setEditDepositPaid(b.deposit_paid||false); setEditDepositDate(b.deposit_paid_date||"");
+    setEditBalancePaid(b.balance_paid||false); setEditBalanceDate(b.balance_paid_date||"");
+    setEditInvoiceIssued(b.tax_invoice_issued||false); setEditInvoiceDate(b.tax_invoice_date||"");
+    setEditModelPaidDate(b.model_paid_date||""); };
   const handleSaveSettlement = async () => {
     if (!selectedSettlement) return;
     const newFee = Number(editFee)||0;
     const ocT = editOvercharges.reduce((s,o)=>s+(o.amount||0),0);
     const dep = selectedSettlement.deposit_amt||0;
-    const updates = { shoot_fee:newFee, settlement_memo:editMemo, is_paid:editPaid, model_paid:editModelPaid, overcharges:editOvercharges, balance_amt: Math.max(0, newFee + ocT - dep) };
+    const updates = { shoot_fee:newFee, settlement_memo:editMemo, is_paid:editPaid, model_paid:editModelPaid, overcharges:editOvercharges, balance_amt: Math.max(0, newFee + ocT - dep),
+      model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null,
+      deposit_paid: editDepositPaid, deposit_paid_date: editDepositDate||null,
+      balance_paid: editBalancePaid, balance_paid_date: editBalanceDate||null,
+      tax_invoice_issued: editInvoiceIssued, tax_invoice_date: editInvoiceDate||null,
+      model_paid_date: editModelPaidDate||null };
     try {
       await sb("bookings","PATCH",updates,`?id=eq.${selectedSettlement.id}`);
       setBookings(bookings.map(b=>b.id===selectedSettlement.id?{...b,...updates}:b));
@@ -1355,7 +1379,7 @@ async function sharePdf(){
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
-        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlementFresh} isMobile={isMobile} />}
+        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
 
         {/* ════ 담당자 ════ */}
         {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
@@ -1665,7 +1689,7 @@ async function sharePdf(){
             )}
             {bookingTotal(selectedBooking)>0&&(
               <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({commissionRate(models.find(m=>m.id===selectedBooking.model_id))}% 수수료 제외{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
+                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({(()=>{ const t=modelTaxType(models.find(m=>m.id===selectedBooking.model_id)); return t==="foreigner"?"외국인·전액":t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외"; })()}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
                 <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
               </div>
             )}
@@ -1878,11 +1902,17 @@ async function sharePdf(){
             const ocTotal = editOvercharges.reduce((s,o)=>s+o.amount,0);
             const finalTotal = base + ocTotal;
             if (finalTotal<=0) return null;
-            const comm = commissionRate(models.find(m=>m.id===selectedSettlement.model_id));
+            const mdl = models.find(m=>m.id===selectedSettlement.model_id);
+            const bb = { ...selectedSettlement, shoot_fee: base, overcharges: editOvercharges };
+            const t = modelTaxType(mdl);
+            const gross = modelGross(bb, mdl);
+            const wh = modelWithholding(bb, mdl);
+            const payout = bookingModelPay(bb, models);
+            const margin = bookingAgencyFee(bb, models);
             return (
               <div style={{ background:"rgba(201,169,110,0.1)", borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.muted }}>촬영비</span>
+                  <span style={{ color:C.muted }}>촬영비(공급가)</span>
                   <span style={{ color:C.text }}>{base.toLocaleString()}원</span>
                 </div>
                 {ocTotal>0&&(
@@ -1892,16 +1922,32 @@ async function sharePdf(){
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, paddingTop:4, borderTop:`1px solid ${C.border}` }}>
-                  <span style={{ color:C.text, fontWeight:700 }}>최종 총액</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>공급가 합계</span>
                   <span style={{ color:C.text, fontWeight:800 }}>{finalTotal.toLocaleString()}원</span>
                 </div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, paddingTop:4, borderTop:`1px dashed ${C.border}` }}>
+                  <span style={{ color:C.muted }}>모델 정산 기준액(세전)</span>
+                  <span style={{ color:C.text }}>{gross.toLocaleString()}원</span>
+                </div>
+                {t==="freelancer" && (
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>원천징수 (3.3%)</span>
+                    <span style={{ color:C.red }}>−{wh.toLocaleString()}원</span>
+                  </div>
+                )}
+                {t==="company" && (
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>부가세 (10%, 세금계산서)</span>
+                    <span style={{ color:C.blue }}>+{Math.round(gross*0.1).toLocaleString()}원</span>
+                  </div>
+                )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.muted }}>에이전시 수수료 ({comm}%)</span>
-                  <span style={{ color:C.blue }}>{Math.round(finalTotal*comm/100).toLocaleString()}원</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?"(외국인·전액)":t==="company"?"(소속사)":"(프리랜서)"}</span>
+                  <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
-                  <span style={{ color:C.muted }}>모델 수령액</span>
-                  <span style={{ color:C.green, fontWeight:800 }}>{Math.round(finalTotal*(1-comm/100)).toLocaleString()}원</span>
+                  <span style={{ color:C.muted }}>에이전시 마진</span>
+                  <span style={{ color:C.blue }}>{margin.toLocaleString()}원</span>
                 </div>
               </div>
             );
@@ -1914,31 +1960,76 @@ async function sharePdf(){
             const billTotal = base + ocTotal;
             if (billTotal<=0) return null;
             const dep = selectedSettlement.deposit_amt||0;
-            const bal = Math.max(0, billTotal - dep);
+            const charge = Math.round(billTotal * 1.1); // VAT 10% 포함 청구액
+            const bal = Math.max(0, charge - dep);
             return (
               <div style={{ background:"rgba(59,130,246,0.08)", border:`1px solid ${C.blue}33`, borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
-                <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.blue }}>고객사 입금액</p>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>총 청구액</span><span style={{ color:C.text, fontWeight:700 }}>{billTotal.toLocaleString()}원</span></div>
+                <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.blue }}>고객사 입금액 (VAT 포함)</p>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>공급가</span><span style={{ color:C.text }}>{billTotal.toLocaleString()}원</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>부가세 (10%)</span><span style={{ color:C.text }}>+{(charge-billTotal).toLocaleString()}원</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4, paddingTop:4, borderTop:`1px solid ${C.border}` }}><span style={{ color:C.text, fontWeight:700 }}>총 청구액</span><span style={{ color:C.text, fontWeight:800 }}>{charge.toLocaleString()}원</span></div>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ color:C.muted }}>계약금</span><span style={{ color:C.text }}>{dep.toLocaleString()}원</span></div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ color:C.muted }}>잔금{ocTotal>0?" (추가금 포함)":""}</span><span style={{ color:C.text, fontWeight:700 }}>{bal.toLocaleString()}원</span></div>
               </div>
             );
           })()}
 
+          {/* ── 정산방식 override (이 섭외만) ── */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+              <span style={{ fontSize:11, color:C.muted, minWidth:78 }}>정산 방식</span>
+              {([["","모델 기본값"],["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+                <button key={k} type="button" onClick={()=>setEditPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${editPayType===k?C.green:C.border}`, background:editPayType===k?C.green+"22":"transparent", color:editPayType===k?C.green:C.muted, fontSize:12, fontWeight:editPayType===k?700:500, cursor:"pointer" }}>{l}</button>
+              ))}
+              {editPayType!==""&&(
+                <input style={{ ...inp, marginBottom:0, width:130 }} type="text" inputMode="numeric"
+                  placeholder={editPayType==="rate"?"모델 몫 %":"정액(원)"}
+                  value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
+                  onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
+              )}
+            </div>
+            {editPayType===""&&<p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>이 섭외는 모델에 설정된 기본 정산방식을 따릅니다.</p>}
+          </div>
+
+          {/* ── 정산 단계: 날짜 + 상태 (정산 내역서에 반영) ── */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
+            <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 단계 (날짜·상태)</p>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editDepositPaid?C.blue:C.muted, marginBottom:4, cursor:"pointer" }}>
+                  <input type="checkbox" checked={editDepositPaid} onChange={e=>setEditDepositPaid(e.target.checked)} /> 계약금 입금완료
+                </label>
+                <input style={{ ...inp, marginBottom:0 }} type="date" value={editDepositDate} onChange={e=>setEditDepositDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editBalancePaid?C.blue:C.muted, marginBottom:4, cursor:"pointer" }}>
+                  <input type="checkbox" checked={editBalancePaid} onChange={e=>setEditBalancePaid(e.target.checked)} /> 잔금 입금완료
+                </label>
+                <input style={{ ...inp, marginBottom:0 }} type="date" value={editBalanceDate} onChange={e=>setEditBalanceDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editInvoiceIssued?C.purple:C.muted, marginBottom:4, cursor:"pointer" }}>
+                  <input type="checkbox" checked={editInvoiceIssued} onChange={e=>setEditInvoiceIssued(e.target.checked)} /> 계산서 발행완료
+                </label>
+                <input style={{ ...inp, marginBottom:0 }} type="date" value={editInvoiceDate} onChange={e=>setEditInvoiceDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:editModelPaid?"#c9a96e":C.muted, marginBottom:4, cursor:"pointer" }}>
+                  <input type="checkbox" checked={editModelPaid} onChange={e=>setEditModelPaid(e.target.checked)} /> 모델 지급완료
+                </label>
+                <input style={{ ...inp, marginBottom:0 }} type="date" value={editModelPaidDate} onChange={e=>setEditModelPaidDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>메모</p>
           <textarea style={{ ...inp, height:70, resize:"none" }} placeholder="정산 메모" value={editMemo} onChange={e=>setEditMemo(e.target.value)} />
 
-          {/* ── 입금/지급 상태 (두 흐름 분리) ── */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, margin:"4px 0 14px" }}>
-            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editPaid?C.blue:C.border}`, background:editPaid?C.blue+"18":C.card2 }}>
-              <input type="checkbox" checked={editPaid} onChange={e=>setEditPaid(e.target.checked)} />
-              <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 입금완료</span>
-            </label>
-            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editModelPaid?"#c9a96e":C.border}`, background:editModelPaid?"rgba(201,169,110,0.15)":C.card2 }}>
-              <input type="checkbox" checked={editModelPaid} onChange={e=>setEditModelPaid(e.target.checked)} />
-              <span style={{ fontSize:12, fontWeight:700, color:editModelPaid?"#c9a96e":C.textSub, lineHeight:1.3 }}>모델 지급완료</span>
-            </label>
-          </div>
+          {/* ── 고객사 전체 입금완료 (전체 수금 기준, 매출 인정) ── */}
+          <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", padding:"10px 12px", borderRadius:8, border:`1px solid ${editPaid?C.blue:C.border}`, background:editPaid?C.blue+"18":C.card2, margin:"4px 0 14px" }}>
+            <input type="checkbox" checked={editPaid} onChange={e=>setEditPaid(e.target.checked)} />
+            <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 전체 입금완료 (매출 인정)</span>
+          </label>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
             <button onClick={closeDetail} style={{ ...btnS("#333"), flex:1 }}>취소</button>
@@ -1971,8 +2062,10 @@ async function sharePdf(){
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
               ["이메일",   selectedModel.email],
-              ["기본 단가", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
-              ["수수료율", selectedModel.commission ? `${selectedModel.commission}%` : "-"],
+              ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
+              ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
+              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`비율 ${selectedModel.payout_pay_value}%`) : "-"],
+              ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
             ].map(([k,v])=>(
               <div key={String(k)}>
                 <p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p>
@@ -1993,18 +2086,17 @@ async function sharePdf(){
           {selectedModel.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedModel.memo}</p></div>}
           {/* 섭외 이력 + 모델별 정산 요약 */}
           {(()=>{
-            const comm = commissionRate(selectedModel);
             const mb = bookings.filter(b=>b.model_id===selectedModel.id).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
             const settledAmt = mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
             const pendingAmt = mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
-            const modelPay = Math.round(settledAmt*(1-comm/100));
+            const modelPay = mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingModelPay(b,models),0);
             const shown = modelHistAll ? mb : mb.slice(0,5);
             return (
             <div>
               <div style={{ background:C.card2, borderRadius:10, padding:"12px 14px", marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 완료(입금)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.green }}>{settledAmt.toLocaleString()}원</p></div>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 대기</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.yellow }}>{pendingAmt.toLocaleString()}원</p></div>
-                <div><p style={{ margin:0, fontSize:11, color:C.muted }}>모델 정산액({comm}% 제외)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:"#c9a96e" }}>{modelPay.toLocaleString()}원</p></div>
+                <div><p style={{ margin:0, fontSize:11, color:C.muted }}>모델 실지급(정산)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:"#c9a96e" }}>{modelPay.toLocaleString()}원</p></div>
               </div>
               <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({mb.length}건)</p>
               {shown.map(b=>(
@@ -2168,7 +2260,7 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>카테고리</label>
               <select style={inp} value={mCategory} onChange={e=>setMCategory(e.target.value)}>
@@ -2177,14 +2269,10 @@ async function sharePdf(){
               </select>
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원)</label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원) <span style={{ color:C.muted, fontSize:10 }}>· 참고용(정산 미반영)</span></label>
               <input style={inp} type="text" placeholder="0"
                 value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
                 onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>수수료율 (%)</label>
-              <input style={inp} type="number" placeholder="15" value={mCommission||""} onChange={e=>setMCommission(Number(e.target.value))} />
             </div>
           </div>
           {/* ── 정산 세무 ── */}
@@ -2192,7 +2280,7 @@ async function sharePdf(){
             <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {([["freelancer","프리랜서 (3.3%)"],["company","소속사 (세금계산서 10%)"]] as const).map(([k,l])=>(
+              {([["foreigner","외국인 (전액)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
             </div>
@@ -2205,15 +2293,22 @@ async function sharePdf(){
                 placeholder={mPayType==="rate"?"모델 몫 %":"모델 정산 정액(원)"}
                 value={mPayValue ? (mPayType==="fixed"? Number(mPayValue).toLocaleString("ko-KR") : String(mPayValue)) : ""}
                 onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"공급가의 모델 몫(%)":"건당 모델 정산액(원, 부가세 제외)"}</span>
+              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"계약금액(공급가)의 모델 몫(%)":"건당 모델 정산액(원, 부가세 제외)"}</span>
             </div>
+            <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
+              {mTaxType==="foreigner" ? "지급: 정산 기준액 전액 (원천징수·부가세 없음)"
+                : mTaxType==="company" ? "지급: 정산 기준액 + 10% (세금계산서 수취)"
+                : "지급: 정산 기준액 − 3.3% (소득세 3% + 지방세 0.3% 원천징수)"}
+            </p>
           </div>
 
-          <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, cursor:"pointer", color:C.text }}>
-            <input type="checkbox" checked={mForeigner} onChange={e=>setMForeigner(e.target.checked)} />외국인 모델
-          </label>
-          {mForeigner&&(
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          {/* 외국인 선택 시: 국가 + 비자 입출국일 */}
+          {mTaxType==="foreigner" && (
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 국가</label>
+                <input style={inp} value={mCountry} onChange={e=>setMCountry(e.target.value)} placeholder="예: 러시아, 우크라이나" />
+              </div>
               <div>
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>입국일</label>
                 <input style={inp} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
@@ -2328,6 +2423,11 @@ async function sharePdf(){
             <button onClick={()=>{setShowCustomerForm(false);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
+      )}
+
+      {/* ════ 모달: 정산 내역서 (월별/기간별 + 엑셀) ════ */}
+      {showStatement && (
+        <SettlementStatementModal bookings={bookings} models={models} customers={customers} isMobile={isMobile} onClose={()=>setShowStatement(false)} />
       )}
 
       {/* ════ 모달: 대량 등록 (모델·고객사 공용) ════ */}
