@@ -1843,17 +1843,35 @@ async function sharePdf(){
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
         <Modal onClose={closeDetail}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, marginBottom:12 }}>
-            <div style={{ minWidth:0 }}>
-              <h3 style={{ margin:"0 0 6px", color:C.text }}><Coins size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
-              <p style={{ margin:0, color:C.text }}><strong style={{ color:C.muted }}>모델:</strong> {models.find(m=>m.id===selectedSettlement.model_id)?.name}</p>
-              <p style={{ margin:"2px 0 0", color:C.text }}><strong style={{ color:C.muted }}>고객사:</strong> {customers.find(c=>c.id===selectedSettlement.customer_id)?.name}</p>
-            </div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12 }}>
+            <h3 style={{ margin:0, color:C.text, fontSize:16 }}><Coins size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
             <button onClick={()=>openDetail("booking", selectedSettlement.id)}
               style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
             </button>
           </div>
+          {(()=>{
+            const mh = models.find(m=>m.id===selectedSettlement.model_id);
+            const ch = customers.find(c=>c.id===selectedSettlement.customer_id);
+            return (
+              <div style={{ display:"flex", alignItems:"center", gap:12, background:C.card2, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", marginBottom:14 }}>
+                {mh?.thumb_url
+                  ? <img src={mh.thumb_url} alt="" style={{ width:48, height:48, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:`1px solid ${C.border}` }} />
+                  : <div style={{ width:48, height:48, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:18, flexShrink:0 }}>{(mh?.name||"?")[0]}</div>}
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:4 }}>
+                    <strong style={{ fontSize:16, fontWeight:800, color:C.text }}>{mh?.name||"?"}</strong>
+                    <span style={{ fontSize:13, color:C.muted }}>· {ch?.name||"?"}</span>
+                    {selectedSettlement.project_name&&<span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:13, color:C.blue }}><Folder size={12} style={{ flexShrink:0 }}/> {selectedSettlement.project_name}</span>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub }}>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><Calendar size={12} style={{ flexShrink:0 }}/> {fmtDate(selectedSettlement.shoot_date)}</span>
+                    {selectedSettlement.manager&&<span style={{ display:"inline-flex", alignItems:"center", gap:4 }}><User size={12} style={{ flexShrink:0 }}/> {selectedSettlement.manager}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <p style={{ fontSize:12, color:C.muted, marginBottom:6 }}>촬영비 (원)</p>
           <input style={inp} type="number" placeholder="촬영비 입력" value={editFee} onChange={e=>setEditFee(e.target.value)} />
 
