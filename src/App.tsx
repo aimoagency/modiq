@@ -1181,7 +1181,7 @@ async function sharePdf(){
     { target:"dashboard"  as Page, label:"대시보드", icon:Gauge },
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
-    { target:"models"     as Page, label:"모델",     icon:Mannequin },
+    { target:"models"     as Page, label:"모델",     icon:User },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
