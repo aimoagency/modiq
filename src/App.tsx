@@ -22,7 +22,7 @@ import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
 import CalendarView from "./views/CalendarView";
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, Settings } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView";
@@ -1238,7 +1238,7 @@ async function sharePdf(){
             onMouseEnter={e=>{e.currentTarget.style.background=C.sideHover;e.currentTarget.style.color="white";}}
             onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.textSub;}}
           >
-            <Search size={18} strokeWidth={1.8} style={{ flexShrink:0 }} />
+            <AimoMark size={20} style={{ flexShrink:0 }} />
             {navHover&&<><span style={{ flex:1 }}>Aimo 모델 찾기</span><ExternalLink size={12} style={{ flexShrink:0, opacity:0.6 }} /></>}
           </a>
           {navHover&&<p style={{ margin:"4px 0 0 12px", fontSize:10, color:C.muted }}>15,000+ 모델 · AI 검색</p>}
