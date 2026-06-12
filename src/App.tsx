@@ -34,6 +34,7 @@ import MembersView from "./views/MembersView";
 import PlanView from "./views/PlanView";
 import RevenueView from "./views/RevenueView";
 import CompanyView from "./views/CompanyView";
+import BulkUploadModal from "./components/BulkUploadModal";
 
 // ── 프리텐다드 폰트 로드 ──
 (()=>{
@@ -99,6 +100,7 @@ export default function App() {
   // 모달
   const [showModelForm,    setShowModelForm]    = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [bulkEntity,       setBulkEntity]       = useState<null|"model"|"customer">(null); // 대량 등록 모달
   const [showBookingForm,  setShowBookingForm]  = useState(false);
   const [showAddPicker,    setShowAddPicker]    = useState(false);
   const [addPrefill,       setAddPrefill]       = useState<{date?:string; model?:string}>({});
@@ -521,6 +523,27 @@ export default function App() {
       setCustomers(customers.filter(c=>c.id!==selectedCustomer.id));
       setCEditMode(false); setSelectedCustomer(null); resetCustomerForm();
     } catch (e) { alert("삭제 실패: "+String(e)); }
+  };
+
+  // ── 모델·고객사 대량 등록 ──
+  const handleBulkCommit = async (
+    entity: "model"|"customer",
+    items: { id:string; mode:"insert"|"update"; record:Record<string,any> }[]
+  ): Promise<{ inserted:number; updated:number }> => {
+    const table = entity === "model" ? "models" : "customers";
+    const inserts = items.filter(i=>i.mode==="insert").map(i=>({ ...i.record, id:i.id, agency_id:agency.id }));
+    const updates = items.filter(i=>i.mode==="update");
+    let insertedRows: any[] = [];
+    if (inserts.length) insertedRows = await sb(table, "POST", inserts);
+    for (const u of updates) await sb(table, "PATCH", u.record, `?id=eq.${u.id}`);
+    const newRows = insertedRows.length ? insertedRows : inserts;
+    const updMap = new Map(updates.map(u=>[u.id, u.record]));
+    if (entity === "model") {
+      setModels(prev => [...newRows, ...prev.map(m => updMap.has(m.id) ? {...m, ...updMap.get(m.id)} : m)]);
+    } else {
+      setCustomers(prev => [...newRows, ...prev.map(c => updMap.has(c.id) ? {...c, ...updMap.get(c.id)} : c)]);
+    }
+    return { inserted: inserts.length, updated: updates.length };
   };
 
   // ── 섭외 추가 ──
@@ -1320,10 +1343,10 @@ async function sharePdf(){
         {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
 
         {/* ════ 모델 ════ */}
-        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} />}
+        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
 
         {/* ════ 고객사 ════ */}
-        {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} />}
+        {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
@@ -2278,6 +2301,17 @@ async function sharePdf(){
             <button onClick={()=>{setShowCustomerForm(false);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
+      )}
+
+      {/* ════ 모달: 대량 등록 (모델·고객사 공용) ════ */}
+      {bulkEntity && (
+        <BulkUploadModal
+          entity={bulkEntity}
+          isMobile={isMobile}
+          existingIds={new Set((bulkEntity==="model"?models:customers).map((x:any)=>x.id))}
+          onClose={()=>setBulkEntity(null)}
+          onCommit={(items)=>handleBulkCommit(bulkEntity, items)}
+        />
       )}
 
 

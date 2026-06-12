@@ -4,11 +4,12 @@ import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
 import { Building2, User, Phone, Mail } from "../components/icons";
 
-export default function CustomersView({ filteredCustomers, customerQ, setCustomerQ, setShowCustomerForm, setSelectedCustomer, setCEditMode, bookings, isMobile = false }: {
+export default function CustomersView({ filteredCustomers, customerQ, setCustomerQ, setShowCustomerForm, setSelectedCustomer, setCEditMode, bookings, isMobile = false, onBulkAdd }: {
   filteredCustomers: any[]; customerQ: string; setCustomerQ: (v:string)=>void;
   setShowCustomerForm: (v:boolean)=>void; setSelectedCustomer: (c:any)=>void; setCEditMode: (v:boolean)=>void;
   bookings: any[];
   isMobile?: boolean;
+  onBulkAdd?: ()=>void;
 }) {
   const [sortMode, setSortMode] = useState<"reg"|"rev">("reg");
   const [revBasis, setRevBasis] = useState<"real"|"expected">("real");
@@ -20,7 +21,10 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><Building2 size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 ({filteredCustomers.length}개)</h1>
-        <button onClick={()=>setShowCustomerForm(true)} style={btnS(C.purple)}>+ 고객사 추가</button>
+        <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+          {onBulkAdd&&<button onClick={onBulkAdd} style={{ padding:"6px 12px", background:"transparent", color:C.textSub, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:12 }}>📋 대량 등록</button>}
+          <button onClick={()=>setShowCustomerForm(true)} style={btnS(C.purple)}>+ 고객사 추가</button>
+        </div>
       </div>
       <input style={inp} placeholder="고객사명·브랜드·전화·담당자·이메일 검색" value={customerQ} onChange={e=>setCustomerQ(e.target.value)} />
       <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
