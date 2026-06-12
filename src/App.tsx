@@ -617,6 +617,7 @@ export default function App() {
       location:     selectedBooking.location,
       manager:      selectedBooking.manager,
       usage_period: selectedBooking.usage_period,
+      usage_region: selectedBooking.usage_region,
       shoot_types:  selectedBooking.shoot_types,
       usage_scope:  selectedBooking.usage_scope,
       shoot_fee:    selectedBooking.shoot_fee,
@@ -1460,6 +1461,7 @@ async function sharePdf(){
                   ["장소",    selectedBooking.location],
                   ["담당자",  selectedBooking.manager],
                   ["사용기간",selectedBooking.usage_period],
+                  ["사용국가",selectedBooking.usage_region],
                 ].filter(([,v])=>v).map(([k,v])=>(
                   <div key={String(k)}>
                     <p style={{ margin:0, fontSize:12, color:C.muted }}>{k}</p>
@@ -1553,6 +1555,16 @@ async function sharePdf(){
                       style={{ padding:"3px 10px", borderRadius:5, border:`1px solid ${(selectedBooking.usage_scope||[]).includes(s)?C.blue:C.border}`, background:(selectedBooking.usage_scope||[]).includes(s)?C.blue+"22":"transparent", color:(selectedBooking.usage_scope||[]).includes(s)?C.blue:C.muted, fontSize:11, cursor:"pointer" }}>
                       {s}
                     </button>
+                  ))}
+                </div>
+              </div>
+              {/* 사용 국가 */}
+              <div style={{ marginBottom:10 }}>
+                <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>사용 국가</label>
+                <div style={{ display:"flex", gap:6 }}>
+                  {USAGE_REGIONS.map(r=>(
+                    <button key={r} type="button" onClick={()=>setSelectedBooking((p:any)=>({ ...p, usage_region:r }))}
+                      style={{ padding:"4px 16px", borderRadius:20, border:`1px solid ${(selectedBooking.usage_region||"국내")===r?C.blue:C.border}`, background:(selectedBooking.usage_region||"국내")===r?C.blue+"22":"transparent", color:(selectedBooking.usage_region||"국내")===r?C.blue:C.muted, fontSize:12, fontWeight:(selectedBooking.usage_region||"국내")===r?700:400, cursor:"pointer" }}>{r}</button>
                   ))}
                 </div>
               </div>
