@@ -1,5 +1,5 @@
 import { C, inp } from "../theme";
-import { fmt, fmtDate, bookingTotal } from "../lib/utils";
+import { fmt, fmtDate, bookingTotal, bookingAgencyFee } from "../lib/utils";
 import Badge from "../components/Badge";
 import { Coins, Calendar, User, Folder, CheckCircle2 } from "../components/icons";
 
@@ -56,14 +56,14 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         {/* 줄 돈 — 모델 지급 */}
         <div style={{ background:C.card, border:`1px solid #c9a96e66`, borderRadius:10, padding:16 }}>
           <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:800, color:"#c9a96e" }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급액</p>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>총 지급액 (85%)</span><span style={{ fontSize:15, fontWeight:800, color:"#c9a96e" }}>{fmt(settlementSummary.modelPay)}</span></div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>총 지급액</span><span style={{ fontSize:15, fontWeight:800, color:"#c9a96e" }}>{fmt(settlementSummary.modelPay)}</span></div>
           <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}><span style={{ fontSize:12, color:C.muted }}>지급완료</span><span style={{ fontSize:13, fontWeight:700, color:C.green }}>{fmt(settlementSummary.modelPaidAmt)}</span></div>
           <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12, color:C.muted }}>미지급</span><span style={{ fontSize:13, fontWeight:700, color:settlementSummary.modelUnpaidAmt>0?C.orange:C.muted }}>{fmt(settlementSummary.modelUnpaidAmt)}</span></div>
         </div>
       </div>
       {/* 에이전시 수수료(수익) */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 수수료 (수익, 15%)</span>
+        <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 수수료 (수익)</span>
         <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
       {filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
@@ -71,7 +71,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           {filteredSettlement.map(b=>{
             const model = models.find((m:any)=>m.id===b.model_id);
             const client = customers.find((c:any)=>c.id===b.customer_id);
-            const fee=bookingTotal(b), comm=Math.round(fee*0.15);
+            const fee=bookingTotal(b), comm=bookingAgencyFee(b,models);
             return (
               <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}

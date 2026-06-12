@@ -13,7 +13,7 @@ import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
-  bookingTotal, overchargeTotal, clientBalance,
+  bookingTotal, overchargeTotal, clientBalance, commissionRate, bookingAgencyFee, bookingModelPay,
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import TypeIcon from "./components/TypeIcon";
@@ -1032,16 +1032,17 @@ async function sharePdf(){
 
   const settlementSummary = useMemo(()=>{
     const total = filteredSettlement.reduce((s,b)=>s+bookingTotal(b),0);
-    const commission = Math.round(total*0.15);
-    const modelPay = total - commission;
+    // 수수료·모델지급은 모델별 수수료율로 건별 계산 후 합산
+    const commission = filteredSettlement.reduce((s,b)=>s+bookingAgencyFee(b,models),0);
+    const modelPay = filteredSettlement.reduce((s,b)=>s+bookingModelPay(b,models),0);
     // 고객사 입금(받을 돈) 흐름 — is_paid 기준
     const clientPaid   = filteredSettlement.filter(b=>b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
     const clientUnpaid = total - clientPaid;
     // 모델 지급(줄 돈) 흐름 — model_paid 기준
-    const modelPaidAmt   = filteredSettlement.filter(b=>b.model_paid).reduce((s,b)=>s+Math.round(bookingTotal(b)*0.85),0);
+    const modelPaidAmt   = filteredSettlement.filter(b=>b.model_paid).reduce((s,b)=>s+bookingModelPay(b,models),0);
     const modelUnpaidAmt = Math.max(0, modelPay - modelPaidAmt);
     return { total, commission, modelPay, clientPaid, clientUnpaid, modelPaidAmt, modelUnpaidAmt };
-  },[filteredSettlement]);
+  },[filteredSettlement, models]);
 
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
   const settlementProjects = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.project_name)s.add(b.project_name)}); return Array.from(s); },[settlementData]);
@@ -1603,8 +1604,8 @@ async function sharePdf(){
             )}
             {bookingTotal(selectedBooking)>0&&(
               <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({models.find(m=>m.id===selectedBooking.model_id)?.commission||15}% 수수료 제외{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
-                <span style={{ color:"#c9a96e", fontWeight:800 }}>{Math.round(bookingTotal(selectedBooking)*(1-(models.find(m=>m.id===selectedBooking.model_id)?.commission||15)/100)).toLocaleString()}원</span>
+                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({commissionRate(models.find(m=>m.id===selectedBooking.model_id))}% 수수료 제외{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
+                <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
               </div>
             )}
           </div>
@@ -1816,7 +1817,7 @@ async function sharePdf(){
             const ocTotal = editOvercharges.reduce((s,o)=>s+o.amount,0);
             const finalTotal = base + ocTotal;
             if (finalTotal<=0) return null;
-            const comm = models.find(m=>m.id===selectedSettlement.model_id)?.commission||15;
+            const comm = commissionRate(models.find(m=>m.id===selectedSettlement.model_id));
             return (
               <div style={{ background:"rgba(201,169,110,0.1)", borderRadius:8, padding:12, marginBottom:10, fontSize:13 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
@@ -1931,7 +1932,7 @@ async function sharePdf(){
           {selectedModel.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedModel.memo}</p></div>}
           {/* 섭외 이력 + 모델별 정산 요약 */}
           {(()=>{
-            const comm = selectedModel.commission||15;
+            const comm = commissionRate(selectedModel);
             const mb = bookings.filter(b=>b.model_id===selectedModel.id).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
             const settledAmt = mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
             const pendingAmt = mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);

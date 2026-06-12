@@ -159,6 +159,18 @@ export const bookingTotal = (b: any): number => (b?.shoot_fee || 0) + overcharge
 // 고객사 잔금 = (계약 총액 + 추가금) − 계약금
 export const clientBalance = (b: any): number => Math.max(0, bookingTotal(b) - (b?.deposit_amt || 0));
 
+// 모델 수수료율(%) — 모델별 commission 사용, 미설정 시 15
+export const commissionRate = (model: any): number => {
+  const n = Number(model?.commission);
+  return Number.isFinite(n) ? n : 15;
+};
+// 에이전시 수수료(수익) = 총액 × 모델수수료율
+export const bookingAgencyFee = (b: any, models: any[]): number =>
+  Math.round(bookingTotal(b) * commissionRate(models.find((m) => m.id === b?.model_id)) / 100);
+// 모델 지급액 = 총액 − 에이전시 수수료
+export const bookingModelPay = (b: any, models: any[]): number =>
+  bookingTotal(b) - bookingAgencyFee(b, models);
+
 export const entityRevenue = (bookings: any[], key: string, id: string, period?: { from?: string; to?: string }) => {
   const bs = bookings.filter(b => {
     if (b[key] !== id) return false;
