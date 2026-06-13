@@ -644,6 +644,15 @@ export default function App() {
     if (!selectedBooking) return;
     const prev = bookings.find(b=>b.id===selectedBooking.id);
     const oldDate = prev?.shoot_date;
+    // 모델 휴무 충돌(날짜·모델이 바뀌어 휴무일에 걸린 경우) — 경고 후 강행 허용
+    if (prev?.shoot_date!==selectedBooking.shoot_date || prev?.model_id!==selectedBooking.model_id) {
+      const eoff = modelOffOn(selectedBooking.model_id, selectedBooking.shoot_date);
+      if (eoff) {
+        const nm = models.find(m=>m.id===selectedBooking.model_id)?.name||"이 모델";
+        const ok = window.confirm(`⚠️ ${nm}은(는) ${fmtDate(eoff.start_date)} ~ ${fmtDate(eoff.end_date)} 휴무입니다${eoff.reason?` (${eoff.reason})`:""}.\n해당 날짜(${fmtDate(selectedBooking.shoot_date)})로 변경할까요?\n\n[확인] 그대로 저장  [취소] 중단`);
+        if (!ok) return;
+      }
+    }
     const updates: any = {
       booking_type: selectedBooking.booking_type,
       project_name: selectedBooking.project_name,
