@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { C, btnS, inp } from "../theme";
-import { Building2, Crown, Save, Pencil } from "../components/icons";
+import { Building2, Crown, Save, Pencil, Calendar } from "../components/icons";
 import { validateBizNo } from "../lib/utils";
+import { startGoogleConnect } from "../lib/gcal";
 
 // 회사(에이전시) 정보 + 소유권 이전 — owner 전용
 // 패턴: 보기 → 수정(연필) → 저장/취소 (모델·섭외 상세와 통일)
@@ -79,6 +80,20 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: C.text }}>설정</h1>
+
+      {/* 구글 캘린더 연동 */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 14, color: C.text }}>
+          <Calendar size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동
+        </p>
+        <p style={{ margin: "0 0 12px", fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
+          연동하면 섭외(촬영·실물미팅)를 확정할 때 구글 캘린더에 일정이 만들어지고, 모델이 게스트로 초대됩니다. 모델이 수락하면 이후 변경·취소가 자동 반영됩니다.
+        </p>
+        <button onClick={() => startGoogleConnect(agency.id)} style={{ ...btnS(C.blue), fontSize: 13 }}>
+          <Calendar size={13} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동하기
+        </button>
+        <p style={{ margin: "10px 0 0", fontSize: 11, color: C.muted }}>※ 연동은 에이전시 1회. 구글 로그인 → 권한 허용 후 "연동 완료" 화면이 뜨면 이 탭으로 돌아오세요.</p>
+      </div>
 
       {/* 기본 정보 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
