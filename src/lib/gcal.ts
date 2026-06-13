@@ -8,7 +8,8 @@ const REDIRECT_URI = `https://${SUPA_HOST}/functions/v1/gcal-oauth`;
 const SYNC_FN_URL = `https://${SUPA_HOST}/functions/v1/gcal-sync`;
 const SCOPE = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
 
-// 구글 동의 화면으로 이동 (state = agency_id → 콜백에서 어느 에이전시인지 식별)
+// 구글 동의 화면 열기 (state = agency_id → 콜백에서 어느 에이전시인지 식별)
+//  iframe(미리보기) 안에서는 구글이 표시를 거부하므로 새 탭으로 연다.
 export const startGoogleConnect = (agencyId: string) => {
   const p = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -19,7 +20,13 @@ export const startGoogleConnect = (agencyId: string) => {
     prompt: "consent",          // 매번 동의 → refresh_token 보장
     state: agencyId,
   });
-  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${p.toString()}`;
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?${p.toString()}`;
+  const w = window.open(url, "_blank", "noopener");
+  if (!w) {
+    // 팝업 차단 시: 최상위 창에서 이동 시도, 안 되면 현재 창
+    try { (window.top || window).location.href = url; }
+    catch { window.location.href = url; }
+  }
 };
 
 export type GcalAction = "create" | "update" | "delete";
