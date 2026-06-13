@@ -3,8 +3,9 @@
 // VITE_EMAIL_FN_URL 미설정 시 콘솔 로그만 남기고 no-op (절대 throw 안 함).
 import { type CalEvent, icsText, googleCalUrl } from "./calendar";
 
-const FN_URL: string = (import.meta as any).env?.VITE_EMAIL_FN_URL || "";
-const FN_SECRET: string = (import.meta as any).env?.VITE_EMAIL_FN_SECRET || "";
+// 기본값은 코드에 내장(supabase.ts와 동일 방식). 필요 시 .env로 덮어쓰기 가능.
+const FN_URL: string = (import.meta as any).env?.VITE_EMAIL_FN_URL || "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/email-send";
+const FN_SECRET: string = (import.meta as any).env?.VITE_EMAIL_FN_SECRET || "modiq-mail-2026-x9k2";
 
 export interface EmailOpts {
   to: string;
