@@ -90,6 +90,8 @@ export const genCalToken = (): string => {
 };
 export const calFeedUrl = (token: string) => `https://${SUPA_HOST}/functions/v1/cal-feed?token=${token}`;
 export const calSubscribeUrl = (token: string) => `webcal://${SUPA_HOST}/functions/v1/cal-feed?token=${token}`;
+// 모델에게 보내는 "구독 안내 페이지" 링크 (플랫폼 자동 감지 + 설치 안내 포함)
+export const calSubscribePageUrl = (token: string) => `${location.origin}${location.pathname}?sub=${token}`;
 
 // ── 섭외 → 캘린더 이벤트 ──
 const TYPE_LABEL: Record<string, string> = { SHOOT: "촬영", MEETING: "실물미팅", FITTING: "피팅", AUDITION: "오디션" };

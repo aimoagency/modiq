@@ -39,7 +39,8 @@ import PackagesView from "./views/PackagesView";
 import ModelStudioView from "./views/ModelStudioView";
 import PackagePublicView from "./views/PackagePublicView";
 import CalendarAddView from "./views/CalendarAddView";
-import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribeUrl } from "./lib/calendar";
+import CalSubscribeView from "./views/CalSubscribeView";
+import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail } from "./lib/email";
 import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
@@ -1279,6 +1280,8 @@ async function sharePdf(){
   if (pkgToken) return <PackagePublicView token={pkgToken} />;
   const calData = new URLSearchParams(window.location.search).get("cal");
   if (calData) return <CalendarAddView data={calData} />;
+  const subToken = new URLSearchParams(window.location.search).get("sub");
+  if (subToken) return <CalSubscribeView token={subToken} />;
 
   // ══════════════════════════════════════════════
   // 로그인 화면
@@ -1515,7 +1518,7 @@ async function sharePdf(){
                       <button onClick={async()=>{
                         const c=customers.find(x=>x.id===selectedBooking.customer_id);
                         const tok=await ensureCalToken(m);
-                        const r=await sendCalEmail(m.email, bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribeUrl(tok):"");
+                        const r=await sendCalEmail(m.email, bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"");
                         if(r.ok) alert(`${m.email} 으로 캘린더 일정을 보냈습니다.`);
                         else if(r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(Supabase에 email-send 함수 배포 + VITE_EMAIL_FN_URL 설정 필요)");
                         else alert("메일 발송 실패: "+(r.error||""));
@@ -2218,9 +2221,9 @@ async function sharePdf(){
               <button onClick={async()=>{
                 const token=await ensureCalToken(selectedModel);
                 if(!token){ alert("구독 토큰 저장에 실패했어요.\nSupabase models 테이블에 cal_token 컬럼이 필요합니다:\nalter table models add column if not exists cal_token text;"); return; }
-                const url=calSubscribeUrl(token);
-                try { await navigator.clipboard.writeText(url); alert("캘린더 구독 링크가 복사되었습니다.\n\n모델이 이 링크를 캘린더에 한 번 등록하면, 이후 모든 확정 일정(촬영·실물미팅)이 자동으로 동기화됩니다. 변경·취소도 자동 반영돼요.\n\n"+url); }
-                catch { prompt("구독 링크(모델에게 보내세요):", url); }
+                const url=calSubscribePageUrl(token);
+                try { await navigator.clipboard.writeText(url); alert("캘린더 구독 안내 링크가 복사되었습니다.\n\n이 링크를 모델에게 보내면, 폰 기종(아이폰/안드로이드)에 맞는 설치·구독 방법이 자동으로 안내됩니다. 모델이 한 번 구독하면 이후 모든 확정 일정이 자동 동기화돼요.\n\n"+url); }
+                catch { prompt("구독 안내 링크(모델에게 보내세요):", url); }
               }} title="모델이 한 번 등록하면 자동 동기화되는 구독 링크" style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 구독 링크</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
             </div>
