@@ -6,7 +6,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useMemo, useRef, useState } from "react";
 import { C, btnS } from "../theme";
-import { downloadNodePdf } from "../lib/packages";
+import { downloadNodePdf, shareNodePng } from "../lib/packages";
 import { ageFromSSN6 } from "../lib/utils";
 
 type Drag = { type: "g" | "s"; val: string | number } | null;
@@ -160,6 +160,13 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
       {/* 버튼 */}
       <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button onClick={download} disabled={busy} style={{ ...btnS(C.blue, busy), padding: "10px 22px", fontSize: 14 }}>{busy ? "PDF 생성 중…" : "⬇ PDF 다운로드"}</button>
+        <button onClick={async () => {
+          if (!ref.current) return;
+          setBusy(true);
+          try { await shareNodePng(ref.current, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`); }
+          catch (e) { alert("공유 실패: " + String(e)); }
+          setBusy(false);
+        }} disabled={busy} style={{ ...btnS(C.purple, busy), padding: "10px 18px", fontSize: 14 }}>🔗 공유하기</button>
         {onSave && <button onClick={saveSlots} disabled={savingSlots} style={{ ...btnS(C.green, savingSlots), padding: "10px 18px", fontSize: 14 }}>{savingSlots ? "저장 중…" : "★ 컴카드 지정 저장"}</button>}
         <button onClick={onClose} style={{ padding: "10px 18px", background: "transparent", color: "#fff", border: "1px solid #ffffff55", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 14 }}>닫기</button>
       </div>

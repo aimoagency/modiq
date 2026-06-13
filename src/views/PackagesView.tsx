@@ -11,6 +11,7 @@ import {
   genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow,
 } from "../lib/packages";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
+import CompCardModal from "../components/CompCardModal";
 
 // 사진 리사이즈 → base64 (기존 reference_images 패턴과 동일)
 const resizeImage = (file: File, cb: (data: string) => void) => {
@@ -45,6 +46,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const [saving, setSaving] = useState(false);
   const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
   const [pickQ, setPickQ] = useState("");
+  const [compModel, setCompModel] = useState<any | null>(null);
 
   const newDraft = (): Pkg => ({
     id: genPkgId(), agency_id: agency.id, title: "", client_name: "",
@@ -73,7 +75,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
     const it: PackageItem = {
       model_id: m.id, name: m.name || "", category: m.category || "",
       instagram_url: m.instagram_url || "", caption: "",
-      photos: m.thumb_url ? [m.thumb_url] : [],
+      photos: Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []),
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
@@ -266,7 +268,15 @@ export default function PackagesView({ packages, setPackages, models, customers,
           <div key={idx} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <strong style={{ fontSize: 14, color: C.text }}>{it.name || `모델 ${idx + 1}`}</strong>
-              <button onClick={() => removeItem(idx)} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>제거</button>
+              <div style={{ display: "flex", gap: 6 }}>
+                {it.model_id && (
+                  <button onClick={() => { const m = models.find((x:any) => x.id === it.model_id); if (m) setCompModel(m); }}
+                    style={{ ...btnS(C.purple), padding: "4px 10px", fontSize: 12 }}>
+                    <CardCheck size={11} style={{ verticalAlign: -2 }} /> 컴카드 보기
+                  </button>
+                )}
+                <button onClick={() => removeItem(idx)} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>제거</button>
+              </div>
             </div>
 
             {/* 드래그앤드롭 사진 영역 */}
@@ -312,6 +322,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
         <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>패키지 메모 (고객사에게 보일 안내문, 선택)</label>
         <textarea style={{ ...inp, minHeight: 60, resize: "vertical" }} placeholder="예: 아래 모델들 스케줄 가능합니다. 컨펌 주시면 상세 프로필 보내드립니다." value={draft.memo || ""} onChange={e => upd({ memo: e.target.value })} />
       </div>
+
+      {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)} />}
 
       {/* 모델 선택 모달 */}
       {modelPick && (

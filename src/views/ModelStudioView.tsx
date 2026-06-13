@@ -233,14 +233,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px", flexWrap: "wrap", gap: 10 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 모델 스튜디오</h1>
-        <div style={{ display: "flex", gap: 6 }}>
-          {([["photos", "사진 관리", Camera], ["package", "패키징", CardCheck]] as [string, string, any][]).map(([k, l, Ic]) => (
-            <button key={k} onClick={() => setMode(k as any)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: `1px solid ${mode === k ? C.blue : C.border}`, background: mode === k ? C.blue + "22" : "transparent", color: mode === k ? C.blue : C.muted, fontSize: 13, fontWeight: mode === k ? 700 : 500, cursor: "pointer" }}><Ic size={14} /> {l}</button>
-          ))}
-        </div>
+        <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
       </div>
 
-      {mode === "package" ? packagePanel : (
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16 }}>
         {listPanel}
 
@@ -289,7 +284,6 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                     {photos.map((p, i) => (
                       <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
                         <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        {i === 0 && <span style={{ position: "absolute", top: 4, left: 4, background: C.blue, color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6 }}>대표</span>}
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         {i !== 0 && <button onClick={() => makePrimary(i)} style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>대표로</button>}
                       </div>
@@ -301,14 +295,13 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                       </label>
                     )}
                   </div>
-                  <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 를 눌러 추가 · 첫 장이 대표(썸네일) 사진</p>
+                  <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 를 눌러 추가 (최대 15장)</p>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
-      )}
 
       {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)}
         onSave={async (compcard) => {

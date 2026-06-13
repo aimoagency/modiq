@@ -230,6 +230,26 @@ function ensureScript(src: string): Promise<void> {
   });
 }
 
+// ── DOM 노드를 PNG로 캡처해 공유 (모바일=Web Share, 데스크탑=새 탭) ──
+export async function shareNodePng(el: HTMLElement, filename: string, title = "") {
+  await ensureScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  const w = window as any;
+  const canvas = await w.html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  const safe = filename.replace(/[\\/:*?"<>|]/g, "_");
+  await new Promise<void>(resolve => {
+    canvas.toBlob(async (blob: Blob | null) => {
+      if (!blob) { resolve(); return; }
+      const file = new File([blob], safe + ".png", { type: "image/png" });
+      const nav = navigator as any;
+      try {
+        if (nav.share && nav.canShare?.({ files: [file] })) await nav.share({ files: [file], title: title || safe });
+        else window.open(URL.createObjectURL(blob), "_blank");
+      } catch { /* 사용자가 공유 취소 등 — 무시 */ }
+      resolve();
+    }, "image/png");
+  });
+}
+
 // ── DOM 노드를 PDF로 직접 다운로드 (인앱, 팝업 없이) ──
 // orient: "p"(세로) | "l"(가로). 가로는 컴카드(A4 landscape)용.
 export async function downloadNodePdf(el: HTMLElement, filename: string, orient: "p" | "l" = "p") {
