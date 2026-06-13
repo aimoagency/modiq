@@ -79,7 +79,8 @@ export default function App() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [bookings,  setBookings]  = useState<any[]>([]);
   const [projects,  setProjects]  = useState<any[]>([]);
-  const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일
+  const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일(에이전시 전체)
+  const [modelOffs,   setModelOffs]   = useState<any[]>([]); // 모델별 휴무 기간
   const [packages,    setPackages]    = useState<Pkg[]>([]); // 모델 사진 패키지
   const [selectedProjectId, setSelectedProjectId] = useState<string|null>(null); // 프로젝트 상세
   const isMobile = useIsMobile();
@@ -406,6 +407,10 @@ export default function App() {
       const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
       setHolidays(h||[]);
     } catch { setHolidays([]); } // holidays 테이블 미생성 시 무시
+    try {
+      const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
+      setModelOffs(mo||[]);
+    } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
     try {
       const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
       setPackages(pk||[]);
@@ -745,6 +750,13 @@ export default function App() {
     const visa = visaViolation(model, bDate);
     if (visa) return alert("비자 오류: "+visa);
 
+    // 모델 휴무 충돌: 경고 후 강행 허용
+    const off = modelOffOn(bModel, bDate);
+    if (off) {
+      const ok = window.confirm(`⚠️ ${model?.name||"이 모델"}은(는) ${fmtDate(off.start_date)} ~ ${fmtDate(off.end_date)} 휴무입니다${off.reason?` (${off.reason})`:""}.\n해당 날짜(${fmtDate(bDate)})에 섭외를 진행할까요?\n\n[확인] 그래도 등록  [취소] 중단`);
+      if (!ok) return;
+    }
+
     // 우선순위 충돌 처리: 촬영 > 미팅/피팅/오디션
     const sameDay = bookings.filter(b=>b.model_id===bModel&&b.shoot_date===bDate&&b.status!=="CANCELLED");
     const newIsShoot = bBookingType==="SHOOT";
@@ -792,6 +804,24 @@ export default function App() {
     try { await sb("holidays","DELETE",null,`?id=eq.${id}`); setHolidays(holidays.filter(h=>h.id!==id)); }
     catch(e) { alert("휴무일 해제 실패: "+String(e)); }
   };
+
+  // ── 모델 휴무(기간) ──
+  const handleAddModelOff = async (model_id: string, start_date: string, end_date: string, reason = "") => {
+    if (!model_id) return alert("모델을 선택하세요");
+    if (!start_date || !end_date) return alert("휴무 시작일과 종료일을 입력하세요");
+    if (end_date < start_date) return alert("종료일이 시작일보다 빠릅니다");
+    const row = { id:`MO_${Date.now()}`, agency_id: agency.id, model_id, start_date, end_date, reason: reason||"" };
+    try { await sb("model_offs","POST",row); setModelOffs([row, ...modelOffs]); }
+    catch(e) { alert("휴무 저장 실패 — Supabase에 model_offs 테이블이 필요합니다.\n(supabase/model_offs_setup.sql 실행)\n"+String(e)); }
+  };
+  const handleDeleteModelOff = async (id: string) => {
+    if (!confirm("이 휴무를 해제할까요?")) return;
+    try { await sb("model_offs","DELETE",null,`?id=eq.${id}`); setModelOffs(modelOffs.filter(o=>o.id!==id)); }
+    catch(e) { alert("휴무 해제 실패: "+String(e)); }
+  };
+  // 해당 모델이 그 날짜에 휴무인지 → 휴무 레코드(or null)
+  const modelOffOn = (model_id: string, date: string) =>
+    modelOffs.find(o => o.model_id===model_id && date>=o.start_date && date<=o.end_date) || null;
 
   const handleChangeStatus = async (id: string, status: string) => {
     try {
@@ -1400,6 +1430,9 @@ async function sharePdf(){
             holidays={holidays}
             onAddHoliday={handleAddHoliday}
             onDeleteHoliday={handleDeleteHoliday}
+            modelOffs={modelOffs}
+            onAddModelOff={handleAddModelOff}
+            onDeleteModelOff={handleDeleteModelOff}
             bookings={bookings}
             models={models}
             customers={customers}
