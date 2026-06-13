@@ -35,6 +35,9 @@ import MembersView from "./views/MembersView";
 import PlanView from "./views/PlanView";
 import RevenueView from "./views/RevenueView";
 import CompanyView from "./views/CompanyView";
+import PackagesView from "./views/PackagesView";
+import PackagePublicView from "./views/PackagePublicView";
+import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
 import SettlementStatementModal from "./components/SettlementStatementModal";
 
@@ -75,6 +78,7 @@ export default function App() {
   const [bookings,  setBookings]  = useState<any[]>([]);
   const [projects,  setProjects]  = useState<any[]>([]);
   const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일
+  const [packages,    setPackages]    = useState<Pkg[]>([]); // 모델 사진 패키지
   const [selectedProjectId, setSelectedProjectId] = useState<string|null>(null); // 프로젝트 상세
   const isMobile = useIsMobile();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -383,6 +387,10 @@ export default function App() {
       const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
       setHolidays(h||[]);
     } catch { setHolidays([]); } // holidays 테이블 미생성 시 무시
+    try {
+      const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      setPackages(pk||[]);
+    } catch { setPackages([]); } // packages 테이블 미생성 시 무시
   };
 
   // ── 인증 ──
@@ -443,7 +451,7 @@ export default function App() {
     setAuthTokens(null, null);
     setSession(null); setAgency(null); setMyRole("member");
     setEmail(""); setPassword(""); setAgencyName("");
-    setModels([]); setCustomers([]); setBookings([]); setMembers([]);
+    setModels([]); setCustomers([]); setBookings([]); setMembers([]); setPackages([]);
     setPage("dashboard");
   };
 
@@ -1188,6 +1196,12 @@ async function sharePdf(){
   );
 
   // ══════════════════════════════════════════════
+  // 공개 패키지 라우트 (?pkg=토큰) — 로그인 불필요, 고객사용
+  // ══════════════════════════════════════════════
+  const pkgToken = new URLSearchParams(window.location.search).get("pkg");
+  if (pkgToken) return <PackagePublicView token={pkgToken} />;
+
+  // ══════════════════════════════════════════════
   // 로그인 화면
   // ══════════════════════════════════════════════
   if (!session||!agency) {
@@ -1266,6 +1280,7 @@ async function sharePdf(){
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
     { target:"models"     as Page, label:"모델",     icon:User },
+    { target:"packages"   as Page, label:"패키지",   icon:CardCheck },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
@@ -1376,6 +1391,8 @@ async function sharePdf(){
 
         {/* ════ 모델 ════ */}
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
+
+        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}

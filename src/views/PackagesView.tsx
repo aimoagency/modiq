@@ -1,0 +1,301 @@
+// ════════════════════════════════════════════════════════════════
+// 패키지 뷰 — 모델 사진 패키지 제작/관리
+//  · 목록 + 빌더 모달(드래그앤드롭 사진, 모델 선택, casting/compcard)
+//  · 공유 링크 복사 / PDF·인쇄 / 공개여부 토글 / 삭제
+// ════════════════════════════════════════════════════════════════
+import { useMemo, useState } from "react";
+import { C, inp, btnS } from "../theme";
+import { sb } from "../lib/supabase";
+import {
+  type Pkg, type PackageItem, type PackageLayout,
+  genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow,
+} from "../lib/packages";
+import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
+
+// 사진 리사이즈 → base64 (기존 reference_images 패턴과 동일)
+const resizeImage = (file: File, cb: (data: string) => void) => {
+  if (!file.type.startsWith("image/")) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 900;
+      const sc = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * sc);
+      cv.height = Math.round(img.height * sc);
+      cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
+      cb(cv.toDataURL("image/jpeg", 0.78));
+    };
+    img.src = String(r.result);
+  };
+  r.readAsDataURL(file);
+};
+
+export default function PackagesView({ packages, setPackages, models, customers, agency, isMobile = false }: {
+  packages: Pkg[];
+  setPackages: (fn: (prev: Pkg[]) => Pkg[]) => void;
+  models: any[];
+  customers: any[];
+  agency: { id: string; name: string };
+  isMobile?: boolean;
+}) {
+  const [draft, setDraft] = useState<Pkg | null>(null);   // null = 목록 화면
+  const [isNew, setIsNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
+  const [pickQ, setPickQ] = useState("");
+
+  const newDraft = (): Pkg => ({
+    id: genPkgId(), agency_id: agency.id, title: "", client_name: "",
+    layout: "casting", items: [], memo: "", share_token: genShareToken(), is_public: true,
+  });
+
+  const startNew = () => { setDraft(newDraft()); setIsNew(true); };
+  const startEdit = (p: Pkg) => { setDraft(JSON.parse(JSON.stringify(p))); setIsNew(false); };
+  const closeBuilder = () => { setDraft(null); setModelPick(false); setPickQ(""); };
+
+  const upd = (patch: Partial<Pkg>) => setDraft(d => d ? { ...d, ...patch } : d);
+  const updItem = (idx: number, patch: Partial<PackageItem>) =>
+    setDraft(d => d ? { ...d, items: d.items.map((it, i) => i === idx ? { ...it, ...patch } : it) } : d);
+  const removeItem = (idx: number) =>
+    setDraft(d => d ? { ...d, items: d.items.filter((_, i) => i !== idx) } : d);
+  const addBlankItem = () =>
+    setDraft(d => d ? { ...d, items: [...d.items, emptyItem()] } : d);
+  const addModelItem = (m: any) => {
+    const it: PackageItem = {
+      model_id: m.id, name: m.name || "", category: m.category || "",
+      instagram_url: m.instagram_url || "", caption: "",
+      photos: m.thumb_url ? [m.thumb_url] : [],
+    };
+    setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
+  };
+  const addPhotos = (idx: number, files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach(f => resizeImage(f, data =>
+      setDraft(d => {
+        if (!d) return d;
+        const items = d.items.map((it, i) => i === idx && it.photos.length < 9 ? { ...it, photos: [...it.photos, data] } : it);
+        return { ...d, items };
+      })
+    ));
+  };
+  const removePhoto = (idx: number, pi: number) =>
+    updItem(idx, { photos: (draft?.items[idx].photos || []).filter((_, x) => x !== pi) });
+
+  const save = async () => {
+    if (!draft) return;
+    if (!draft.title.trim()) { alert("패키지 제목을 입력하세요."); return; }
+    if (draft.items.length === 0) { alert("모델을 1명 이상 추가하세요."); return; }
+    setSaving(true);
+    try {
+      const row: Pkg = { ...draft, title: draft.title.trim() };
+      if (isNew) {
+        await sb("packages", "POST", row);
+        setPackages(prev => [row, ...prev]);
+      } else {
+        const { id, agency_id, created_at, ...patch } = row;
+        await sb("packages", "PATCH", patch, `?id=eq.${row.id}`);
+        setPackages(prev => prev.map(p => p.id === row.id ? row : p));
+      }
+      closeBuilder();
+    } catch (e) {
+      alert("저장 실패: " + String(e));
+    }
+    setSaving(false);
+  };
+
+  const remove = async (p: Pkg) => {
+    if (!confirm(`'${p.title}' 패키지를 삭제할까요?`)) return;
+    try {
+      await sb("packages", "DELETE", null, `?id=eq.${p.id}`);
+      setPackages(prev => prev.filter(x => x.id !== p.id));
+    } catch (e) { alert("삭제 실패: " + String(e)); }
+  };
+
+  const copyLink = async (p: Pkg) => {
+    const url = shareUrl(p.share_token);
+    try { await navigator.clipboard.writeText(url); alert("공유 링크가 복사되었습니다.\n\n" + url); }
+    catch { prompt("아래 링크를 복사해 고객사에 보내세요:", url); }
+  };
+
+  const togglePublic = async (p: Pkg) => {
+    const next = !p.is_public;
+    try {
+      await sb("packages", "PATCH", { is_public: next }, `?id=eq.${p.id}`);
+      setPackages(prev => prev.map(x => x.id === p.id ? { ...x, is_public: next } : x));
+    } catch (e) { alert("변경 실패: " + String(e)); }
+  };
+
+  const pickModels = useMemo(() => {
+    const q = pickQ.trim().toLowerCase();
+    const used = new Set((draft?.items || []).map(i => i.model_id).filter(Boolean));
+    return models.filter(m => !used.has(m.id) && (!q || (m.name || "").toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q)));
+  }, [models, pickQ, draft]);
+
+  // ──────────────────────────────── 목록 화면 ────────────────────────────────
+  if (!draft) {
+    return (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}>
+            <CardCheck size={20} style={{ verticalAlign: -2, flexShrink: 0 }} /> 패키지 ({packages.length})
+          </h1>
+          <button onClick={startNew} style={btnS(C.blue)}>+ 패키지 만들기</button>
+        </div>
+        <p style={{ color: C.muted, fontSize: 13, margin: "0 0 16px" }}>
+          모델 사진을 묶어 고객사에 제안하세요. 공유 링크 또는 PDF로 발송할 수 있습니다.
+        </p>
+        {packages.length === 0 ? (
+          <div style={{ border: `1px dashed ${C.border}`, borderRadius: 12, padding: "48px 20px", textAlign: "center", color: C.muted }}>
+            <p style={{ margin: 0, fontSize: 14 }}>아직 패키지가 없습니다.</p>
+            <button onClick={startNew} style={{ ...btnS(C.blue), marginTop: 14 }}>+ 첫 패키지 만들기</button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {packages.map(p => (
+              <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
+                  <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
+                    {p.layout === "compcard" ? "컴카드" : "제안 패키지"}
+                  </span>
+                  <span style={{ fontSize: 12, color: C.muted }}><User size={11} style={{ verticalAlign: -2 }} /> {p.items?.length || 0}명</span>
+                  {p.client_name && <span style={{ fontSize: 12, color: C.muted }}><Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</span>}
+                  <span style={{ fontSize: 11, color: p.is_public ? C.green : C.muted, marginLeft: isMobile ? 0 : "auto" }}>
+                    {p.is_public ? "● 공개" : "○ 비공개"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                  <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
+                  <button onClick={() => openPackageWindow({ ...p }, agency.name)} style={btnS(C.purple)}>PDF / 인쇄</button>
+                  <button onClick={() => startEdit(p)} style={{ ...btnS(C.muted) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
+                  <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
+                  <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ──────────────────────────────── 빌더 화면 ────────────────────────────────
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.text }}>{isNew ? "새 패키지" : "패키지 편집"}</h1>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={closeBuilder} style={{ padding: "8px 14px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13 }}>취소</button>
+          <button onClick={save} disabled={saving} style={{ ...btnS(C.blue, saving), padding: "8px 18px", fontSize: 13 }}>{saving ? "저장 중…" : "저장"}</button>
+        </div>
+      </div>
+
+      {/* 기본 정보 */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+        <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>패키지 제목</label>
+        <input style={inp} placeholder="예: 봄 화보 캐스팅 제안 — A브랜드" value={draft.title} onChange={e => upd({ title: e.target.value })} />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>고객사</label>
+            <input style={inp} list="pkg-clients" placeholder="고객사명 (선택)" value={draft.client_name || ""} onChange={e => upd({ client_name: e.target.value })} />
+            <datalist id="pkg-clients">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist>
+          </div>
+          <div style={{ minWidth: 180 }}>
+            <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>형태</label>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              {([["casting", "제안 패키지"], ["compcard", "컴카드"]] as [PackageLayout, string][]).map(([k, l]) => (
+                <button key={k} onClick={() => upd({ layout: k })} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${draft.layout === k ? C.blue : C.border}`, background: draft.layout === k ? C.blue + "22" : "transparent", color: draft.layout === k ? C.blue : C.muted, fontSize: 13, fontWeight: draft.layout === k ? 700 : 500, cursor: "pointer" }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 모델 항목들 */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <button onClick={() => setModelPick(true)} style={btnS(C.blue)}>＋ 모델 추가 (DB)</button>
+        <button onClick={addBlankItem} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>＋ 직접 추가</button>
+      </div>
+
+      {draft.items.length === 0 && (
+        <p style={{ color: C.muted, fontSize: 13, padding: "20px 0" }}>모델을 추가하고 사진을 끌어다 놓으세요.</p>
+      )}
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {draft.items.map((it, idx) => (
+          <div key={idx} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ fontSize: 14, color: C.text }}>{it.name || `모델 ${idx + 1}`}</strong>
+              <button onClick={() => removeItem(idx)} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>제거</button>
+            </div>
+
+            {/* 드래그앤드롭 사진 영역 */}
+            <div
+              onDragOver={e => { e.preventDefault(); }}
+              onDrop={e => { e.preventDefault(); addPhotos(idx, e.dataTransfer.files); }}
+              style={{ border: `1px dashed ${C.border}`, borderRadius: 8, padding: 10, marginBottom: 10 }}
+            >
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {it.photos.map((p, pi) => (
+                  <div key={pi} style={{ position: "relative", width: 72, height: 96 }}>
+                    <img src={p} alt="" style={{ width: 72, height: 96, objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}` }} />
+                    <span onClick={() => removePhoto(idx, pi)} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
+                  </div>
+                ))}
+                {it.photos.length < 9 && (
+                  <label style={{ width: 72, height: 96, border: `1px dashed ${C.border}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.muted, fontSize: 11, gap: 3 }}>
+                    <span style={{ fontSize: 20 }}>＋</span>사진
+                    <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => addPhotos(idx, e.target.files)} />
+                  </label>
+                )}
+              </div>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 사진을 눌러 추가 (최대 9장)</p>
+            </div>
+
+            {/* 모델 정보 입력 */}
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8 }}>
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="이름" value={it.name} onChange={e => updItem(idx, { name: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="카테고리" value={it.category || ""} onChange={e => updItem(idx, { category: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="키(cm)" value={it.height || ""} onChange={e => updItem(idx, { height: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="신발(mm)" value={it.shoe || ""} onChange={e => updItem(idx, { shoe: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="가슴" value={it.bust || ""} onChange={e => updItem(idx, { bust: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="허리" value={it.waist || ""} onChange={e => updItem(idx, { waist: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="엉덩이" value={it.hip || ""} onChange={e => updItem(idx, { hip: e.target.value })} />
+              <input style={{ ...inp, marginBottom: 0 }} placeholder="인스타 URL" value={it.instagram_url || ""} onChange={e => updItem(idx, { instagram_url: e.target.value })} />
+            </div>
+            <input style={{ ...inp, marginTop: 8, marginBottom: 0 }} placeholder="특기·메모 (선택)" value={it.caption || ""} onChange={e => updItem(idx, { caption: e.target.value })} />
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>패키지 메모 (고객사에게 보일 안내문, 선택)</label>
+        <textarea style={{ ...inp, minHeight: 60, resize: "vertical" }} placeholder="예: 아래 모델들 스케줄 가능합니다. 컨펌 주시면 상세 프로필 보내드립니다." value={draft.memo || ""} onChange={e => upd({ memo: e.target.value })} />
+      </div>
+
+      {/* 모델 선택 모달 */}
+      {modelPick && (
+        <div onClick={() => setModelPick(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, width: "92%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 16, color: C.text }}>모델 선택</h3>
+            <input style={inp} placeholder="이름·카테고리 검색" value={pickQ} onChange={e => setPickQ(e.target.value)} autoFocus />
+            <div style={{ overflowY: "auto", display: "grid", gap: 6 }}>
+              {pickModels.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>모델이 없습니다.</p>}
+              {pickModels.map(m => (
+                <div key={m.id} onClick={() => { addModelItem(m); setModelPick(false); setPickQ(""); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.border}`, cursor: "pointer" }}>
+                  {m.thumb_url
+                    ? <img src={m.thumb_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
+                    : <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{(m.name || "?")[0]}</div>}
+                  <strong style={{ fontSize: 14, color: C.text }}>{m.name}</strong>
+                  {m.category && <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{m.category}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
