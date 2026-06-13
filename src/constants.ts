@@ -1,7 +1,7 @@
 export const APP_VERSION = "0.9.0";
 export const SESSION_KEY = "modiq_session_v6";
 export type AuthMode = "login"|"signup";
-export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages";
+export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages"|"studio";
 
 // ── 요금제 ─────────────────────────────────────────────────────
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {
@@ -22,6 +22,9 @@ export const getTotalMemberLimit = (plan: string, extra = 0) => (PLAN_FEATURES[p
 
 // ── 상수 ──────────────────────────────────────────────────────
 export const MODEL_CATEGORIES = ["여성","남성","시니어","키즈","플러스사이즈","기타"];
+export const MODEL_FIELDS = ["패션","뷰티","연기자","인플루언서","크리에이터","가수","댄서","운동"]; // 분야(복수 선택)
+export const HAIR_LENGTHS = ["숏","단발","미디엄","롱"];
+export const EYE_COLORS = ["검정","갈색","그레이","블루","그린","기타"];
 export const CLIENT_INDUSTRIES = ["광고대행사","마케팅에이전시","프로덕션","패션브랜드","뷰티","홈쇼핑","매거진/미디어","온라인플랫폼","웨딩/이벤트","브랜드(종합)","기타"];
 export const SHOOT_TYPES_PHOTO = ["광고사진","화보","카탈로그","SNS콘텐츠","룩북","제품사진"];
 export const USAGE_REGIONS = ["국내","해외"]; // 콘텐츠 사용 국가 범위

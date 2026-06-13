@@ -12,11 +12,14 @@ export type PackageItem = {
   model_id?: string;        // 연결된 모델 (선택)
   name: string;
   category?: string;
+  country?: string;         // 국적
+  age?: string;             // 나이 (예: "24")
   height?: string;
   bust?: string;
   waist?: string;
   hip?: string;
   shoe?: string;
+  followers?: string;       // 인스타 팔로워 수 (썸네일 아래 표시, URL 대신)
   instagram_url?: string;
   caption?: string;         // 자유 메모 (특기 등)
   photos: string[];         // base64 data URL 들
@@ -30,10 +33,15 @@ export type Pkg = {
   layout: PackageLayout;
   items: PackageItem[];
   memo?: string;
+  show_brand: boolean;      // 헤더에 에이전시 이름/로고 표시 여부
+  brand_name?: string;      // 표시 이름 (기본 = 에이전시명)
+  brand_logo?: string;      // 로고 이미지 (base64 data URL, 선택)
   share_token: string;
   is_public: boolean;
   created_at?: string;
 };
+
+import { ageFromSSN6 } from "./utils";
 
 // ── 식별자 / 토큰 ──
 export const genPkgId = () => `PKG_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -69,23 +77,32 @@ const esc = (s: any) =>
 // ════════════════════════════════════════════════════════════════
 // PDF·인쇄용 팝업 HTML — 정산명세서와 동일 패턴(html2canvas+jsPDF)
 // ════════════════════════════════════════════════════════════════
-export function buildPackageHtml(pkg: Pkg, agencyName = "Modiq"): string {
+export function buildPackageHtml(pkg: Pkg, agencyName = "modiq"): string {
   const isComp = pkg.layout === "compcard";
   const subj = `${pkg.title}${pkg.client_name ? ` · ${pkg.client_name}` : ""}`;
+  const brandName = pkg.brand_name || agencyName;
+  const brandHtml = pkg.show_brand
+    ? `<div class="brand">
+         ${pkg.brand_logo ? `<img class="logo" src="${esc(pkg.brand_logo)}" alt=""/>` : `<div class="bname">${esc(brandName)}</div>`}
+         <small>talent package</small>
+       </div>`
+    : "";
+  const footName = pkg.show_brand ? esc(brandName) : "본 에이전시";
 
   const itemBlock = (it: PackageItem): string => {
-    const photos = (it.photos || []).slice(0, isComp ? 6 : 3);
+    const photos = (it.photos || []).slice(0, isComp ? 5 : 3);
     const photosHtml = photos.map(p => `<div class="ph"><img src="${esc(p)}" alt=""/></div>`).join("");
     const size = sizeLine(it);
+    const idLine = [it.country, it.age ? `${it.age}세` : ""].filter(Boolean).join(" · ");
+    const fol = it.followers ? `♥ ${esc(it.followers)}` : "";
     return `
       <div class="card ${isComp ? "comp" : "cast"}">
         <div class="photos">${photosHtml || '<div class="ph noimg">사진 없음</div>'}</div>
         <div class="meta">
-          <div class="nm">${esc(it.name || "이름 미정")}</div>
-          ${it.category ? `<div class="cat">${esc(it.category)}</div>` : ""}
+          <div class="nmrow"><span class="nm">${esc(it.name || "이름 미정")}</span>${fol ? `<span class="fol">${fol}</span>` : ""}</div>
+          <div class="tags">${it.category ? `<span class="cat">${esc(it.category)}</span>` : ""}${idLine ? `<span class="idl">${esc(idLine)}</span>` : ""}</div>
           ${size ? `<div class="sz">${esc(size)}</div>` : ""}
           ${it.caption ? `<div class="cap">${esc(it.caption)}</div>` : ""}
-          ${it.instagram_url ? `<div class="ig">${esc(it.instagram_url)}</div>` : ""}
         </div>
       </div>`;
   };
@@ -99,15 +116,19 @@ export function buildPackageHtml(pkg: Pkg, agencyName = "Modiq"): string {
   .bar{max-width:780px;margin:0 auto 14px;display:flex;gap:8px;justify-content:flex-end}
   .bar button{padding:9px 16px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;color:#fff}
   #pdfBtn{background:#3b82f6}#printBtn{background:#6b7280}
-  .sheet{max-width:780px;margin:0 auto;background:#fff;border-radius:12px;padding:34px 32px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .sheet{max-width:1400px;margin:0 auto;background:#fff;border-radius:12px;padding:clamp(20px,3vw,36px);box-shadow:0 4px 24px rgba(0,0,0,.08)}
   .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1d27;padding-bottom:14px;margin-bottom:22px}
   .head h1{font-size:24px;font-weight:900;letter-spacing:-.5px}
   .head .client{font-size:13px;color:#6b7280;margin-top:4px}
-  .head .brand{font-size:12px;font-weight:800;color:#3b82f6;text-align:right}
-  .head .brand small{display:block;color:#9aa2af;font-weight:500;font-size:10px;margin-top:2px}
+  .head .brand{text-align:right}
+  .head .brand .bname{font-size:15px;font-weight:800;color:#1a1d27}
+  .head .brand .logo{max-height:46px;max-width:180px;object-fit:contain;display:inline-block}
+  .head .brand small{display:block;color:#9aa2af;font-weight:500;font-size:10px;margin-top:3px}
   .grid{display:grid;gap:16px}
-  .grid.cast{grid-template-columns:repeat(2,1fr)}
-  .grid.comp{grid-template-columns:1fr}
+  .grid.cast{display:flex;flex-wrap:wrap;gap:16px;justify-content:flex-start}
+  .grid.cast>.card{flex:1 1 230px;max-width:320px;min-width:0}
+  .grid.comp{grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+  .bar{max-width:1400px}
   .card{border:1px solid #e6e9ef;border-radius:10px;overflow:hidden;background:#fafbfc}
   .card .photos{display:grid;gap:2px}
   .card.cast .photos{grid-template-columns:1fr}
@@ -118,11 +139,14 @@ export function buildPackageHtml(pkg: Pkg, agencyName = "Modiq"): string {
   .ph img{width:100%;height:100%;object-fit:cover;display:block}
   .ph.noimg{display:flex;align-items:center;justify-content:center;color:#aeb4bf;font-size:12px;aspect-ratio:3/4}
   .meta{padding:12px 14px}
+  .meta .nmrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
   .meta .nm{font-size:17px;font-weight:800}
-  .meta .cat{display:inline-block;margin-top:4px;font-size:11px;color:#5a6270;background:#eef1f5;padding:2px 8px;border-radius:10px}
-  .meta .sz{font-size:12.5px;color:#3f4754;margin-top:7px;font-variant-numeric:tabular-nums}
+  .meta .fol{font-size:11px;color:#E1306C;font-weight:700;white-space:nowrap}
+  .meta .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px}
+  .meta .cat{font-size:11px;color:#5a6270;background:#eef1f5;padding:2px 8px;border-radius:10px}
+  .meta .idl{font-size:12px;color:#3f4754}
+  .meta .sz{font-size:12.5px;color:#3f4754;margin-top:6px;font-variant-numeric:tabular-nums}
   .meta .cap{font-size:12px;color:#6b7280;margin-top:6px;line-height:1.5}
-  .meta .ig{font-size:11px;color:#E1306C;margin-top:6px;word-break:break-all}
   .foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:20px}
   @media print{body{background:#fff;padding:0}.bar{display:none}.sheet{box-shadow:none;border-radius:0}}
 </style></head><body>
@@ -136,13 +160,13 @@ export function buildPackageHtml(pkg: Pkg, agencyName = "Modiq"): string {
         <h1>${esc(pkg.title)}</h1>
         ${pkg.client_name ? `<div class="client">고객사: ${esc(pkg.client_name)}</div>` : ""}
       </div>
-      <div class="brand">${esc(agencyName)}<small>powered by modiq</small></div>
+      ${brandHtml}
     </div>
     <div class="grid ${isComp ? "comp" : "cast"}">
       ${(pkg.items || []).map(itemBlock).join("")}
     </div>
-    ${pkg.memo ? `<p style="font-size:12px;color:#6b7280;margin-top:18px;line-height:1.6">${esc(pkg.memo)}</p>` : ""}
-    <div class="foot">본 자료는 ${esc(agencyName)}가 제안용으로 제작했습니다. 무단 배포를 금합니다.</div>
+    ${pkg.memo ? `<p style="font-size:13px;color:#6b7280;margin-top:18px;line-height:1.6">${esc(pkg.memo)}</p>` : ""}
+    <div class="foot">본 자료는 ${footName}가 제안용으로 제작했습니다. 무단 배포를 금합니다.</div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -169,9 +193,60 @@ export function buildPackageHtml(pkg: Pkg, agencyName = "Modiq"): string {
 }
 
 // ── 팝업으로 열기 (PDF/인쇄) ──
-export function openPackageWindow(pkg: Pkg, agencyName = "Modiq") {
+export function openPackageWindow(pkg: Pkg, agencyName = "modiq") {
   const w = window.open("", "_blank", "width=860,height=1080");
   if (!w) { alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도하세요."); return; }
   w.document.write(buildPackageHtml(pkg, agencyName));
   w.document.close();
+}
+
+// ── 모델 1명 → 컴카드(단일 모델) 패키지 객체 ──
+export function modelToCompCard(m: any, agency: { id: string; name: string }): Pkg {
+  const age = ageFromSSN6(m.ssn6);
+  const photos: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos.slice(0, 15) : (m.thumb_url ? [m.thumb_url] : []);
+  const item: PackageItem = {
+    model_id: m.id, name: m.name || "", category: m.category || "",
+    country: m.country || "", age: age !== null ? String(age) : "",
+    height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
+    followers: m.instagram_followers || "",
+    caption: [Array.isArray(m.fields) ? m.fields.join("/") : "", m.specialty].filter(Boolean).join(" · "),
+    photos,
+  };
+  return {
+    id: genPkgId(), agency_id: agency.id, title: `${m.name || "모델"} 컴카드`,
+    client_name: "", layout: "compcard", items: [item], memo: "",
+    show_brand: true, brand_name: agency.name || "", brand_logo: "",
+    share_token: genShareToken(), is_public: false,
+  };
+}
+
+// ── 외부 스크립트 1회 로드 ──
+function ensureScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement("script");
+    s.src = src; s.onload = () => resolve(); s.onerror = () => reject(new Error("script load fail: " + src));
+    document.head.appendChild(s);
+  });
+}
+
+// ── DOM 노드를 PDF로 직접 다운로드 (인앱, 팝업 없이) ──
+// orient: "p"(세로) | "l"(가로). 가로는 컴카드(A4 landscape)용.
+export async function downloadNodePdf(el: HTMLElement, filename: string, orient: "p" | "l" = "p") {
+  await ensureScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  await ensureScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const w = window as any;
+  const canvas = await w.html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  const img = canvas.toDataURL("image/jpeg", 0.95);
+  const jsPDF = w.jspdf.jsPDF;
+  const pdf = new jsPDF(orient, "mm", "a4");
+  const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+  const ih = canvas.height * pw / canvas.width;
+  if (ih <= ph) {
+    // 세로 여백 가운데 정렬 (가로 컴카드가 페이지 안에 깔끔히 들어가도록)
+    pdf.addImage(img, "JPEG", 0, Math.max(0, (ph - ih) / 2), pw, ih);
+  } else {
+    let pos = 0, rem = ih; while (rem > 0) { pdf.addImage(img, "JPEG", 0, pos, pw, ih); rem -= ph; if (rem > 0) { pdf.addPage(); pos -= ph; } }
+  }
+  pdf.save(filename.replace(/[\\/:*?"<>|]/g, "_"));
 }

@@ -48,11 +48,18 @@ export default function PackagesView({ packages, setPackages, models, customers,
 
   const newDraft = (): Pkg => ({
     id: genPkgId(), agency_id: agency.id, title: "", client_name: "",
-    layout: "casting", items: [], memo: "", share_token: genShareToken(), is_public: true,
+    layout: "casting", items: [], memo: "",
+    show_brand: true, brand_name: agency.name || "", brand_logo: "",
+    share_token: genShareToken(), is_public: true,
   });
 
+  const setLogo = (files: FileList | null) => {
+    const f = files?.[0]; if (!f) return;
+    resizeImage(f, data => upd({ brand_logo: data }));
+  };
+
   const startNew = () => { setDraft(newDraft()); setIsNew(true); };
-  const startEdit = (p: Pkg) => { setDraft(JSON.parse(JSON.stringify(p))); setIsNew(false); };
+  const startEdit = (p: Pkg) => { setDraft({ show_brand: true, brand_name: agency.name || "", brand_logo: "", ...JSON.parse(JSON.stringify(p)) }); setIsNew(false); };
   const closeBuilder = () => { setDraft(null); setModelPick(false); setPickQ(""); };
 
   const upd = (patch: Partial<Pkg>) => setDraft(d => d ? { ...d, ...patch } : d);
@@ -210,6 +217,37 @@ export default function PackagesView({ packages, setPackages, models, customers,
               ))}
             </div>
           </div>
+        </div>
+
+        {/* 브랜딩 (이름 표시 토글 + 로고) */}
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 14, paddingTop: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.text, fontWeight: 600, cursor: "pointer" }}>
+            <input type="checkbox" checked={draft.show_brand} onChange={e => upd({ show_brand: e.target.checked })} style={{ width: 16, height: 16, cursor: "pointer" }} />
+            고객 화면·PDF에 에이전시 이름/로고 표시
+          </label>
+          {draft.show_brand && (
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end", marginTop: 12 }}>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>표시 이름</label>
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="에이전시명" value={draft.brand_name || ""} onChange={e => upd({ brand_name: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: "block", marginBottom: 4 }}>로고 (선택)</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {draft.brand_logo
+                    ? <div style={{ position: "relative" }}>
+                        <img src={draft.brand_logo} alt="" style={{ height: 40, maxWidth: 140, objectFit: "contain", border: `1px solid ${C.border}`, borderRadius: 6, padding: 4, background: "#fff" }} />
+                        <span onClick={() => upd({ brand_logo: "" })} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
+                      </div>
+                    : <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", border: `1px dashed ${C.border}`, borderRadius: 6, cursor: "pointer", color: C.textSub, fontSize: 12, fontWeight: 600 }}>
+                        로고 업로드
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setLogo(e.target.files)} />
+                      </label>}
+                </div>
+              </div>
+            </div>
+          )}
+          {!draft.show_brand && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted }}>이름·로고 없이 자료만 표시됩니다.</p>}
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
-  MODEL_CATEGORIES, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
+  MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
 } from "./constants";
 import type { AuthMode, Page } from "./constants";
@@ -23,7 +23,7 @@ import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
 import CalendarView from "./views/CalendarView";
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, Settings, AimoMark } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView";
@@ -36,9 +36,11 @@ import PlanView from "./views/PlanView";
 import RevenueView from "./views/RevenueView";
 import CompanyView from "./views/CompanyView";
 import PackagesView from "./views/PackagesView";
+import ModelStudioView from "./views/ModelStudioView";
 import PackagePublicView from "./views/PackagePublicView";
 import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
+import CompCardModal from "./components/CompCardModal";
 import SettlementStatementModal from "./components/SettlementStatementModal";
 
 // ── 프리텐다드 폰트 로드 ──
@@ -238,6 +240,7 @@ export default function App() {
   const [showMemberForm,   setShowMemberForm]   = useState(false);
   const [selectedBooking,    setSelectedBooking]    = useState<any>(null);
   const [selectedModel,      setSelectedModel]      = useState<any>(null);
+  const [compModel,          setCompModel]          = useState<any>(null); // 컴카드 모달 대상(모델 DB 상세에서 열기)
   const [selectedCustomer,   setSelectedCustomer]   = useState<any>(null); // 고객사 상세
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
   const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
@@ -267,6 +270,21 @@ export default function App() {
   const [mThumb,       setMThumb]       = useState("");
   const [mAimoUrl,     setMAimoUrl]     = useState("");
   const [mMemo,        setMMemo]        = useState("");
+  // ── 신체/프로필 확장 ──
+  const [mHeight,      setMHeight]      = useState("");
+  const [mShoe,        setMShoe]        = useState("");
+  const [mBust,        setMBust]        = useState("");
+  const [mWaist,       setMWaist]       = useState("");
+  const [mHip,         setMHip]         = useState("");
+  const [mHair,        setMHair]        = useState("");
+  const [mEye,         setMEye]         = useState("");
+  const [mTattoo,      setMTattoo]      = useState(false);
+  const [mUnderwear,   setMUnderwear]   = useState(false);
+  const [mFields,      setMFields]      = useState<string[]>([]);
+  const [mSpecialty,   setMSpecialty]   = useState("");
+  const [mFollowers,   setMFollowers]   = useState("");
+  const [mHairColor,   setMHairColor]   = useState("");
+  const [mSizeUnit,    setMSizeUnit]    = useState<"cm"|"inch">("cm"); // 3사이즈 입력 단위(저장은 항상 cm)
   // 정산 세무: 유형 + 기본 정산방식(섭외에서 미지정 시 사용)
   const [mTaxType,  setMTaxType]  = useState<"foreigner"|"freelancer"|"company">("freelancer");
   const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
@@ -456,11 +474,15 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  // 사이즈 단위 변환 (저장은 항상 cm)
+  const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
+  const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
+  const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
     const isFgn = mTaxType==="foreigner";
-    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
+    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -475,6 +497,7 @@ export default function App() {
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
     setMKakao(m.kakao_id||""); setMBank(m.bank_info||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
+    setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMEditMode(true);
   };
@@ -482,7 +505,7 @@ export default function App() {
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
     const isFgn = mTaxType==="foreigner";
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -1280,7 +1303,8 @@ async function sharePdf(){
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
     { target:"models"     as Page, label:"모델",     icon:User },
-    { target:"packages"   as Page, label:"패키지",   icon:CardCheck },
+    { target:"studio"     as Page, label:"스튜디오", icon:Camera },
+    { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
@@ -1290,7 +1314,7 @@ async function sharePdf(){
   const adminItems = [
     ...(myRole==="owner"?[{target:"members" as Page,label:"담당자",icon:Agents}]:[]),
     ...(myRole==="owner"?[{target:"company" as Page,label:"설정",icon:Settings}]:[]),
-    { target:"plan" as Page, label:"요금제", icon:CardCheck },
+    { target:"plan" as Page, label:"요금제", icon:CreditCard },
   ];
 
   // ══════════════════════════════════════════════
@@ -1393,6 +1417,8 @@ async function sharePdf(){
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
 
         {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
+
+        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} />}
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
@@ -2114,6 +2140,7 @@ async function sharePdf(){
             </div>
             <div style={{ display:"flex", gap:8, flexShrink:0 }}>
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
+              <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
             </div>
           </div>
@@ -2340,6 +2367,58 @@ async function sharePdf(){
                 onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
             </div>
           </div>
+          {/* ── 신체 정보 · 프로필 ── */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 정보 · 프로필 <span style={{ fontWeight:500, color:C.muted }}>(컴카드·패키지에 표시)</span></p>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(2, 1fr)", gap:8, marginBottom:8, maxWidth:isMobile?undefined:320 }}>
+              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="키(cm)" value={mHeight} onChange={e=>setMHeight(e.target.value)} />
+              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="신발(mm)" value={mShoe} onChange={e=>setMShoe(e.target.value)} />
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, flexWrap:"wrap" }}>
+              <span style={{ fontSize:11, color:C.muted }}>가슴·허리·엉덩이 단위</span>
+              {(["cm","inch"] as const).map(u=>(
+                <button key={u} type="button" onClick={()=>switchSizeUnit(u)} style={{ padding:"3px 11px", borderRadius:14, border:`1px solid ${mSizeUnit===u?C.blue:C.border}`, background:mSizeUnit===u?C.blue+"22":"transparent", color:mSizeUnit===u?C.blue:C.muted, fontSize:11, fontWeight:mSizeUnit===u?700:500, cursor:"pointer" }}>{u}</button>
+              ))}
+              <span style={{ fontSize:10, color:C.muted }}>{mSizeUnit==="inch"?"※ 저장 시 cm로 자동 변환":"cm로 저장·표시"}</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginBottom:10, maxWidth:isMobile?undefined:480 }}>
+              {([[`가슴(${mSizeUnit})`,mBust,setMBust],[`허리(${mSizeUnit})`,mWaist,setMWaist],[`엉덩이(${mSizeUnit})`,mHip,setMHip]] as [string,string,(v:string)=>void][]).map(([ph,val,set])=>(
+                <input key={ph} style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder={ph} value={val} onChange={e=>set(e.target.value)} />
+              ))}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4, 1fr)", gap:8, marginBottom:10 }}>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>머리 길이</label>
+                <select style={{ ...inp, marginBottom:0 }} value={mHair} onChange={e=>setMHair(e.target.value)}>
+                  <option value="">선택</option>
+                  {HAIR_LENGTHS.map(h=><option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>머리색</label>
+                <input style={{ ...inp, marginBottom:0 }} placeholder="예: 다크블론드" value={mHairColor} onChange={e=>setMHairColor(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>눈동자색</label>
+                <select style={{ ...inp, marginBottom:0 }} value={mEye} onChange={e=>setMEye(e.target.value)}>
+                  <option value="">선택</option>
+                  {EYE_COLORS.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:"#E1306C", display:"block", marginBottom:5 }}>인스타 팔로워 수</label>
+                <input style={{ ...inp, marginBottom:0 }} type="text" placeholder="예: 12500" value={mFollowers} onChange={e=>setMFollowers(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+              <button type="button" onClick={()=>setMTattoo(v=>!v)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mTattoo?C.purple:C.border}`, background:mTattoo?C.purple+"22":"transparent", color:mTattoo?C.purple:C.muted, fontSize:12, fontWeight:mTattoo?700:500, cursor:"pointer" }}>타투 {mTattoo?"있음":"없음"}</button>
+              <button type="button" onClick={()=>setMUnderwear(v=>!v)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mUnderwear?C.purple:C.border}`, background:mUnderwear?C.purple+"22":"transparent", color:mUnderwear?C.purple:C.muted, fontSize:12, fontWeight:mUnderwear?700:500, cursor:"pointer" }}>언더웨어 촬영 {mUnderwear?"가능":"불가"}</button>
+            </div>
+            <MultiCheck label="분야 (복수 선택)" options={MODEL_FIELDS} value={mFields} onChange={setMFields} />
+            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>특기 <span style={{ color:C.muted }}>(쉼표로 구분 — 노래, 외국어, 수영, 스키 등)</span></label>
+            <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
+          </div>
+
           {/* ── 정산 세무 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
             <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
@@ -2492,6 +2571,16 @@ async function sharePdf(){
       {/* ════ 모달: 정산 내역서 (월별/기간별 + 엑셀) ════ */}
       {showStatement && (
         <SettlementStatementModal bookings={bookings} models={models} customers={customers} isMobile={isMobile} onClose={()=>setShowStatement(false)} />
+      )}
+
+      {/* ════ 모달: 컴카드 (모델 DB 상세에서 열기) ════ */}
+      {compModel && (
+        <CompCardModal model={compModel} agency={agency} onClose={()=>setCompModel(null)}
+          onSave={async (compcard)=>{
+            await sb("models","PATCH",{ compcard }, `?id=eq.${compModel.id}`);
+            setModels(models.map(m=>m.id===compModel.id?{...m,compcard}:m));
+            setCompModel((c:any)=>c?{...c,compcard}:c);
+          }} />
       )}
 
       {/* ════ 모달: 대량 등록 (모델·고객사 공용) ════ */}

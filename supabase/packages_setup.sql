@@ -13,6 +13,9 @@ create table if not exists packages (
   layout      text default 'casting',          -- 'casting'(다중 모델 그리드) | 'compcard'(단일 모델 카드)
   items       jsonb default '[]'::jsonb,        -- [{model_id,name,category,height,bust,waist,hip,shoe,instagram_url,caption,photos:[base64...]}]
   memo        text default '',
+  show_brand  boolean default true,             -- 고객 화면/PDF에 에이전시 이름·로고 표시 여부
+  brand_name  text default '',                  -- 표시 이름 (기본 = 에이전시명)
+  brand_logo  text default '',                  -- 로고 이미지 (base64 data URL, 선택)
   share_token text not null,                    -- 공개 링크용 추측 불가 토큰
   is_public   boolean default true,             -- false면 링크 비활성(공개 조회 차단)
   created_at  timestamptz default now()

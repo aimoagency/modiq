@@ -9,6 +9,8 @@ import { type Pkg, type PackageItem, sizeLine, openPackageWindow } from "../lib/
 export default function PackagePublicView({ token }: { token: string }) {
   const [pkg, setPkg] = useState<Pkg | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "notfound">("loading");
+  const [gallery, setGallery] = useState<PackageItem | null>(null);          // 모델 전체 사진 화면
+  const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 가운데 플로팅 확대
 
   useEffect(() => {
     (async () => {
@@ -39,50 +41,132 @@ export default function PackagePublicView({ token }: { token: string }) {
 
   const isComp = pkg.layout === "compcard";
 
+  const fmtFollowers = (f?: string) => {
+    if (!f) return "";
+    const n = Number(String(f).replace(/[^0-9]/g, ""));
+    if (!n) return String(f);
+    return n >= 10000 ? `${(n / 10000).toFixed(n % 10000 === 0 ? 0 : 1)}만` : n.toLocaleString();
+  };
+
   const Card = ({ it }: { it: PackageItem }) => {
-    const photos = (it.photos || []).slice(0, isComp ? 6 : 3);
-    const size = sizeLine(it);
+    const all = it.photos || [];
+    const photos = all.slice(0, isComp ? 5 : 3);            // 컴카드 5장, 캐스팅 카드 3장 (전체는 갤러리에서)
+    const size = sizeLine(it);                               // 키 · 3사이즈 · 신발
+    const idLine = [it.country, it.age ? `${it.age}세` : ""].filter(Boolean).join(" · ");
+    const fol = fmtFollowers(it.followers);
     return (
-      <div style={{ border: "1px solid #e6e9ef", borderRadius: 10, overflow: "hidden", background: "#fafbfc" }}>
+      <div style={{ border: "1px solid #e6e9ef", borderRadius: 10, overflow: "hidden", background: "#fafbfc", ...(isComp ? {} : { flex: "1 1 230px", maxWidth: 320, minWidth: 0 }) }}>
         <div style={{ display: "grid", gap: 2, gridTemplateColumns: isComp ? "repeat(3,1fr)" : "1fr" }}>
           {photos.length ? photos.map((p, i) => (
-            <div key={i} style={{ aspectRatio: "3/4", background: "#e9edf2", overflow: "hidden" }}>
+            <div key={i} onClick={() => setGallery(it)} style={{ aspectRatio: "3/4", background: "#e9edf2", overflow: "hidden", cursor: "pointer", position: "relative" }}>
               <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              {i === 0 && all.length > 1 && <span style={{ position: "absolute", bottom: 6, right: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>＋{all.length}장 보기</span>}
             </div>
           )) : (
             <div style={{ aspectRatio: "3/4", background: "#e9edf2", display: "flex", alignItems: "center", justifyContent: "center", color: "#aeb4bf", fontSize: 12 }}>사진 없음</div>
           )}
         </div>
         <div style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 17, fontWeight: 800 }}>{it.name || "이름 미정"}</div>
-          {it.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: "#5a6270", background: "#eef1f5", padding: "2px 8px", borderRadius: 10 }}>{it.category}</span>}
-          {size && <div style={{ fontSize: 12.5, color: "#3f4754", marginTop: 7, fontVariantNumeric: "tabular-nums" }}>{size}</div>}
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>{it.name || "이름 미정"}</div>
+            {fol && <span style={{ fontSize: 11, color: "#E1306C", fontWeight: 700, whiteSpace: "nowrap" }}>♥ {fol}</span>}
+          </div>
+          <div style={{ marginTop: 5, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            {it.category && <span style={{ fontSize: 11, color: "#5a6270", background: "#eef1f5", padding: "2px 8px", borderRadius: 10 }}>{it.category}</span>}
+            {idLine && <span style={{ fontSize: 12, color: "#3f4754" }}>{idLine}</span>}
+          </div>
+          {size && <div style={{ fontSize: 12.5, color: "#3f4754", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{size}</div>}
           {it.caption && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{it.caption}</div>}
-          {it.instagram_url && <a href={it.instagram_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#E1306C", marginTop: 6, display: "block", wordBreak: "break-all" }}>{it.instagram_url}</a>}
         </div>
       </div>
     );
   };
 
+  const maxW = 1600;
   return (
     <div style={wrap}>
-      <div style={{ maxWidth: 780, margin: "0 auto 14px", display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ maxWidth: maxW, margin: "0 auto 14px", display: "flex", justifyContent: "flex-end" }}>
         <button onClick={() => openPackageWindow(pkg)} style={{ padding: "9px 16px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", color: "#fff", background: "#3b82f6" }}>PDF 저장 / 인쇄</button>
       </div>
-      <div style={{ maxWidth: 780, margin: "0 auto", background: "#fff", borderRadius: 12, padding: "34px 32px", boxShadow: "0 4px 24px rgba(0,0,0,.08)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #1a1d27", paddingBottom: 14, marginBottom: 22 }}>
+      <div style={{ maxWidth: maxW, margin: "0 auto", background: "#fff", borderRadius: 12, padding: "clamp(20px, 3vw, 36px)", boxShadow: "0 4px 24px rgba(0,0,0,.08)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #1a1d27", paddingBottom: 14, marginBottom: 22, flexWrap: "wrap", gap: 8 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-.5px" }}>{pkg.title}</h1>
+            <h1 style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 900, letterSpacing: "-.5px" }}>{pkg.title}</h1>
             {pkg.client_name && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>고객사: {pkg.client_name}</div>}
           </div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#3b82f6", textAlign: "right" }}>modiq<small style={{ display: "block", color: "#9aa2af", fontWeight: 500, fontSize: 10, marginTop: 2 }}>talent package</small></div>
+          {pkg.show_brand && (
+            <div style={{ textAlign: "right" }}>
+              {pkg.brand_logo
+                ? <img src={pkg.brand_logo} alt="" style={{ maxHeight: 46, maxWidth: 180, objectFit: "contain", display: "inline-block" }} />
+                : <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1d27" }}>{pkg.brand_name || "modiq"}</div>}
+              <small style={{ display: "block", color: "#9aa2af", fontWeight: 500, fontSize: 10, marginTop: 3 }}>talent package</small>
+            </div>
+          )}
         </div>
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: isComp ? "1fr" : "repeat(2,1fr)" }}>
+        <div style={isComp
+          ? { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))" }
+          : { display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "flex-start" }}>
           {(pkg.items || []).map((it, i) => <Card key={i} it={it} />)}
         </div>
-        {pkg.memo && <p style={{ fontSize: 12, color: "#6b7280", marginTop: 18, lineHeight: 1.6 }}>{pkg.memo}</p>}
+        {pkg.memo && <p style={{ fontSize: 13, color: "#6b7280", marginTop: 18, lineHeight: 1.6 }}>{pkg.memo}</p>}
         <div style={{ textAlign: "center", fontSize: 10, color: "#9aa2af", marginTop: 20 }}>본 자료는 제안용으로 제작되었습니다. 무단 배포를 금합니다.</div>
       </div>
+
+      {/* 1단계 — 모델 전체 사진 갤러리 화면 */}
+      {gallery && (() => {
+        const g = gallery;
+        const gph = g.photos || [];
+        const gsize = sizeLine(g);
+        const gid = [g.country, g.age ? `${g.age}세` : ""].filter(Boolean).join(" · ");
+        const gfol = fmtFollowers(g.followers);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,0.97)", zIndex: 2000, overflowY: "auto", padding: "clamp(16px,4vw,40px)" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 20, color: "#fff", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 24, fontWeight: 900 }}>{g.name || "모델"}</span>
+                    {gfol && <span style={{ fontSize: 13, color: "#E1306C", fontWeight: 700 }}>♥ {gfol}</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#c8ccd8", marginTop: 6 }}>
+                    {[g.category, gid, gsize].filter(Boolean).join("   ·   ")}
+                  </div>
+                  {g.caption && <div style={{ fontSize: 12.5, color: "#9aa2af", marginTop: 4 }}>{g.caption}</div>}
+                </div>
+                <button onClick={() => setGallery(null)} style={{ background: "transparent", border: "1px solid #ffffff44", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>× 닫기</button>
+              </div>
+              {gph.length ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 10 }}>
+                  {gph.map((p, i) => (
+                    <div key={i} onClick={() => setZoom({ photos: gph, idx: i })} style={{ aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", cursor: "zoom-in", background: "#22263a" }}>
+                      <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </div>
+                  ))}
+                </div>
+              ) : <p style={{ color: "#9aa2af" }}>등록된 사진이 없습니다.</p>}
+              <p style={{ textAlign: "center", color: "#6b7280", fontSize: 12, marginTop: 18 }}>사진을 클릭하면 가운데에서 크게 볼 수 있습니다.</p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 2단계 — 가운데 플로팅 확대 (갤러리 위에 표시, 바깥 클릭 시 갤러리로 복귀) */}
+      {zoom && (
+        <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100, padding: 20 }}>
+          <span onClick={() => setZoom(null)} style={{ position: "absolute", top: 14, right: 18, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          {zoom.photos.length > 1 && (
+            <span onClick={e => { e.stopPropagation(); setZoom(s => s ? { ...s, idx: (s.idx - 1 + s.photos.length) % s.photos.length } : s); }}
+              style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 12, userSelect: "none" }}>‹</span>
+          )}
+          <img onClick={e => e.stopPropagation()} src={zoom.photos[zoom.idx]} alt=""
+            style={{ maxWidth: "90vw", maxHeight: "86vh", objectFit: "contain", borderRadius: 10, boxShadow: "0 10px 50px rgba(0,0,0,.6)" }} />
+          {zoom.photos.length > 1 && (
+            <span onClick={e => { e.stopPropagation(); setZoom(s => s ? { ...s, idx: (s.idx + 1) % s.photos.length } : s); }}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 12, userSelect: "none" }}>›</span>
+          )}
+          <span style={{ position: "absolute", bottom: 16, left: 0, right: 0, textAlign: "center", color: "#9aa2af", fontSize: 12 }}>{zoom.idx + 1} / {zoom.photos.length} · 바깥을 클릭하면 갤러리로</span>
+        </div>
+      )}
     </div>
   );
 }
