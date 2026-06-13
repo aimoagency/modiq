@@ -252,7 +252,7 @@ export async function shareNodePng(el: HTMLElement, filename: string, title = ""
 
 // ── 단일 모델 컴카드(A4 가로) HTML — 좌 메인 1컷 + 우 2×2 + 하단 정보바 ──
 //  공개 패키지/PDF에서 PackageItem(스냅샷)으로부터 컴카드를 즉석 생성
-function compCardInnerHtml(it: PackageItem, brandName = ""): string {
+export function compCardInnerHtml(it: PackageItem, brandName = ""): string {
   const ph = it.photos || [];
   // html2canvas는 <img object-fit:cover>를 무시해 이미지를 눌러버림 → background-size:cover로 그려야 비율 유지됨
   const cell = (i: number) =>

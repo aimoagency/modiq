@@ -4,7 +4,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useState } from "react";
 import { sb } from "../lib/supabase";
-import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf } from "../lib/packages";
+import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf, compCardInnerHtml } from "../lib/packages";
 
 export default function PackagePublicView({ token }: { token: string }) {
   const [pkg, setPkg] = useState<Pkg | null>(null);
@@ -12,6 +12,7 @@ export default function PackagePublicView({ token }: { token: string }) {
   const [gallery, setGallery] = useState<PackageItem | null>(null);          // 모델 전체 사진 화면
   const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 가운데 플로팅 확대
   const [downloading, setDownloading] = useState<string | null>(null);              // 컴카드 PDF 생성 중인 항목
+  const [compItem, setCompItem] = useState<PackageItem | null>(null);                // 컴카드 미리보기 대상
 
   useEffect(() => {
     (async () => {
@@ -84,10 +85,10 @@ export default function PackagePublicView({ token }: { token: string }) {
             {size && <div style={{ fontSize: 12.5, color: "#3f4754", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{size}</div>}
             {it.caption && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{it.caption}</div>}
           </div>
-          <button onClick={(e) => { e.stopPropagation(); downloadComp(it, dlKey); }} disabled={downloading === dlKey || !all.length}
-            title={all.length ? "이 모델의 컴카드를 A4 가로 PDF로 저장" : "사진이 없어 컴카드를 만들 수 없습니다"}
+          <button onClick={(e) => { e.stopPropagation(); if (all.length) setCompItem(it); }} disabled={!all.length}
+            title={all.length ? "컴카드 미리보기" : "사진이 없어 컴카드를 만들 수 없습니다"}
             style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, padding: "8px 11px", background: all.length ? "#1a1d27" : "#c8ccd8", color: "#fff", border: "none", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: all.length ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
-            {downloading === dlKey ? "생성 중…" : "⬇ 컴카드"}
+            컴카드
           </button>
         </div>
       </div>
@@ -177,6 +178,22 @@ export default function PackagePublicView({ token }: { token: string }) {
               style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 12, userSelect: "none" }}>›</span>
           )}
           <span style={{ position: "absolute", bottom: 16, left: 0, right: 0, textAlign: "center", color: "#9aa2af", fontSize: 12 }}>{zoom.idx + 1} / {zoom.photos.length} · 바깥을 클릭하면 갤러리로</span>
+        </div>
+      )}
+
+      {/* 컴카드 미리보기 → 다운로드 */}
+      {compItem && (
+        <div onClick={() => setCompItem(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,17,23,0.93)", zIndex: 2200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "clamp(16px,3vw,32px)", overflowY: "auto" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width: "min(94vw, 940px)", aspectRatio: "297 / 210", background: "#fff", borderRadius: 6, overflow: "hidden", boxShadow: "0 12px 50px rgba(0,0,0,.5)" }}
+            dangerouslySetInnerHTML={{ __html: compCardInnerHtml(compItem, pkg.show_brand ? (pkg.brand_name || "") : "") }} />
+          <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => downloadComp(compItem, "preview")} disabled={downloading === "preview"}
+              style={{ padding: "10px 22px", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: downloading === "preview" ? 0.6 : 1 }}>
+              {downloading === "preview" ? "생성 중…" : "⬇ 다운로드"}
+            </button>
+            <button onClick={() => setCompItem(null)} style={{ padding: "10px 18px", background: "transparent", color: "#fff", border: "1px solid #ffffff55", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>닫기</button>
+          </div>
         </div>
       )}
     </div>
