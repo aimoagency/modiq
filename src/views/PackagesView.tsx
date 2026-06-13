@@ -8,8 +8,9 @@ import { C, inp, btnS } from "../theme";
 import { sb } from "../lib/supabase";
 import {
   type Pkg, type PackageItem, type PackageLayout,
-  genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow,
+  genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow, sizeLine,
 } from "../lib/packages";
+import { ageFromSSN6 } from "../lib/utils";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
 
@@ -72,8 +73,13 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const addBlankItem = () =>
     setDraft(d => d ? { ...d, items: [...d.items, emptyItem()] } : d);
   const addModelItem = (m: any) => {
+    const age = ageFromSSN6(m.ssn6);
+    // 모델 등록 정보(신체사이즈·국적·나이·팔로워 등)를 그대로 불러옴 → 패키지에서 재입력 불필요
     const it: PackageItem = {
       model_id: m.id, name: m.name || "", category: m.category || "",
+      country: m.country || "", age: age !== null ? String(age) : "",
+      height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
+      followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
       photos: Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []),
     };
@@ -302,17 +308,24 @@ export default function PackagesView({ packages, setPackages, models, customers,
               <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 사진을 눌러 추가 (최대 9장)</p>
             </div>
 
-            {/* 모델 정보 입력 */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8 }}>
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="이름" value={it.name} onChange={e => updItem(idx, { name: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="카테고리" value={it.category || ""} onChange={e => updItem(idx, { category: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="키(cm)" value={it.height || ""} onChange={e => updItem(idx, { height: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="신발(mm)" value={it.shoe || ""} onChange={e => updItem(idx, { shoe: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="가슴" value={it.bust || ""} onChange={e => updItem(idx, { bust: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="허리" value={it.waist || ""} onChange={e => updItem(idx, { waist: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="엉덩이" value={it.hip || ""} onChange={e => updItem(idx, { hip: e.target.value })} />
-              <input style={{ ...inp, marginBottom: 0 }} placeholder="인스타 URL" value={it.instagram_url || ""} onChange={e => updItem(idx, { instagram_url: e.target.value })} />
-            </div>
+            {/* 모델 정보 — DB 연결 모델은 등록 정보를 그대로 표시(재입력 불필요), 직접추가 항목만 입력칸 노출 */}
+            {it.model_id ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center", fontSize: 12.5, color: C.textSub, lineHeight: 1.6 }}>
+                {[it.category, it.country, it.age ? `${it.age}세` : "", sizeLine(it), it.followers ? `팔로워 ${it.followers}` : ""].filter(Boolean).join("  ·  ")}
+                <span style={{ fontSize: 11, color: C.muted }}>· 모델 정보에서 자동 반영 (수정은 ‘모델’ 메뉴에서)</span>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8 }}>
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="이름" value={it.name} onChange={e => updItem(idx, { name: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="카테고리" value={it.category || ""} onChange={e => updItem(idx, { category: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="키(cm)" value={it.height || ""} onChange={e => updItem(idx, { height: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="신발(mm)" value={it.shoe || ""} onChange={e => updItem(idx, { shoe: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="가슴" value={it.bust || ""} onChange={e => updItem(idx, { bust: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="허리" value={it.waist || ""} onChange={e => updItem(idx, { waist: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="엉덩이" value={it.hip || ""} onChange={e => updItem(idx, { hip: e.target.value })} />
+                <input style={{ ...inp, marginBottom: 0 }} placeholder="인스타 URL" value={it.instagram_url || ""} onChange={e => updItem(idx, { instagram_url: e.target.value })} />
+              </div>
+            )}
             <input style={{ ...inp, marginTop: 8, marginBottom: 0 }} placeholder="특기·메모 (선택)" value={it.caption || ""} onChange={e => updItem(idx, { caption: e.target.value })} />
           </div>
         ))}
