@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { C, inp } from "../theme";
-import { Coins, Download } from "../components/icons";
+import { Coins, Download, CheckCircle2 } from "../components/icons";
 import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal } from "../lib/utils";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
@@ -104,12 +104,13 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       {listed.length===0 ? <p style={{ color:C.muted }}>이 기간에 매출이 없습니다.</p> : (
         <div style={{ display:"grid", gap:6 }}>
           {listed.map(b=>(
-            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-              <span style={{ flex:1, minWidth:0, fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <span style={{ flex:1, minWidth:120, fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
               </span>
-              <span style={{ fontSize:13, fontWeight:700, color:(b.status==="SETTLED"||b.is_paid)?C.green:C.yellow, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
+              <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
+              <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
               <Badge code={b.status} />
             </div>
           ))}
