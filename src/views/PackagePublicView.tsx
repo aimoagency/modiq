@@ -4,13 +4,14 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useState } from "react";
 import { sb } from "../lib/supabase";
-import { type Pkg, type PackageItem, sizeLine, openPackageWindow } from "../lib/packages";
+import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf } from "../lib/packages";
 
 export default function PackagePublicView({ token }: { token: string }) {
   const [pkg, setPkg] = useState<Pkg | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "notfound">("loading");
   const [gallery, setGallery] = useState<PackageItem | null>(null);          // 모델 전체 사진 화면
   const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 가운데 플로팅 확대
+  const [downloading, setDownloading] = useState<string | null>(null);              // 컴카드 PDF 생성 중인 항목
 
   useEffect(() => {
     (async () => {
@@ -48,35 +49,46 @@ export default function PackagePublicView({ token }: { token: string }) {
     return n >= 10000 ? `${(n / 10000).toFixed(n % 10000 === 0 ? 0 : 1)}만` : n.toLocaleString();
   };
 
-  const Card = ({ it }: { it: PackageItem }) => {
+  const downloadComp = async (it: PackageItem, key: string) => {
+    setDownloading(key);
+    try { await downloadCompCardPdf(it, pkg.show_brand ? (pkg.brand_name || "") : ""); }
+    catch (e) { alert("컴카드 생성 실패: " + String(e)); }
+    setDownloading(null);
+  };
+
+  const Card = ({ it, idx }: { it: PackageItem; idx: number }) => {
     const all = it.photos || [];
-    const photos = all.slice(0, isComp ? 5 : 3);            // 컴카드 5장, 캐스팅 카드 3장 (전체는 갤러리에서)
-    const size = sizeLine(it);                               // 키 · 3사이즈 · 신발
+    const cover = all[0];                                     // 대표 1컷만 표시 (전체는 클릭 시 갤러리에서)
+    const size = sizeLine(it);                                // 키 · 3사이즈 · 신발
     const idLine = [it.country, it.age ? `${it.age}세` : ""].filter(Boolean).join(" · ");
     const fol = fmtFollowers(it.followers);
+    const dlKey = (it.model_id || it.name || "") + "_" + idx;
     return (
       <div style={{ border: "1px solid #e6e9ef", borderRadius: 10, overflow: "hidden", background: "#fafbfc", ...(isComp ? {} : { flex: "1 1 230px", maxWidth: 320, minWidth: 0 }) }}>
-        <div style={{ display: "grid", gap: 2, gridTemplateColumns: isComp ? "repeat(3,1fr)" : "1fr" }}>
-          {photos.length ? photos.map((p, i) => (
-            <div key={i} onClick={() => setGallery(it)} style={{ aspectRatio: "3/4", background: "#e9edf2", overflow: "hidden", cursor: "pointer", position: "relative" }}>
-              <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              {i === 0 && all.length > 1 && <span style={{ position: "absolute", bottom: 6, right: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>＋{all.length}장 보기</span>}
-            </div>
-          )) : (
-            <div style={{ aspectRatio: "3/4", background: "#e9edf2", display: "flex", alignItems: "center", justifyContent: "center", color: "#aeb4bf", fontSize: 12 }}>사진 없음</div>
-          )}
+        <div onClick={() => all.length && setGallery(it)} style={{ aspectRatio: "3/4", background: "#e9edf2", overflow: "hidden", cursor: all.length ? "pointer" : "default", position: "relative" }}>
+          {cover
+            ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#aeb4bf", fontSize: 12 }}>사진 없음</div>}
+          {all.length > 1 && <span style={{ position: "absolute", bottom: 6, right: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>＋{all.length}장 보기</span>}
         </div>
-        <div style={{ padding: "12px 14px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: 17, fontWeight: 800 }}>{it.name || "이름 미정"}</div>
-            {fol && <span style={{ fontSize: 11, color: "#E1306C", fontWeight: 700, whiteSpace: "nowrap" }}>♥ {fol}</span>}
+        <div style={{ padding: "12px 14px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 17, fontWeight: 800 }}>{it.name || "이름 미정"}</span>
+              {fol && <span style={{ fontSize: 11, color: "#E1306C", fontWeight: 700, whiteSpace: "nowrap" }}>♥ {fol}</span>}
+            </div>
+            <div style={{ marginTop: 5, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              {it.category && <span style={{ fontSize: 11, color: "#5a6270", background: "#eef1f5", padding: "2px 8px", borderRadius: 10 }}>{it.category}</span>}
+              {idLine && <span style={{ fontSize: 12, color: "#3f4754" }}>{idLine}</span>}
+            </div>
+            {size && <div style={{ fontSize: 12.5, color: "#3f4754", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{size}</div>}
+            {it.caption && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{it.caption}</div>}
           </div>
-          <div style={{ marginTop: 5, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            {it.category && <span style={{ fontSize: 11, color: "#5a6270", background: "#eef1f5", padding: "2px 8px", borderRadius: 10 }}>{it.category}</span>}
-            {idLine && <span style={{ fontSize: 12, color: "#3f4754" }}>{idLine}</span>}
-          </div>
-          {size && <div style={{ fontSize: 12.5, color: "#3f4754", marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{size}</div>}
-          {it.caption && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{it.caption}</div>}
+          <button onClick={(e) => { e.stopPropagation(); downloadComp(it, dlKey); }} disabled={downloading === dlKey || !all.length}
+            title={all.length ? "이 모델의 컴카드를 A4 가로 PDF로 저장" : "사진이 없어 컴카드를 만들 수 없습니다"}
+            style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, padding: "8px 11px", background: all.length ? "#1a1d27" : "#c8ccd8", color: "#fff", border: "none", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: all.length ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+            {downloading === dlKey ? "생성 중…" : "⬇ 컴카드"}
+          </button>
         </div>
       </div>
     );
@@ -106,7 +118,7 @@ export default function PackagePublicView({ token }: { token: string }) {
         <div style={isComp
           ? { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))" }
           : { display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "flex-start" }}>
-          {(pkg.items || []).map((it, i) => <Card key={i} it={it} />)}
+          {(pkg.items || []).map((it, i) => <Card key={i} it={it} idx={i} />)}
         </div>
         {pkg.memo && <p style={{ fontSize: 13, color: "#6b7280", marginTop: 18, lineHeight: 1.6 }}>{pkg.memo}</p>}
         <div style={{ textAlign: "center", fontSize: 10, color: "#9aa2af", marginTop: 20 }}>본 자료는 제안용으로 제작되었습니다. 무단 배포를 금합니다.</div>

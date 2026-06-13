@@ -250,6 +250,48 @@ export async function shareNodePng(el: HTMLElement, filename: string, title = ""
   });
 }
 
+// ── 단일 모델 컴카드(A4 가로) HTML — 좌 메인 1컷 + 우 2×2 + 하단 정보바 ──
+//  공개 패키지/PDF에서 PackageItem(스냅샷)으로부터 컴카드를 즉석 생성
+function compCardInnerHtml(it: PackageItem, brandName = ""): string {
+  const ph = it.photos || [];
+  const cell = (i: number) =>
+    ph[i]
+      ? `<div style="background:#e9edf2;border-radius:3px;overflow:hidden"><img src="${esc(ph[i])}" style="width:100%;height:100%;object-fit:cover;display:block"/></div>`
+      : `<div style="background:#f2f4f7;border:1.5px dashed #cfd5dd;border-radius:3px"></div>`;
+  const info: [string, string][] = [
+    ["이름", it.name || "-"], ["나이", it.age ? `${it.age}세` : "-"], ["성별", it.category || "-"],
+    ["키 cm", it.height || "-"], ["가슴", it.bust || "-"], ["허리", it.waist || "-"],
+    ["엉덩이", it.hip || "-"], ["신발 mm", it.shoe || "-"], ["국적", it.country || "-"],
+  ];
+  const cells = info.map(([k, v], idx) =>
+    `<div style="flex:1;text-align:center;padding:6px 2px;${idx === 0 ? "" : "border-left:1px solid #f0f2f5;"}">
+       <div style="font-size:11px;color:#9aa2af;font-weight:600;white-space:nowrap">${esc(k)}</div>
+       <div style="font-size:15px;font-weight:800;color:#1a1d27;margin-top:2px">${esc(v)}</div>
+     </div>`).join("");
+  return `
+    <div style="width:100%;height:100%;background:#fff;display:flex;flex-direction:column;padding:14px;box-sizing:border-box;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;color:#1a1d27">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #e6e9ef">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.5px">${esc(brandName)}</div>
+        <div style="font-size:10px;color:#9aa2af">talent comp card</div>
+      </div>
+      <div style="display:flex;gap:6px;flex:1;min-height:0;padding:10px 0">
+        <div style="flex:1.12;background:#e9edf2;border-radius:3px;overflow:hidden">${ph[0] ? `<img src="${esc(ph[0])}" style="width:100%;height:100%;object-fit:cover;display:block"/>` : ""}</div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px">${cell(1)}${cell(2)}${cell(3)}${cell(4)}</div>
+      </div>
+      <div style="display:flex;border-top:1px solid #e6e9ef;padding-top:4px">${cells}</div>
+    </div>`;
+}
+
+// ── 단일 모델 컴카드를 A4 가로 PDF로 즉시 다운로드 (오프스크린 렌더) ──
+export async function downloadCompCardPdf(it: PackageItem, brandName = "") {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:fixed;left:-99999px;top:0;width:1122px;height:793px;z-index:-1;background:#fff";
+  wrap.innerHTML = compCardInnerHtml(it, brandName);
+  document.body.appendChild(wrap);
+  try { await downloadNodePdf(wrap, `${it.name || "모델"}_컴카드.pdf`, "l"); }
+  finally { document.body.removeChild(wrap); }
+}
+
 // ── DOM 노드를 PDF로 직접 다운로드 (인앱, 팝업 없이) ──
 // orient: "p"(세로) | "l"(가로). 가로는 컴카드(A4 landscape)용.
 export async function downloadNodePdf(el: HTMLElement, filename: string, orient: "p" | "l" = "p") {
