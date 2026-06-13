@@ -39,7 +39,7 @@ import PackagesView from "./views/PackagesView";
 import ModelStudioView from "./views/ModelStudioView";
 import PackagePublicView from "./views/PackagePublicView";
 import CalendarAddView from "./views/CalendarAddView";
-import { bookingToCalEvent, calShareUrl } from "./lib/calendar";
+import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribeUrl } from "./lib/calendar";
 import { sendCalEmail } from "./lib/email";
 import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
@@ -835,6 +835,18 @@ export default function App() {
   const modelOffOn = (model_id: string, date: string) =>
     modelOffs.find(o => o.model_id===model_id && date>=o.start_date && date<=o.end_date) || null;
 
+  // 모델 캘린더 구독 토큰 보장(없으면 생성·저장). 실패(컬럼 미생성) 시 null.
+  const ensureCalToken = async (m: any): Promise<string | null> => {
+    if (m?.cal_token) return m.cal_token;
+    const token = genCalToken();
+    try {
+      await sb("models", "PATCH", { cal_token: token }, `?id=eq.${m.id}`);
+      setModels(models.map(x => x.id===m.id ? { ...x, cal_token: token } : x));
+      if (selectedModel?.id===m.id) setSelectedModel({ ...selectedModel, cal_token: token });
+      return token;
+    } catch { return null; }
+  };
+
   const handleChangeStatus = async (id: string, status: string) => {
     try {
       await sb("bookings","PATCH",{status},`?id=eq.${id}`);
@@ -1502,7 +1514,8 @@ async function sharePdf(){
                     {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); return m?.email?
                       <button onClick={async()=>{
                         const c=customers.find(x=>x.id===selectedBooking.customer_id);
-                        const r=await sendCalEmail(m.email, bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"), m?.name||"");
+                        const tok=await ensureCalToken(m);
+                        const r=await sendCalEmail(m.email, bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribeUrl(tok):"");
                         if(r.ok) alert(`${m.email} 으로 캘린더 일정을 보냈습니다.`);
                         else if(r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(Supabase에 email-send 함수 배포 + VITE_EMAIL_FN_URL 설정 필요)");
                         else alert("메일 발송 실패: "+(r.error||""));
@@ -2202,6 +2215,13 @@ async function sharePdf(){
               })()}
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
               <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
+              <button onClick={async()=>{
+                const token=await ensureCalToken(selectedModel);
+                if(!token){ alert("구독 토큰 저장에 실패했어요.\nSupabase models 테이블에 cal_token 컬럼이 필요합니다:\nalter table models add column if not exists cal_token text;"); return; }
+                const url=calSubscribeUrl(token);
+                try { await navigator.clipboard.writeText(url); alert("캘린더 구독 링크가 복사되었습니다.\n\n모델이 이 링크를 캘린더에 한 번 등록하면, 이후 모든 확정 일정(촬영·실물미팅)이 자동으로 동기화됩니다. 변경·취소도 자동 반영돼요.\n\n"+url); }
+                catch { prompt("구독 링크(모델에게 보내세요):", url); }
+              }} title="모델이 한 번 등록하면 자동 동기화되는 구독 링크" style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 구독 링크</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
             </div>
           </div>

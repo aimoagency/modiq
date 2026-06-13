@@ -82,6 +82,15 @@ export const decodeCalEvent = (s: string): CalEvent | null => {
 export const calShareUrl = (ev: CalEvent): string =>
   `${location.origin}${location.pathname}?cal=${encodeCalEvent(ev)}`;
 
+// ── 구독형 피드 (한 번 등록 → 자동 동기화) ──
+const SUPA_HOST = "fijtpyrmqzjefucsqfos.supabase.co";
+export const genCalToken = (): string => {
+  try { const a = new Uint8Array(18); crypto.getRandomValues(a); return Array.from(a, b => b.toString(16).padStart(2, "0")).join(""); }
+  catch { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+};
+export const calFeedUrl = (token: string) => `https://${SUPA_HOST}/functions/v1/cal-feed?token=${token}`;
+export const calSubscribeUrl = (token: string) => `webcal://${SUPA_HOST}/functions/v1/cal-feed?token=${token}`;
+
 // ── 섭외 → 캘린더 이벤트 ──
 const TYPE_LABEL: Record<string, string> = { SHOOT: "촬영", MEETING: "실물미팅", FITTING: "피팅", AUDITION: "오디션" };
 export const bookingToCalEvent = (b: any, modelName: string, clientName: string): CalEvent => {
