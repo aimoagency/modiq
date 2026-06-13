@@ -5,9 +5,21 @@
 //  · 슬롯 클릭 → 비우기 · PDF 다운로드(A4 가로)
 // ════════════════════════════════════════════════════════════════
 import { useMemo, useRef, useState } from "react";
-import { C, btnS } from "../theme";
+import type { CSSProperties } from "react";
+import { C } from "../theme";
 import { downloadNodePdf, shareNodePng } from "../lib/packages";
 import { ageFromSSN6 } from "../lib/utils";
+import { Download, Link2, Save } from "../components/icons";
+
+// 레퍼런스형 알약(pill) 버튼 — 다크 배경 위 아웃라인
+const pill = (opts: { disabled?: boolean; accent?: boolean } = {}): CSSProperties => ({
+  display: "flex", alignItems: "center", gap: 7, padding: "11px 22px", borderRadius: 999,
+  border: `1px solid ${opts.accent ? "#ffffff" : "#ffffff66"}`,
+  background: opts.accent ? "#fff" : "rgba(255,255,255,0.06)",
+  color: opts.accent ? "#1a1d27" : "#fff",
+  fontSize: 14, fontWeight: 700, cursor: opts.disabled ? "not-allowed" : "pointer",
+  opacity: opts.disabled ? 0.55 : 1, whiteSpace: "nowrap",
+});
 
 type Drag = { type: "g" | "s"; val: string | number } | null;
 
@@ -158,17 +170,23 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
       </div>
 
       {/* 버튼 */}
-      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <button onClick={download} disabled={busy} style={{ ...btnS(C.blue, busy), padding: "10px 22px", fontSize: 14 }}>{busy ? "PDF 생성 중…" : "⬇ PDF 다운로드"}</button>
+      <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
+        <button onClick={download} disabled={busy} style={pill({ disabled: busy, accent: true })}>
+          <Download size={15} /> {busy ? "PDF 생성 중…" : "PDF 다운로드"}
+        </button>
         <button onClick={async () => {
           if (!ref.current) return;
           setBusy(true);
           try { await shareNodePng(ref.current, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`); }
           catch (e) { alert("공유 실패: " + String(e)); }
           setBusy(false);
-        }} disabled={busy} style={{ ...btnS(C.purple, busy), padding: "10px 18px", fontSize: 14 }}>🔗 공유하기</button>
-        {onSave && <button onClick={saveSlots} disabled={savingSlots} style={{ ...btnS(C.green, savingSlots), padding: "10px 18px", fontSize: 14 }}>{savingSlots ? "저장 중…" : "★ 컴카드 지정 저장"}</button>}
-        <button onClick={onClose} style={{ padding: "10px 18px", background: "transparent", color: "#fff", border: "1px solid #ffffff55", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 14 }}>닫기</button>
+        }} disabled={busy} style={pill({ disabled: busy })}>
+          <Link2 size={15} /> 공유하기
+        </button>
+        {onSave && <button onClick={saveSlots} disabled={savingSlots} style={pill({ disabled: savingSlots })}>
+          <Save size={15} /> {savingSlots ? "저장 중…" : "컴카드 지정 저장"}
+        </button>}
+        <button onClick={onClose} style={pill()}>닫기</button>
       </div>
     </div>
   );
