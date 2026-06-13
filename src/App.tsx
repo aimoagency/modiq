@@ -42,6 +42,7 @@ import CalendarAddView from "./views/CalendarAddView";
 import CalSubscribeView from "./views/CalSubscribeView";
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail } from "./lib/email";
+import { gcalSync } from "./lib/gcal";
 import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
 import CompCardModal from "./components/CompCardModal";
@@ -1523,6 +1524,21 @@ async function sharePdf(){
                         else if(r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(Supabase에 email-send 함수 배포 + VITE_EMAIL_FN_URL 설정 필요)");
                         else alert("메일 발송 실패: "+(r.error||""));
                       }} style={{ ...btnS(C.purple), fontSize:12 }}><MessageSquare size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 이메일</button>
+                      : null; })()}
+                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); return m?.email?
+                      <button onClick={async()=>{
+                        const c=customers.find(x=>x.id===selectedBooking.customer_id);
+                        const ev=bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사");
+                        const input:any={ action: selectedBooking.gcal_event_id?"update":"create", agency_id:agency.id, event_id:selectedBooking.gcal_event_id, summary:ev.title, description:ev.description, location:ev.location, attendee_email:m.email };
+                        if(ev.start){ input.start=`${ev.date}T${ev.start}:00`; input.end=`${ev.date}T${ev.end||ev.start}:00`; input.all_day=false; }
+                        else { input.all_day=true; input.date=ev.date; }
+                        const r=await gcalSync(input);
+                        if(r.skipped) alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
+                        else if(r.ok){
+                          if(!selectedBooking.gcal_event_id && r.event_id){ try{ await sb("bookings","PATCH",{gcal_event_id:r.event_id},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,gcal_event_id:r.event_id}:b)); setSelectedBooking((s:any)=>s?{...s,gcal_event_id:r.event_id}:s); }catch{} }
+                          alert(`구글 캘린더에 일정이 등록되고 ${m.email} 으로 초대를 보냈습니다.`);
+                        } else alert("구글 일정 등록 실패: "+(r.error||""));
+                      }} style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedBooking.gcal_event_id?"구글 일정 갱신":"구글 일정"}</button>
                       : null; })()}
                     {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
