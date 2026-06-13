@@ -104,6 +104,7 @@ export default function App() {
   const [settlementModel,   setSettlementModel]   = useState("ALL");
   const [settlementMgr,     setSettlementMgr]     = useState("ALL");
   const [settlementProject, setSettlementProject] = useState("ALL");
+  const [settlementClient,  setSettlementClient]  = useState("ALL"); // 정산 고객사 필터
 
   // 모달
   const [showModelForm,    setShowModelForm]    = useState(false);
@@ -1139,11 +1140,10 @@ async function sharePdf(){
       if (settlementTab==="UNPAID") { if(!(b.status==="SETTLED"&&!b.is_paid)) return false; }
       if (settlementMonth!=="ALL"&&!b.shoot_date?.startsWith(settlementMonth)) return false;
       if (settlementModel!=="ALL"&&b.model_id!==settlementModel) return false;
-      if (settlementMgr!=="ALL"&&b.manager!==settlementMgr) return false;
-      if (settlementProject!=="ALL"&&b.project_name!==settlementProject) return false;
+      if (settlementClient!=="ALL"&&b.customer_id!==settlementClient) return false;
       return true;
     });
-  },[settlementData,settlementTab,settlementMonth,settlementModel,settlementMgr,settlementProject]);
+  },[settlementData,settlementTab,settlementMonth,settlementModel,settlementClient]);
 
   const settlementSummary = useMemo(()=>{
     const total = filteredSettlement.reduce((s,b)=>s+bookingTotal(b),0);
@@ -1425,7 +1425,7 @@ async function sharePdf(){
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
-        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
+        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementClient={settlementClient} setSettlementClient={setSettlementClient} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
 
         {/* ════ 담당자 ════ */}
         {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
@@ -2125,20 +2125,18 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 10px", borderRadius:10 }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
-                {selectedModel.is_foreigner&&(()=>{
-                  const dday=visaDday(selectedModel.visa_exit);
-                  const ddayColor=dday==="만료"?C.red:C.orange;
-                  return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"3px 10px", borderRadius:10 }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
-                })()}
-              </div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+            <div style={{ minWidth:0 }}>
+              <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
               <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
             </div>
-            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap" }}>
+              {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"5px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
+              {selectedModel.is_foreigner&&(()=>{
+                const dday=visaDday(selectedModel.visa_exit);
+                const ddayColor=dday==="만료"?C.red:C.orange;
+                return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"5px 10px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
+              })()}
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
               <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
@@ -2247,10 +2245,15 @@ async function sharePdf(){
           <div>
             <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({bookings.filter(b=>b.customer_id===selectedCustomer.id).length}건)</p>
             {bookings.filter(b=>b.customer_id===selectedCustomer.id).slice(0,5).map(b=>(
-              <div key={b.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
-                <div>
-                  <span style={{ fontSize:13, color:C.text }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
-                  <span style={{ fontSize:12, color:C.muted, marginLeft:8 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+              <div key={b.id} onClick={()=>openDetail("booking", b.id)}
+                className="hist-row"
+                style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}`, cursor:"pointer" }}
+                onMouseEnter={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.blue; }}
+                onMouseLeave={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.text; }}>
+                <div style={{ minWidth:0, flex:1 }}>
+                  <span className="hist-name" style={{ fontSize:13, color:C.text, fontWeight:600, transition:"color 0.15s" }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
+                  {b.project_name&&<span style={{ fontSize:12, color:C.blue, marginLeft:8 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                  <span style={{ fontSize:12, color:C.textSub, marginLeft:8, fontWeight:700 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
                 </div>
                 <Badge code={b.status} type={b.booking_type} />
               </div>
