@@ -254,9 +254,10 @@ export async function shareNodePng(el: HTMLElement, filename: string, title = ""
 //  공개 패키지/PDF에서 PackageItem(스냅샷)으로부터 컴카드를 즉석 생성
 function compCardInnerHtml(it: PackageItem, brandName = ""): string {
   const ph = it.photos || [];
+  // html2canvas는 <img object-fit:cover>를 무시해 이미지를 눌러버림 → background-size:cover로 그려야 비율 유지됨
   const cell = (i: number) =>
     ph[i]
-      ? `<div style="background:#e9edf2;border-radius:3px;overflow:hidden"><img src="${esc(ph[i])}" style="width:100%;height:100%;object-fit:cover;display:block"/></div>`
+      ? `<div style="border-radius:3px;background:#e9edf2 url('${ph[i]}') center/cover no-repeat"></div>`
       : `<div style="background:#f2f4f7;border:1.5px dashed #cfd5dd;border-radius:3px"></div>`;
   const info: [string, string][] = [
     ["이름", it.name || "-"], ["나이", it.age ? `${it.age}세` : "-"], ["성별", it.category || "-"],
@@ -275,7 +276,7 @@ function compCardInnerHtml(it: PackageItem, brandName = ""): string {
         <div style="font-size:10px;color:#9aa2af">talent comp card</div>
       </div>
       <div style="display:flex;gap:6px;flex:1;min-height:0;padding:10px 0">
-        <div style="flex:1.12;background:#e9edf2;border-radius:3px;overflow:hidden">${ph[0] ? `<img src="${esc(ph[0])}" style="width:100%;height:100%;object-fit:cover;display:block"/>` : ""}</div>
+        <div style="flex:1.12;border-radius:3px;background:#e9edf2${ph[0] ? ` url('${ph[0]}') center/cover no-repeat` : ""}"></div>
         <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px">${cell(1)}${cell(2)}${cell(3)}${cell(4)}</div>
       </div>
       <div style="display:flex;border-top:1px solid #e6e9ef;padding-top:4px">${cells}</div>

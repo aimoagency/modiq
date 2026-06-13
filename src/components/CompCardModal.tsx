@@ -102,7 +102,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
         style={{ position: "relative", background: "#e9edf2", overflow: "hidden", cursor: p ? "pointer" : "default", ...style }}
       >
         {p
-          ? <img src={p} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+          ? <div style={{ position: "absolute", inset: 0, backgroundImage: `url("${p}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
           : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", color: "#aeb4bf", fontSize: i === 0 ? 13 : 11, border: "1.5px dashed #cfd5dd", background: "#f2f4f7" }}>
               <svg width={i === 0 ? 26 : 18} height={i === 0 ? 26 : 18} viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#aeb4bf" strokeWidth="1.6"/><circle cx="8.5" cy="8.5" r="1.8" fill="#aeb4bf"/><path d="M21 15l-5-5L5 21" stroke="#aeb4bf" strokeWidth="1.6"/></svg>
               {i === 0 ? "메인 이미지" : "이미지"}
