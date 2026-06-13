@@ -38,6 +38,8 @@ import CompanyView from "./views/CompanyView";
 import PackagesView from "./views/PackagesView";
 import ModelStudioView from "./views/ModelStudioView";
 import PackagePublicView from "./views/PackagePublicView";
+import CalendarAddView from "./views/CalendarAddView";
+import { bookingToCalEvent, calShareUrl } from "./lib/calendar";
 import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
 import CompCardModal from "./components/CompCardModal";
@@ -1262,6 +1264,8 @@ async function sharePdf(){
   // ══════════════════════════════════════════════
   const pkgToken = new URLSearchParams(window.location.search).get("pkg");
   if (pkgToken) return <PackagePublicView token={pkgToken} />;
+  const calData = new URLSearchParams(window.location.search).get("cal");
+  if (calData) return <CalendarAddView data={calData} />;
 
   // ══════════════════════════════════════════════
   // 로그인 화면
@@ -1487,6 +1491,13 @@ async function sharePdf(){
             <div style={{ display:"flex", gap:8 }}>
               {!editingBooking
                 ? <>
+                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
+                      <button onClick={async()=>{
+                        const m=models.find(x=>x.id===selectedBooking.model_id); const c=customers.find(x=>x.id===selectedBooking.customer_id);
+                        const url=calShareUrl(bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"));
+                        try { await navigator.clipboard.writeText(url); alert("캘린더 링크가 복사되었습니다.\n모델에게 알림톡·메시지로 보내면, 모델이 자기 캘린더(구글/애플 등)에 일정을 추가할 수 있어요.\n\n"+url); }
+                        catch { prompt("아래 링크를 복사해 모델에게 보내세요:", url); }
+                      }} style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 링크</button>}
                     {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
                   </>
