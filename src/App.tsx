@@ -1092,46 +1092,55 @@ export default function App() {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eceff3;color:#1f2430;padding:22px 16px 30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e6ec;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(0,0,0,.3)}
-.top{display:flex;justify-content:space-between;align-items:flex-start;padding:26px 30px;background:#ffffff;color:#1f2430;border-bottom:3px solid #c9a96e}
-.hd{display:flex;align-items:center;gap:14px}
-.logo{height:54px;width:auto;max-width:170px;object-fit:contain;flex-shrink:0}
-.brand{font-size:13px;letter-spacing:.5px;color:#a8842c;font-weight:800}
-.ttl{font-size:23px;font-weight:800;margin-top:4px;color:#1f2430}
-.sub{font-size:12px;color:#8a92a0;margin-top:6px}
-.tag{display:inline-block;padding:2px 9px;border-radius:6px;font-weight:800;font-size:11px;margin-right:7px;vertical-align:1px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 26px;background:#ffffff;color:#1f2430;border-bottom:3px solid #c9a96e}
+.hd{display:flex;align-items:center;gap:13px}
+.logo{height:48px;width:auto;max-width:150px;object-fit:contain;flex-shrink:0}
+.brand{font-size:12px;letter-spacing:.5px;color:#a8842c;font-weight:800}
+.ttl{font-size:20px;font-weight:800;margin-top:3px;color:#1f2430}
+.sub{font-size:11px;color:#8a92a0;margin-top:5px}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:800;font-size:10px;margin-right:6px;vertical-align:1px}
 .tag.ok{background:#1c8f5a;color:#fff}.tag.prov{background:#d9822b;color:#fff}
-.meta{text-align:right;font-size:12px;color:#8a92a0;line-height:1.7}
-.meta b{color:#1f2430;font-size:13px}
-.body{padding:24px 30px 30px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
-.box{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;background:#fafbfc}
-.box h4{font-size:11px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:9px;text-transform:uppercase}
-.r{display:flex;gap:10px;font-size:13px;padding:3px 0}
-.r .l{color:#7c8595;min-width:74px;flex-shrink:0}
+.meta{text-align:right;font-size:11px;color:#8a92a0;line-height:1.65}
+.meta b{color:#1f2430;font-size:12px}
+.body{padding:18px 26px 22px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:13px}
+.box{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;background:#fafbfc}
+.box h4{font-size:10.5px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
+.r{display:flex;gap:9px;font-size:12px;padding:2px 0}
+.r .l{color:#7c8595;min-width:70px;flex-shrink:0}
 .r .v{color:#1f2430;font-weight:600;word-break:keep-all;overflow-wrap:break-word}
-.modelbar{display:flex;align-items:center;gap:12px;background:#1c2330;color:#fff;border-radius:10px;padding:14px 18px;margin-bottom:18px}
-.modelbar .lab{font-size:11px;color:#c9a96e;font-weight:800}
-.modelbar .nm{font-size:20px;font-weight:800}
-.sec{font-size:11px;color:#7c8595;font-weight:800;letter-spacing:.4px;margin:0 0 8px;text-transform:uppercase}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px}
-td{padding:10px 12px;border-bottom:1px solid #eef1f5}
+.modelbar{display:flex;align-items:center;gap:11px;background:#1c2330;color:#fff;border-radius:10px;padding:11px 16px;margin-bottom:13px}
+.modelbar .lab{font-size:10.5px;color:#c9a96e;font-weight:800}
+.modelbar .nm{font-size:18px;font-weight:800}
+.sec{font-size:10.5px;color:#7c8595;font-weight:800;letter-spacing:.4px;margin:0 0 7px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:13px}
+td{padding:7px 11px;border-bottom:1px solid #eef1f5}
 td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:15px;font-weight:800;color:#8a6d2f}
-tr.due td{color:#5a6373;font-size:12px}
-.notice{font-size:10.5px;color:#6b7280;line-height:1.75;background:#f6f8fa;border-radius:8px;padding:12px 14px;margin-bottom:18px}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;min-height:96px;position:relative}
-.sigbox .who{font-size:12px;color:#7c8595;font-weight:700}
-.sigbox .nm{font-size:14px;font-weight:800;margin-top:4px;color:#1f2430}
-.sigbox .seal{position:absolute;right:14px;bottom:12px;font-size:11px;color:#b8bfca}
-.foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px;line-height:1.7}
+tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:14px;font-weight:800;color:#8a6d2f}
+tr.due td{color:#5a6373;font-size:11px}
+.notice{font-size:10px;color:#6b7280;line-height:1.65;background:#f6f8fa;border-radius:8px;padding:9px 12px;margin-bottom:13px}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;min-height:74px;position:relative}
+.sigbox .who{font-size:11px;color:#7c8595;font-weight:700}
+.sigbox .nm{font-size:13px;font-weight:800;margin-top:4px;color:#1f2430}
+.sigbox .seal{position:absolute;right:13px;bottom:11px;font-size:10px;color:#b8bfca}
+.foot{text-align:center;font-size:9.5px;color:#9aa2af;margin-top:11px;line-height:1.6}
 .bar{display:flex;gap:10px;justify-content:center;max-width:760px;margin:0 auto;padding:18px 0 4px}
 .bb{flex:1 1 0;max-width:300px;border:none;border-radius:10px;padding:15px 16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
 .bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
 .topbar{max-width:760px;margin:0 auto 10px;display:flex;justify-content:flex-end}
 .xbtn{display:inline-flex;align-items:center;gap:6px;background:rgba(31,36,48,.88);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
-@media print{.topbar{display:none}}
-@media print{body{background:#fff;padding:0}.sheet{border:none;box-shadow:none;border-radius:0;max-width:none}.bar{display:none}}
+@page{size:A4 portrait;margin:12mm 14mm}
+@media print{
+  html,body{background:#fff;padding:0;margin:0}
+  .topbar,.bar{display:none}
+  .sheet{border:none;box-shadow:none;border-radius:0;max-width:none;width:100%}
+  .top{padding:14px 4px}
+  .body{padding:14px 4px 4px}
+  .grid2,.modelbar,table,.notice{margin-bottom:10px}
+  /* A4 1장 보장: 살짝 축소 */
+  .sheet{zoom:0.95}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3544,6 +3553,14 @@ async function sharePdf(){
           {/* 금액 — 촬영 타입만 표시 */}
           {BOOKING_TYPES[bBookingType]?.hasContract&&(
           <div style={{ background:C.card2, borderRadius:8, padding:14, marginBottom:10 }}>
+            {(()=>{ const m=models.find(mm=>mm.id===bModel); if(!m) return null; const f=(v:any)=>Number(v)>0?Number(v).toLocaleString("ko-KR")+"원":"-"; return (
+              <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", marginBottom:12, padding:"8px 12px", background:C.card, borderRadius:6, border:`1px solid ${C.border}`, fontSize:12 }}>
+                <span style={{ color:"#c9a96e", fontWeight:800 }}>모델료</span>
+                <span style={{ color:C.muted }}>Day <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_day)}</b></span>
+                <span style={{ color:C.muted }}>Half day <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_half)}</b></span>
+                <span style={{ color:C.muted }}>Hour <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_hour)}</b></span>
+              </div>
+            ); })()}
             <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약 금액</p>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, alignItems:"end" }}>
               <MoneyInput label="계약 총액" value={bBudget}  onChange={v=>{ setBBudget(v);  setBBalance(Math.max(0, v - bDeposit)); }} />

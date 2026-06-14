@@ -50,7 +50,7 @@ export const COUNTRIES = [
 ];
 export const SHOOT_TYPES_VIDEO = ["CF/TVC","바이럴영상","SNS영상","홈쇼핑","유튜브","브랜드필름"];
 export const USAGE_SCOPES = ["온라인","스폰서애드","잡지","옥외광고","인쇄물","홈쇼핑","TVC"];
-export const USAGE_PERIODS = ["6개월","12개월","18개월","24개월","기타"];
+export const USAGE_PERIODS = ["6개월","12개월","24개월","기타"];
 export const HOURS = [1,2,3,4,5,6,7,8,9,10,11,12];
 export const MINS  = [0,10,20,30,40,50];
 
