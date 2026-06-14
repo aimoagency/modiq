@@ -193,24 +193,33 @@ export const sessionLabel = (b: any): string => bookingSession(b) === "half" ? "
 
 // 섭외/모델 폴백:
 //  1) 섭외에 직접 지정된 값(model_pay_type+value)이 있으면 최우선 — 건별 수정값
-//  2) 없으면 모델 기본값을 세션(Day/Half)에 맞춰 사용 (모델 정보값은 최초 반영 기준)
-//  3) 그래도 없으면 비율 15%
+//  2) 없으면 모델 기본 정산방식(payout_pay_type/value) 사용
+//  3) 그래도 없으면 비율 70%
 const payCfg = (b: any, model: any): { type: string; value: number } => {
   if (b?.model_pay_type && b?.model_pay_value != null)
     return { type: b.model_pay_type, value: b.model_pay_value };
-  const type = model?.payout_pay_type ?? "rate";
-  const dayV  = model?.payout_day_value  ?? model?.payout_pay_value ?? 15;
-  const halfV = model?.payout_half_value ?? model?.payout_pay_value ?? dayV;
-  return { type, value: bookingSession(b) === "half" ? halfV : dayV };
+  return {
+    type:  model?.payout_pay_type ?? "rate",
+    value: model?.payout_pay_value ?? (model?.payout_pay_type === "fixed" ? 0 : 70),
+  };
 };
 
-// 모델 정산 기준액(세전, 공급가 기준)
-//  - 정액(fixed): 입력한 금액 그대로 = 이 섭외의 모델 총 정산액(추가비용 중복 가산 없음)
-//  - 비율(rate) : 공급가 합계(촬영비 + 오버차지) × %
+// 모델료(세션별): Day(6h~)=fee_day / Half(~5h)=fee_half. Half 미입력 시 Day로 폴백.
+export const modelSessionFee = (b: any, model: any): number => {
+  const day  = Number(model?.fee_day)  || 0;
+  const half = Number(model?.fee_half) || 0;
+  return bookingSession(b) === "half" ? (half || day) : day;
+};
+
+// 모델 정산 기준액(세전)
+//  - 정액(fixed): 입력한 정액 금액 그대로
+//  - 비율(rate) : 모델료(세션) × % — 모델료 미입력 시 공급가(촬영비) 기준으로 폴백(구버전 호환)
 export const modelGross = (b: any, model: any): number => {
   const { type, value } = payCfg(b, model);
   if (type === "fixed") return Math.round(value || 0);
-  return Math.round(supplyTotal(b) * (value || 0) / 100);
+  const fee = modelSessionFee(b, model);
+  const base = fee > 0 ? fee : supplyTotal(b);
+  return Math.round(base * (value || 0) / 100);
 };
 
 // 모델 세무 유형: 'foreigner'=외국인(전액 지급) / 'freelancer'=프리랜서(3.3% 원천징수) / 'company'=소속사(세금계산서 10% 가산)
