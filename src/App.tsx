@@ -16,6 +16,7 @@ import {
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
   modelTaxType, modelGross, modelWithholding, clientCharge,
+  bookingSession, sessionLabel, foreignerRate,
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import TypeIcon from "./components/TypeIcon";
@@ -311,7 +312,9 @@ export default function App() {
   // 정산 세무: 유형 + 기본 정산방식(섭외에서 미지정 시 사용)
   const [mTaxType,  setMTaxType]  = useState<"foreigner"|"freelancer"|"company">("freelancer");
   const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
-  const [mPayValue, setMPayValue] = useState(0);
+  const [mPayValue, setMPayValue] = useState(0); // (구) 단일 정산값 — 하위호환 보관
+  const [mPayDayValue,  setMPayDayValue]  = useState(0); // Day(9h) 정산값
+  const [mPayHalfValue, setMPayHalfValue] = useState(0); // Half(5h) 정산값
 
   // ── 고객사 폼 ──
   const [cName,       setCName]       = useState("");
@@ -501,7 +504,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -513,7 +516,7 @@ export default function App() {
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -533,13 +536,14 @@ export default function App() {
     { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
+    setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0);
     setMEditMode(true);
   };
 
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
     const isFgn = mIsForeign;
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -695,6 +699,8 @@ export default function App() {
       shoot_types:  selectedBooking.shoot_types,
       usage_scope:  selectedBooking.usage_scope,
       shoot_fee:    selectedBooking.shoot_fee,
+      model_pay_type:  selectedBooking.model_pay_type || null,
+      model_pay_value: selectedBooking.model_pay_type ? (Number(selectedBooking.model_pay_value)||0) : null,
       deposit_amt:  selectedBooking.deposit_amt,
       deposit_due:  selectedBooking.deposit_due,
       balance_amt:  clientBalance(selectedBooking),
@@ -1898,12 +1904,46 @@ async function sharePdf(){
                 ))}
               </div>
             )}
-            {bookingTotal(selectedBooking)>0&&(
-              <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({(()=>{ const t=modelTaxType(models.find(m=>m.id===selectedBooking.model_id)); return t==="foreigner"?"외국인·전액":t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외"; })()}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
-                <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+            {bookingTotal(selectedBooking)>0&&(()=>{
+              const mdl = models.find(m=>m.id===selectedBooking.model_id);
+              const t = modelTaxType(mdl);
+              const taxTxt = t==="foreigner"?`외국인·${foreignerRate(mdl)}% 제외`:t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외";
+              const sess = bookingSession(selectedBooking);
+              const ovr = !!selectedBooking.model_pay_type;
+              return (
+              <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ color:C.muted, fontSize:12 }}>
+                    모델 정산액
+                    <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:sess==="half"?C.purple+"22":C.blue+"22", color:sess==="half"?C.purple:C.blue, fontSize:10, fontWeight:700 }}>{sessionLabel(selectedBooking)}</span>
+                    <span style={{ marginLeft:6 }}>({taxTxt}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""}{ovr?", 건별 수정":""})</span>
+                  </span>
+                  <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+                </div>
+                {/* 편집 모드: 모델 지급 정산방식·금액 건별 수정 */}
+                {editingBooking&&(
+                  <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:11, color:C.muted, minWidth:54 }}>지급 방식</span>
+                      {([["","모델 기본"],["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+                        <button key={k||"def"} type="button" onClick={()=>setSelectedBooking((p:any)=>({...p, model_pay_type:k||null, ...(k===""?{model_pay_value:null}:{})}))} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${(selectedBooking.model_pay_type||"")===k?C.green:C.border}`, background:(selectedBooking.model_pay_type||"")===k?C.green+"22":"transparent", color:(selectedBooking.model_pay_type||"")===k?C.green:C.muted, fontSize:12, fontWeight:(selectedBooking.model_pay_type||"")===k?700:500, cursor:"pointer" }}>{l}</button>
+                      ))}
+                      {selectedBooking.model_pay_type&&(
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                          <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
+                            placeholder={selectedBooking.model_pay_type==="rate"?"모델 몫":"정액"}
+                            value={selectedBooking.model_pay_value!=null&&selectedBooking.model_pay_value!==""?(selectedBooking.model_pay_type==="fixed"?Number(selectedBooking.model_pay_value).toLocaleString("ko-KR"):String(selectedBooking.model_pay_value)):""}
+                            onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setSelectedBooking((p:any)=>({...p, model_pay_value:v===""?null:Number(v)})); }} />
+                          <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{selectedBooking.model_pay_type==="rate"?"%":"원"}</span>
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 비율/정액을 선택해 입력하세요.`}</p>
+                  </div>
+                )}
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* 촬영 레퍼런스 */}
@@ -2230,7 +2270,7 @@ async function sharePdf(){
               const mdl = models.find(m=>m.id===selectedSettlement.model_id);
               const bb = { ...selectedSettlement, shoot_fee: Number(editFee)||0, overcharges: editOvercharges, model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null };
               const g = modelGross(bb, mdl); const pay = bookingModelPay(bb, models); const t = modelTaxType(mdl);
-              return <p style={{ margin:"8px 0 0", fontSize:12, color:C.text }}>→ 모델 실지급 <strong style={{ color:"#c9a96e", fontSize:14 }}>{pay.toLocaleString()}원</strong> <span style={{ color:C.muted, fontSize:11 }}>(기준액 {g.toLocaleString()}원 · {t==="foreigner"?"외국인 전액":t==="company"?"+10% 계산서":"−3.3%"})</span></p>;
+              return <p style={{ margin:"8px 0 0", fontSize:12, color:C.text }}>→ 모델 실지급 <strong style={{ color:"#c9a96e", fontSize:14 }}>{pay.toLocaleString()}원</strong> <span style={{ color:C.muted, fontSize:11 }}>({sessionLabel(bb)} · 기준액 {g.toLocaleString()}원 · {t==="foreigner"?`외국인 −${foreignerRate(mdl)}%`:t==="company"?"+10% 계산서":"−3.3%"})</span></p>;
             })()}
           </div>
 
@@ -2643,36 +2683,46 @@ async function sharePdf(){
             {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
           </div>
 
-          {/* ── 정산 · 세무 (단가 포함) ── */}
+          {/* ── 정산 · 세무 (Day/Half 단가) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
-            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
-            <div style={{ marginBottom:12, maxWidth:isMobile?undefined:240 }}>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 기본 단가 (원)</label>
-              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="0"
-                value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
-                onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에 미지정 시 이 기본값이 최초 반영)</span></p>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {([["foreigner","외국인 (전액)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
+              {([["foreigner","외국인 (비자율)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
               {([["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mPayType===k?C.green:C.border}`, background:mPayType===k?C.green+"22":"transparent", color:mPayType===k?C.green:C.muted, fontSize:12, fontWeight:mPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
-              <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
-                <input style={{ ...inp, marginBottom:0, width:130 }} type="text" inputMode="numeric"
-                  placeholder={mPayType==="rate"?"모델 몫":"정액"}
-                  value={mPayValue ? (mPayType==="fixed"? Number(mPayValue).toLocaleString("ko-KR") : String(mPayValue)) : ""}
-                  onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
-                <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
-              </span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>Day 단가 <span style={{ color:C.textSub }}>(9시간 기준 · 6h~)</span></label>
+                <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric"
+                    placeholder={mPayType==="rate"?"모델 몫":"정액"}
+                    value={mPayDayValue ? (mPayType==="fixed"? Number(mPayDayValue).toLocaleString("ko-KR") : String(mPayDayValue)) : ""}
+                    onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayDayValue(Number(v)); }} />
+                  <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
+                </span>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>Half 단가 <span style={{ color:C.textSub }}>(5시간 기준 · ~5h)</span></label>
+                <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric"
+                    placeholder={mPayType==="rate"?"모델 몫":"정액"}
+                    value={mPayHalfValue ? (mPayType==="fixed"? Number(mPayHalfValue).toLocaleString("ko-KR") : String(mPayHalfValue)) : ""}
+                    onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayHalfValue(Number(v)); }} />
+                  <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
+                </span>
+              </div>
             </div>
             <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
-              {mTaxType==="foreigner" ? "지급: 정산 기준액 전액 (원천징수·부가세 없음)"
+              섭외 시간 5시간까지 Half, 6시간 이상 Day 단가가 자동 적용됩니다. (섭외 상세에서 건별 수정 가능)<br/>
+              {mTaxType==="foreigner" ? "지급: 정산 기준액 − 비자율(E-6 3.3% / C-4·기타 20% 원천징수)"
                 : mTaxType==="company" ? "지급: 정산 기준액 + 10% (세금계산서 수취)"
                 : "지급: 정산 기준액 − 3.3% (소득세 3% + 지방세 0.3% 원천징수)"}
             </p>

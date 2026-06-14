@@ -177,11 +177,32 @@ export const supplyTotal = (b: any): number => bookingTotal(b);
 export const clientCharge = (b: any): number => Math.round(supplyTotal(b) * (1 + VAT_RATE));
 export const vatAmount = (b: any): number => clientCharge(b) - supplyTotal(b);
 
-// 섭외/모델 폴백: 섭외에 지정 없으면 모델 기본값, 그것도 없으면 비율 15%
-const payCfg = (b: any, model: any): { type: string; value: number } => ({
-  type:  b?.model_pay_type  ?? model?.payout_pay_type  ?? "rate",
-  value: b?.model_pay_value ?? model?.payout_pay_value ?? 15,
-});
+// ── Day / Half 구분 ───────────────────────────────────────────
+// 섭외 시간으로 세션 판정: 1~5시간 = Half(5h 기준), 6시간 이상 = Day(9h 기준)
+// 시간 미입력(0)이면 Day로 간주.
+export const bookingHours = (b: any): number => {
+  const s = toMin(b?.start_time), e = toMin(b?.end_time);
+  if (s == null || e == null || e <= s) return 0;
+  return (e - s) / 60;
+};
+export const bookingSession = (b: any): "day" | "half" => {
+  const h = bookingHours(b);
+  return (h > 0 && h <= 5) ? "half" : "day";
+};
+export const sessionLabel = (b: any): string => bookingSession(b) === "half" ? "Half(5h)" : "Day(9h)";
+
+// 섭외/모델 폴백:
+//  1) 섭외에 직접 지정된 값(model_pay_type+value)이 있으면 최우선 — 건별 수정값
+//  2) 없으면 모델 기본값을 세션(Day/Half)에 맞춰 사용 (모델 정보값은 최초 반영 기준)
+//  3) 그래도 없으면 비율 15%
+const payCfg = (b: any, model: any): { type: string; value: number } => {
+  if (b?.model_pay_type && b?.model_pay_value != null)
+    return { type: b.model_pay_type, value: b.model_pay_value };
+  const type = model?.payout_pay_type ?? "rate";
+  const dayV  = model?.payout_day_value  ?? model?.payout_pay_value ?? 15;
+  const halfV = model?.payout_half_value ?? model?.payout_pay_value ?? dayV;
+  return { type, value: bookingSession(b) === "half" ? halfV : dayV };
+};
 
 // 모델 정산 기준액(세전, 공급가 기준)
 //  - 정액(fixed): 입력한 금액 그대로 = 이 섭외의 모델 총 정산액(추가비용 중복 가산 없음)
@@ -200,18 +221,31 @@ export const modelTaxType = (model: any): "foreigner" | "freelancer" | "company"
 export const isForeignerModel = (model: any): boolean => modelTaxType(model) === "foreigner";
 export const isCompanyModel   = (model: any): boolean => modelTaxType(model) === "company";
 
-// 프리랜서만 원천징수: 소득세 3%(원단위 절사) + 지방소득세 0.3%(소득세의 10%, 원단위 절사)
+// 외국인 원천징수율(%): 비자 유형별 자동(E-6=3.3 / C-4·기타=20). tax_rate 미설정 시 20% 기본.
+export const foreignerRate = (model: any): number => {
+  const r = Number(model?.tax_rate);
+  return r > 0 ? r : 20;
+};
+
+// 원천징수 합계
+//  - 프리랜서: 소득세 3% + 지방소득세 0.3%(소득세의 10%) = 3.3% (각 원단위 절사)
+//  - 외국인  : 비자율(3.3% 또는 20%) 적용 (원단위 절사)
+//  - 소속사  : 원천징수 없음(세금계산서 +10%)
 export const modelIncomeTax = (b: any, model: any): number => modelTaxType(model) !== "freelancer" ? 0 : floor10(modelGross(b, model) * 0.03);
 export const modelLocalTax  = (b: any, model: any): number => modelTaxType(model) !== "freelancer" ? 0 : floor10(modelIncomeTax(b, model) * 0.1);
-export const modelWithholding = (b: any, model: any): number => modelIncomeTax(b, model) + modelLocalTax(b, model);
+export const modelWithholding = (b: any, model: any): number => {
+  const t = modelTaxType(model);
+  if (t === "freelancer") return modelIncomeTax(b, model) + modelLocalTax(b, model);
+  if (t === "foreigner")  return floor10(modelGross(b, model) * foreignerRate(model) / 100);
+  return 0; // company
+};
 
-// 모델 실지급액: 외국인=기준액 전액 / 프리랜서=기준액−3.3% / 소속사=기준액+10% VAT(세금계산서)
+// 모델 실지급액: 외국인=기준액−비자율 / 프리랜서=기준액−3.3% / 소속사=기준액+10% VAT(세금계산서)
 export const modelPayout = (b: any, model: any): number => {
   const g = modelGross(b, model);
   const t = modelTaxType(model);
-  if (t === "company")   return Math.round(g * (1 + VAT_RATE));
-  if (t === "foreigner") return g;
-  return g - modelWithholding(b, model); // freelancer
+  if (t === "company") return Math.round(g * (1 + VAT_RATE));
+  return g - modelWithholding(b, model); // freelancer & foreigner 원천징수 차감
 };
 // 에이전시 마진(공급가 기준): 모델 유형과 무관하게 동일
 export const agencyMargin = (b: any, model: any): number => supplyTotal(b) - modelGross(b, model);

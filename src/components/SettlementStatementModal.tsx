@@ -5,7 +5,7 @@ import { exportAoaXlsx } from "../lib/xlsx";
 import { periodRange, fmtDate } from "../lib/utils";
 import {
   supplyTotal, vatAmount, clientCharge, clientBalanceVat,
-  modelGross, modelWithholding, modelPayout, agencyMargin, modelTaxType,
+  modelGross, modelWithholding, modelPayout, agencyMargin, modelTaxType, bookingSession,
 } from "../lib/utils";
 
 const taxLabel = (m: any) => modelTaxType(m) === "foreigner" ? "외국인" : modelTaxType(m) === "company" ? "소속사" : "프리랜서";
@@ -42,7 +42,7 @@ export default function SettlementStatementModal({
         return {
           date: b.shoot_date || "", id: b.id,
           model: m?.name || "?", customer: c?.name || "?", project: b.project_name || "",
-          tax: taxLabel(m),
+          tax: taxLabel(m), session: bookingSession(b) === "half" ? "Half" : "Day",
           supply: supplyTotal(b), vat: vatAmount(b), charge: clientCharge(b),
           deposit: b.deposit_amt || 0, depositDate: b.deposit_paid_date || "", depositPaid: !!b.deposit_paid,
           balance: clientBalanceVat(b), balanceDate: b.balance_paid_date || "", balancePaid: !!b.balance_paid,
@@ -63,17 +63,17 @@ export default function SettlementStatementModal({
   const stTxt = (paid: boolean) => paid ? "완료" : "미처리";
 
   const download = async () => {
-    const head = ["촬영일","계약ID","모델","고객사","프로젝트","세무유형","공급가","부가세(10%)","고객청구(VAT포함)",
+    const head = ["촬영일","계약ID","모델","고객사","프로젝트","세무유형","구분","공급가","부가세(10%)","고객청구(VAT포함)",
       "계약금","계약금입금일","계약금상태","잔금","잔금입금일","잔금상태",
       "모델정산기준액","가감(원천/부가세)","모델실지급","모델지급일","모델지급상태","계산서발행일","계산서상태","에이전시마진"];
     const body = rows.map((r) => [
-      r.date, r.id, r.model, r.customer, r.project, r.tax, r.supply, r.vat, r.charge,
+      r.date, r.id, r.model, r.customer, r.project, r.tax, r.session, r.supply, r.vat, r.charge,
       r.deposit, r.depositDate, r.depositPaid ? "입금" : "미입금", r.balance, r.balanceDate, r.balancePaid ? "입금" : "미입금",
       r.gross, r.adjust, r.payout, r.modelPaidDate, r.modelPaid ? "지급" : "미지급", r.invoiceDate, r.invoiceIssued ? "발행" : "미발행", r.margin,
     ]);
-    const totalRow = ["합계","","","","","", tot.supply, tot.vat, tot.charge, tot.deposit,"","", tot.balance,"","", tot.gross, (tot.payout-tot.gross), tot.payout,"","","","", tot.margin];
+    const totalRow = ["합계","","","","","","", tot.supply, tot.vat, tot.charge, tot.deposit,"","", tot.balance,"","", tot.gross, (tot.payout-tot.gross), tot.payout,"","","","", tot.margin];
     const aoa = [head, ...body, totalRow];
-    const widths = [11,16,8,12,12,8,11,10,13,10,11,9,11,11,9,13,12,11,11,11,11,9,12];
+    const widths = [11,16,8,12,12,8,6,11,10,13,10,11,9,11,11,9,13,12,11,11,11,11,9,12];
     const label = (range.from || "전체") + "_" + (range.to || "현재");
     await exportAoaXlsx(aoa, `정산내역서_${label}.xlsx`, "정산내역서", widths);
   };
@@ -122,12 +122,12 @@ export default function SettlementStatementModal({
         <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 920 }}>
           <thead>
             <tr>
-              {["촬영일","모델","고객사","프로젝트","세무","공급가","청구(VAT)","계약금","잔금","모델실지급","지급","계산서"].map((h) => <th key={h} style={th}>{h}</th>)}
+              {["촬영일","모델","고객사","프로젝트","세무","구분","공급가","청구(VAT)","계약금","잔금","모델실지급","지급","계산서"].map((h) => <th key={h} style={th}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={12} style={{ ...td, textAlign: "center", color: C.muted, padding: 20 }}>해당 기간 내역이 없습니다.</td></tr>
+              <tr><td colSpan={13} style={{ ...td, textAlign: "center", color: C.muted, padding: 20 }}>해당 기간 내역이 없습니다.</td></tr>
             ) : rows.map((r) => (
               <tr key={r.id}>
                 <td style={td}>{fmtDate(r.date)}</td>
@@ -135,6 +135,7 @@ export default function SettlementStatementModal({
                 <td style={td}>{r.customer}</td>
                 <td style={{ ...td, color: C.textSub }}>{r.project || "-"}</td>
                 <td style={td}><span style={{ fontSize: 11, color: r.tax==="외국인"?C.yellow:r.tax==="소속사"?C.purple:C.blue }}>{r.tax}</span></td>
+                <td style={td}><span style={{ fontSize: 11, color: r.session==="Half"?C.purple:C.blue }}>{r.session}</span></td>
                 <td style={numTd}>{won(r.supply)}</td>
                 <td style={numTd}>{won(r.charge)}</td>
                 <td style={numTd}>{won(r.deposit)} <span style={{ fontSize: 10, color: r.depositPaid?C.green:C.muted }}>{r.depositPaid?"✓":"·"}</span></td>
@@ -148,7 +149,7 @@ export default function SettlementStatementModal({
           {rows.length > 0 && (
             <tfoot>
               <tr style={{ position: "sticky", bottom: 0, background: C.card2 }}>
-                <td style={{ ...td, fontWeight: 800 }} colSpan={5}>합계 {rows.length}건</td>
+                <td style={{ ...td, fontWeight: 800 }} colSpan={6}>합계 {rows.length}건</td>
                 <td style={{ ...numTd, fontWeight: 800 }}>{won(tot.supply)}</td>
                 <td style={{ ...numTd, fontWeight: 800 }}>{won(tot.charge)}</td>
                 <td style={{ ...numTd, fontWeight: 800 }}>{won(tot.deposit)}</td>
