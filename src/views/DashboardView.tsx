@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { C } from "../theme";
-import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance } from "../lib/utils";
+import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance, bookingAgencyFee } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
 import { BOOKING_TYPES } from "../constants";
@@ -27,6 +27,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
       const real=mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
       const expected=mb.reduce((s,b)=>s+bookingTotal(b),0);
       const unpaid=mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+      const margin=mb.reduce((s,b)=>s+bookingAgencyFee(b,models),0);
       return (
         <div onClick={()=>setPage("revenue")} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16, cursor:"pointer", transition:"border-color 0.2s" }}
           onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)} onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
@@ -34,10 +35,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}>이번 달 매출</p>
             <span style={{ fontSize:12, color:C.blue, fontWeight:600 }}>매출 현황 전체 보기 →</span>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)", gap:12 }}>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>에이전시 이익 (마진)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.blue }}>{fmt(margin)}</p></div>
           </div>
         </div>
       );

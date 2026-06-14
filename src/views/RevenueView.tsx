@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, inp } from "../theme";
 import { Coins, Download, CheckCircle2 } from "../components/icons";
-import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal } from "../lib/utils";
+import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal, bookingAgencyFee, bookingModelPay } from "../lib/utils";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
 import { exportAoaXlsx } from "../lib/xlsx";
@@ -30,17 +30,19 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   const realAmt     = listed.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
   const expectedAmt = listed.reduce((s,b)=>s+bookingTotal(b),0);
   const unpaidAmt   = listed.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+  const modelPayAmt = listed.reduce((s,b)=>s+bookingModelPay(b,models),0);   // 모델 지급 합계
+  const marginAmt   = listed.reduce((s,b)=>s+bookingAgencyFee(b,models),0);  // 에이전시 이익(마진) = 공급가 − 모델 정산기준액
 
   const exportXlsx = async () => {
-    const head = ["촬영일","모델","고객사","프로젝트","상태","입금여부","금액"];
+    const head = ["촬영일","모델","고객사","프로젝트","상태","입금여부","매출(공급가)","모델지급","에이전시이익"];
     const rows = listed.map(b=>[
       b.shoot_date||"", models.find((m:any)=>m.id===b.model_id)?.name||"",
       customers.find((c:any)=>c.id===b.customer_id)?.name||"", b.project_name||"",
-      b.status, (b.status==="SETTLED"||b.is_paid)?"입금":"미입금", bookingTotal(b),
+      b.status, (b.status==="SETTLED"||b.is_paid)?"입금":"미입금", bookingTotal(b), bookingModelPay(b,models), bookingAgencyFee(b,models),
     ]);
-    const totalRow = ["합계","","","","","", listed.reduce((s,b)=>s+bookingTotal(b),0)];
+    const totalRow = ["합계","","","","","", listed.reduce((s,b)=>s+bookingTotal(b),0), modelPayAmt, marginAmt];
     const who = sel ? `_${sel.name}` : "";
-    try { await exportAoaXlsx([head, ...rows, totalRow], `매출${who}_${preset}_${new Date().toISOString().slice(0,10)}.xlsx`, "매출현황", [12,14,16,16,12,10,14]); }
+    try { await exportAoaXlsx([head, ...rows, totalRow], `매출${who}_${preset}_${new Date().toISOString().slice(0,10)}.xlsx`, "매출현황", [12,14,16,16,12,10,14,13,13]); }
     catch (e) { alert("엑셀 생성 실패: " + String(e)); }
   };
 
@@ -48,6 +50,8 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
     { label:"실매출 (입금 완료)", value:realAmt,     color:C.green },
     { label:"예상매출 (확정 포함)", value:expectedAmt, color:C.yellow },
     { label:"미수금 (확정·미입금)", value:unpaidAmt,   color:C.red },
+    { label:"모델 지급 (예상)",    value:modelPayAmt, color:"#c9a96e" },
+    { label:"에이전시 이익 (마진)", value:marginAmt,   color:C.blue },
   ];
 
   return (
@@ -74,7 +78,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       </div>
 
       {/* 매출 요약 카드 */}
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:12, marginBottom:18 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)", gap:12, marginBottom:18 }}>
         {cards.map(c=>(
           <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
             <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.label}</p>
@@ -110,6 +114,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
                 {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
               </span>
               <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
+              <span style={{ fontSize:11, color:C.blue, whiteSpace:"nowrap" }}>이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
               <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
               <Badge code={b.status} />
             </div>
