@@ -170,7 +170,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
           <div style={{ display: "grid", gap: 8 }}>
             {packages.map(p => (
               <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div onClick={() => openPackageWindow({ ...p }, agency.name)} title="클릭하면 생성된 화면이 열립니다" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer" }}>
                   <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
                   <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
                     {p.layout === "compcard" ? "컴카드" : "제안 패키지"}

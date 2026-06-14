@@ -3,7 +3,7 @@
 //  · 좌: 모델 검색/선택 + 프로필(썸네일·이름·정보 나열)
 //  · 우: 선택 모델의 포트폴리오 사진 업로드(최대 15장, 드래그앤드롭)
 // ════════════════════════════════════════════════════════════════
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
 import { sb } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
@@ -54,16 +54,19 @@ const infoRows = (m: any): [string, string][] => {
   return rows;
 };
 
-export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false }: {
+export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false, initModelId = "" }: {
   models: any[];
   setModels: (fn: (prev: any[]) => any[]) => void;
   setPackages: (fn: (prev: Pkg[]) => Pkg[]) => void;
   agency: { id: string; name: string };
   isMobile?: boolean;
+  initModelId?: string;
 }) {
   const [mode, setMode] = useState<"photos" | "package">("photos");
   const [q, setQ] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
+  // 모델 수정 화면 → "스튜디오" 버튼으로 들어오면 해당 모델 포트폴리오 자동 선택
+  useEffect(() => { if (initModelId) { setSelId(initModelId); setMode("photos"); } }, [initModelId]);
   const [saving, setSaving] = useState(false);
   const [drag, setDrag] = useState(false);
   // 패키징 모드

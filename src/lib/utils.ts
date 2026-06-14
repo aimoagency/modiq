@@ -196,14 +196,21 @@ export const sessionLabel = (b: any): string => bookingSession(b) === "half" ? "
 
 // 섭외/모델 폴백:
 //  1) 섭외에 직접 지정된 값(model_pay_type+value)이 있으면 최우선 — 건별 수정값
-//  2) 없으면 모델 기본 정산방식(payout_pay_type/value) 사용
-//  3) 그래도 없으면 비율 70%
+//  2) 없으면 모델 기본 정산방식(payout_pay_type) + 세션별 값(Day/Half/Hour) 사용
+//  3) 그래도 없으면 0
+const payoutSessionValue = (model: any, session: "day"|"half"|"hour"): number => {
+  const d  = model?.payout_day_value  ?? model?.payout_pay_value;
+  const h  = model?.payout_half_value ?? model?.payout_pay_value;
+  const hr = model?.payout_hour_value ?? model?.payout_pay_value;
+  const v = session === "half" ? h : session === "hour" ? hr : d;
+  return Number(v) || 0;
+};
 const payCfg = (b: any, model: any): { type: string; value: number } => {
   if (b?.model_pay_type && b?.model_pay_value != null)
     return { type: b.model_pay_type, value: b.model_pay_value };
   return {
     type:  model?.payout_pay_type ?? "rate",
-    value: model?.payout_pay_value ?? (model?.payout_pay_type === "fixed" ? 0 : 70),
+    value: payoutSessionValue(model, bookingSession(b)),
   };
 };
 
