@@ -1907,7 +1907,7 @@ async function sharePdf(){
             {bookingTotal(selectedBooking)>0&&(()=>{
               const mdl = models.find(m=>m.id===selectedBooking.model_id);
               const t = modelTaxType(mdl);
-              const taxTxt = t==="foreigner"?`외국인·${foreignerRate(mdl)}% 제외`:t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외";
+              const taxTxt = t==="foreigner"?`${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`} 제외`:t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외";
               const sess = bookingSession(selectedBooking);
               const ovr = !!selectedBooking.model_pay_type;
               return (
@@ -2208,6 +2208,12 @@ async function sharePdf(){
                     <span style={{ color:C.red }}>−{wh.toLocaleString()}원</span>
                   </div>
                 )}
+                {t==="foreigner" && (
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>원천징수 ({mdl?.visa_type==="E6"?"E6 3.3%":mdl?.visa_type==="C4"?"C4 20%":`${foreignerRate(mdl)}%`})</span>
+                    <span style={{ color:C.red }}>−{wh.toLocaleString()}원</span>
+                  </div>
+                )}
                 {t==="company" && (
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                     <span style={{ color:C.muted }}>부가세 (10%, 세금계산서)</span>
@@ -2215,7 +2221,7 @@ async function sharePdf(){
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?"(외국인·전액)":t==="company"?"(소속사)":"(프리랜서)"}</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:t==="company"?"(소속사)":"(프리랜서)"}</span>
                   <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
