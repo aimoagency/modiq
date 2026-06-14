@@ -255,6 +255,7 @@ export default function App() {
   const [navHover, setNavHover] = useState(false); // 좌측 메뉴 호버 시 펼침
   const [mEditMode, setMEditMode] = useState(false);
   const [modelHistAll, setModelHistAll] = useState(false);
+  const [custHistAll, setCustHistAll] = useState(false);
   const [cEditMode, setCEditMode] = useState(false); // 고객사 수정 모드
 
   // 섭외 추가 - 검색
@@ -973,7 +974,7 @@ export default function App() {
   // ── 모달 백스택: 다른 상세에서 연 모달을 닫으면 직전 상세로 복귀 ──
   const clearAllDetails = () => {
     setSelectedBooking(null); setEditingBooking(false); setShowBocInput(false); setBocReason(""); setBocAmount(0);
-    setSelectedSettlement(null); setSelectedModel(null); setModelHistAll(false); setSelectedCustomer(null); setSelectedProjectId(null);
+    setSelectedSettlement(null); setSelectedModel(null); setModelHistAll(false); setCustHistAll(false); setSelectedCustomer(null); setSelectedProjectId(null);
   };
   const openDetailById = (type: string, id: string) => {
     if (type==="booking")        { const b=bookings.find(x=>x.id===id); if(b){ setEditingBooking(false); setSelectedBooking(b); } }
@@ -2302,6 +2303,31 @@ async function sharePdf(){
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>출국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.yellow }}>{fmtDate(selectedModel.visa_exit)}</p></div>
             </>}
           </div>
+          {/* 신체 · 프로필 (컴카드·패키지에 쓰이는 정보) */}
+          {(()=>{ const m=selectedModel; const three=[m.bust,m.waist,m.hip].filter(Boolean).join("-"); const rows:[string,any][]=[
+              ...(m.height?[["키",`${m.height}cm`]] as [string,any][]:[]),
+              ...(three?[["3사이즈",three]] as [string,any][]:[]),
+              ...(m.shoe?[["신발",`${m.shoe}mm`]] as [string,any][]:[]),
+              ...(m.hair_length?[["머리",m.hair_length]] as [string,any][]:[]),
+              ...(m.hair_color?[["머리색",m.hair_color]] as [string,any][]:[]),
+              ...(m.eye_color?[["눈동자",m.eye_color]] as [string,any][]:[]),
+              ["타투", m.tattoo?"있음":"없음"],
+              ["언더웨어", m.underwear_ok?"가능":"불가"],
+              ...(m.instagram_followers?[["인스타 팔로워",Number(m.instagram_followers).toLocaleString()]] as [string,any][]:[]),
+            ];
+            const hasAny = rows.length>2 || (Array.isArray(m.fields)&&m.fields.length) || m.specialty;
+            if(!hasAny) return null;
+            return (
+              <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px", marginBottom:14 }}>
+                <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 · 프로필</p>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4, 1fr)", gap:10 }}>
+                  {rows.map(([k,v])=>(<div key={k}><p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p><p style={{ margin:"2px 0 0", fontSize:13.5, fontWeight:600, color:C.text }}>{v}</p></div>))}
+                </div>
+                {Array.isArray(m.fields)&&m.fields.length>0&&<div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:6 }}>{m.fields.map((f:string)=><span key={f} style={{ background:C.card, color:C.textSub, fontSize:11, padding:"3px 9px", borderRadius:10, border:`1px solid ${C.border}` }}>{f}</span>)}</div>}
+                {m.specialty&&<p style={{ margin:"8px 0 0", fontSize:12, color:C.textSub }}>특기: {m.specialty}</p>}
+              </div>
+            );
+          })()}
           {/* 링크/연락 — 인스타 · 카톡 · 구글드라이브 · 아이모 · 통장 순 */}
           <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
             {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 →</a>}
@@ -2385,23 +2411,38 @@ async function sharePdf(){
             ))}
           </div>
           {selectedCustomer.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedCustomer.memo}</p></div>}
-          <div>
-            <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({bookings.filter(b=>b.customer_id===selectedCustomer.id).length}건)</p>
-            {bookings.filter(b=>b.customer_id===selectedCustomer.id).slice(0,5).map(b=>(
-              <div key={b.id} onClick={()=>openDetail("booking", b.id)}
-                className="hist-row"
-                style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}`, cursor:"pointer" }}
-                onMouseEnter={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.blue; }}
-                onMouseLeave={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.text; }}>
-                <div style={{ minWidth:0, flex:1 }}>
-                  <span className="hist-name" style={{ fontSize:13, color:C.text, fontWeight:600, transition:"color 0.15s" }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
-                  {b.project_name&&<span style={{ fontSize:12, color:C.blue, marginLeft:8 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
-                  <span style={{ fontSize:12, color:C.textSub, marginLeft:8, fontWeight:700 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+          {(()=>{
+            const cb = bookings.filter(b=>b.customer_id===selectedCustomer.id).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
+            const shown = custHistAll ? cb : cb.slice(0,5);
+            return (
+            <div>
+              <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({cb.length}건)</p>
+              {cb.length===0&&<p style={{ color:C.muted, fontSize:13 }}>섭외 이력이 없습니다.</p>}
+              {shown.map(b=>(
+                <div key={b.id} onClick={()=>openDetail("booking", b.id)}
+                  className="hist-row"
+                  style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}`, cursor:"pointer", gap:8 }}
+                  onMouseEnter={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.blue; }}
+                  onMouseLeave={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.text; }}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <span className="hist-name" style={{ fontSize:13, color:C.text, fontWeight:600, transition:"color 0.15s" }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
+                    {b.project_name&&<span style={{ fontSize:12, color:C.blue, marginLeft:8 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    <span style={{ fontSize:12, color:C.textSub, marginLeft:8, fontWeight:700 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                    {bookingTotal(b)>0&&<span style={{ fontSize:12, color:C.yellow, fontWeight:700 }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{bookingTotal(b).toLocaleString()}원</span>}
+                    <Badge code={b.status} type={b.booking_type} />
+                  </div>
                 </div>
-                <Badge code={b.status} type={b.booking_type} />
-              </div>
-            ))}
-          </div>
+              ))}
+              {cb.length>5&&(
+                <button onClick={()=>setCustHistAll(v=>!v)} style={{ width:"100%", marginTop:10, padding:"9px", fontSize:12, fontWeight:700, color:C.blue, background:"transparent", border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>
+                  {custHistAll ? "접기 ▲" : `더 보기 (${cb.length-5}건 더) ▼`}
+                </button>
+              )}
+            </div>
+            );
+          })()}
           <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
