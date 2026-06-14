@@ -248,6 +248,7 @@ export default function App() {
   const [selectedBooking,    setSelectedBooking]    = useState<any>(null);
   const [selectedModel,      setSelectedModel]      = useState<any>(null);
   const [compModel,          setCompModel]          = useState<any>(null); // 컴카드 모달 대상(모델 DB 상세에서 열기)
+  const [showSendMenu,       setShowSendMenu]       = useState(false); // 섭외 상세 '일정 보내기' 선택창
   const [selectedCustomer,   setSelectedCustomer]   = useState<any>(null); // 고객사 상세
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
   const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
@@ -836,6 +837,37 @@ export default function App() {
   // 해당 모델이 그 날짜에 휴무인지 → 휴무 레코드(or null)
   const modelOffOn = (model_id: string, date: string) =>
     modelOffs.find(o => o.model_id===model_id && date>=o.start_date && date<=o.end_date) || null;
+
+  // ── 섭외 일정 → 모델에게 보내기 (3가지 방법) ──
+  const doGcalSync = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    const ev = bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사");
+    const input: any = { action: b.gcal_event_id?"update":"create", agency_id: agency.id, event_id: b.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: m?.email||"" };
+    if (ev.start) { const hms=(s:string)=>{ const a=String(s).split(":"); return `${(a[0]||"00").padStart(2,"0")}:${a[1]||"00"}:${a[2]||"00"}`; }; input.start=`${ev.date}T${hms(ev.start)}`; input.end=`${ev.date}T${hms(ev.end||ev.start)}`; input.all_day=false; }
+    else { input.all_day=true; input.date=ev.date; }
+    const r = await gcalSync(input);
+    if (r.skipped) return alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
+    if (r.ok) { if (!b.gcal_event_id && r.event_id) { try { await sb("bookings","PATCH",{gcal_event_id:r.event_id},`?id=eq.${b.id}`); setBookings(bookings.map(x=>x.id===b.id?{...x,gcal_event_id:r.event_id}:x)); setSelectedBooking((s:any)=>s?{...s,gcal_event_id:r.event_id}:s); } catch {} } alert(`구글 캘린더에 일정이 등록되고 ${m?.email||"모델"} 으로 초대를 보냈습니다.`); }
+    else alert("구글 일정 등록 실패: "+(r.error||""));
+  };
+  const doSendCalMail = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    if (!m?.email) return alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요.");
+    const tok = await ensureCalToken(m);
+    const r = await sendCalEmail(m.email, bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"");
+    if (r.ok) alert(`${m.email} 으로 일정을 보냈습니다.`);
+    else if (r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(email-send 함수 배포 필요)");
+    else alert("메일 발송 실패: "+(r.error||""));
+  };
+  const doCopyCalLink = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    const url = calShareUrl(bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"));
+    try { await navigator.clipboard.writeText(url); alert("캘린더 링크가 복사되었습니다.\n카톡·메시지에 붙여 보내면 모델이 자기 캘린더에 추가할 수 있어요.\n\n"+url); }
+    catch { prompt("아래 링크를 복사해 모델에게 보내세요:", url); }
+  };
 
   // 모델 캘린더 구독 토큰 보장(없으면 생성·저장). 실패(컬럼 미생성) 시 null.
   const ensureCalToken = async (m: any): Promise<string | null> => {
@@ -1509,37 +1541,7 @@ async function sharePdf(){
               {!editingBooking
                 ? <>
                     {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
-                      <button onClick={async()=>{
-                        const m=models.find(x=>x.id===selectedBooking.model_id); const c=customers.find(x=>x.id===selectedBooking.customer_id);
-                        const url=calShareUrl(bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"));
-                        try { await navigator.clipboard.writeText(url); alert("캘린더 링크가 복사되었습니다.\n모델에게 알림톡·메시지로 보내면, 모델이 자기 캘린더(구글/애플 등)에 일정을 추가할 수 있어요.\n\n"+url); }
-                        catch { prompt("아래 링크를 복사해 모델에게 보내세요:", url); }
-                      }} style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 링크</button>}
-                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); return m?.email?
-                      <button onClick={async()=>{
-                        const c=customers.find(x=>x.id===selectedBooking.customer_id);
-                        const tok=await ensureCalToken(m);
-                        const r=await sendCalEmail(m.email, bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"");
-                        if(r.ok) alert(`${m.email} 으로 캘린더 일정을 보냈습니다.`);
-                        else if(r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(Supabase에 email-send 함수 배포 + VITE_EMAIL_FN_URL 설정 필요)");
-                        else alert("메일 발송 실패: "+(r.error||""));
-                      }} style={{ ...btnS(C.purple), fontSize:12 }}><MessageSquare size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 이메일</button>
-                      : null; })()}
-                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); return m?.email?
-                      <button onClick={async()=>{
-                        const c=customers.find(x=>x.id===selectedBooking.customer_id);
-                        const ev=bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사");
-                        const input:any={ action: selectedBooking.gcal_event_id?"update":"create", agency_id:agency.id, event_id:selectedBooking.gcal_event_id, summary:ev.title, description:ev.description, location:ev.location, attendee_email:m.email };
-                        if(ev.start){ const hms=(s:string)=>{ const a=String(s).split(":"); return `${(a[0]||"00").padStart(2,"0")}:${a[1]||"00"}:${a[2]||"00"}`; }; input.start=`${ev.date}T${hms(ev.start)}`; input.end=`${ev.date}T${hms(ev.end||ev.start)}`; input.all_day=false; }
-                        else { input.all_day=true; input.date=ev.date; }
-                        const r=await gcalSync(input);
-                        if(r.skipped) alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
-                        else if(r.ok){
-                          if(!selectedBooking.gcal_event_id && r.event_id){ try{ await sb("bookings","PATCH",{gcal_event_id:r.event_id},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,gcal_event_id:r.event_id}:b)); setSelectedBooking((s:any)=>s?{...s,gcal_event_id:r.event_id}:s); }catch{} }
-                          alert(`구글 캘린더에 일정이 등록되고 ${m.email} 으로 초대를 보냈습니다.`);
-                        } else alert("구글 일정 등록 실패: "+(r.error||""));
-                      }} style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedBooking.gcal_event_id?"구글 일정 갱신":"구글 일정"}</button>
-                      : null; })()}
+                      <button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
                     {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
                   </>
@@ -1550,6 +1552,33 @@ async function sharePdf(){
               }
             </div>
           </div>
+
+          {/* 일정 보내기 선택창 */}
+          {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
+            <div onClick={()=>setShowSendMenu(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
+                <h3 style={{ margin:"0 0 4px", color:C.text, fontSize:16 }}><Calendar size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델에게 일정 보내기</h3>
+                <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>방법을 골라주세요. 모델 캘린더에 일정을 넣는 방식이 달라요.</p>
+
+                <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>구글 캘린더에 일정 생성 + 모델 초대. 모델이 수락하면 변경·취소가 자동 동기화돼요. (설정에서 구글 연동 필요)</div>
+                </div>
+
+                <div onClick={async()=>{ if(!hasEmail){ alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요."); return; } setShowSendMenu(false); await doSendCalMail(); }} style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:hasEmail?"pointer":"not-allowed", opacity:hasEmail?1:0.5, background:C.card2 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text }}>✉️ 이메일로 보내기</div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>모델 이메일로 일정(.ics 첨부)과 구독 링크를 발송. {hasEmail?"":"※ 모델 이메일 없음"}</div>
+                </div>
+
+                <div onClick={async()=>{ setShowSendMenu(false); await doCopyCalLink(); }} style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.card2 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text }}>🔗 캘린더 링크 복사</div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>카톡·메시지에 붙여 보낼 "캘린더에 추가" 링크를 복사. (일회성, 자동 동기화 아님)</div>
+                </div>
+
+                <button onClick={()=>setShowSendMenu(false)} style={{ ...btnS("#555"), width:"100%", marginTop:4 }}>닫기</button>
+              </div>
+            </div>
+          ); })()}
 
           {/* 상태 (보기=배지 / 편집=선택) */}
           <div style={{ marginBottom:16 }}>
