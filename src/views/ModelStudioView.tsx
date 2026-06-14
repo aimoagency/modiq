@@ -124,7 +124,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     // 전체 사진을 저장(최대 15) → 고객 갤러리에서 전부 노출. 카드/컴카드는 앞쪽 일부만 표시.
     const photos: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos.slice(0, MAX_PHOTOS) : (m.thumb_url ? [m.thumb_url] : []);
     return {
-      model_id: m.id, name: m.name || "", category: m.category || "",
+      model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
       followers: m.instagram_followers || "",

@@ -2338,7 +2338,8 @@ async function sharePdf(){
               <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
               <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
               <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}</span>}
                 {selectedModel.is_foreigner&&(()=>{
                   const dday=visaDday(selectedModel.visa_exit);
                   const ddayColor=dday==="만료"?C.red:C.orange;

@@ -12,6 +12,7 @@ export type PackageItem = {
   model_id?: string;        // 연결된 모델 (선택)
   name: string;
   category?: string;
+  gender?: string;          // 성별 코드 (F/M)
   country?: string;         // 국적
   age?: string;             // 나이 (예: "24")
   height?: string;
@@ -205,7 +206,7 @@ export function modelToCompCard(m: any, agency: { id: string; name: string }): P
   const age = ageFromSSN6(m.ssn6);
   const photos: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos.slice(0, 15) : (m.thumb_url ? [m.thumb_url] : []);
   const item: PackageItem = {
-    model_id: m.id, name: m.name || "", category: m.category || "",
+    model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
     country: m.country || "", age: age !== null ? String(age) : "",
     height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
     followers: m.instagram_followers || "",
@@ -260,7 +261,7 @@ export function compCardInnerHtml(it: PackageItem, brandName = ""): string {
       ? `<div style="border-radius:3px;background:#e9edf2 url('${ph[i]}') center/cover no-repeat"></div>`
       : `<div style="background:#f2f4f7;border:1.5px dashed #cfd5dd;border-radius:3px"></div>`;
   const info: [string, string][] = [
-    ["이름", it.name || "-"], ["나이", it.age ? `${it.age}세` : "-"], ["성별", it.category || "-"],
+    ["이름", it.name || "-"], ["나이", it.age ? `${it.age}세` : "-"], ["성별", (it.gender === "F" ? "여성" : it.gender === "M" ? "남성" : "") || "-"],
     ["키 cm", it.height || "-"], ["가슴", it.bust || "-"], ["허리", it.waist || "-"],
     ["엉덩이", it.hip || "-"], ["신발 mm", it.shoe || "-"], ["국적", it.country || "-"],
   ];

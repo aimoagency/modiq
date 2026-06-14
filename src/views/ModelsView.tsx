@@ -62,7 +62,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                   }
                   <strong style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flexShrink:1 }}>{m.name}</strong>
                   {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}><Plane size={9} style={{ verticalAlign:-1, flexShrink:0 }}/> {dday}</span>}
-                  {m.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{m.category}{age!==null?` · ${age}세`:""}</span>}
+                  {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{txt}</span>:null; })()}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub, paddingLeft:42 }}>
                   {m.rate>0&&<span>{m.rate.toLocaleString()}원</span>}
@@ -83,8 +83,8 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 }
                 {/* 이름 */}
                 <span style={{ fontWeight:800, fontSize:15, color:C.text, minWidth:60 }}>{m.name}</span>
-                {/* 카테고리/성별 */}
-                {m.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{m.category}{age!==null?` · ${age}세`:""}</span>}
+                {/* 성별 · 나이 */}
+                {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
                 {/* 외국인 D-day */}
                 {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>}
                 {/* 전화 */}

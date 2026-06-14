@@ -76,7 +76,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
     const age = ageFromSSN6(m.ssn6);
     // 모델 등록 정보(신체사이즈·국적·나이·팔로워 등)를 그대로 불러옴 → 패키지에서 재입력 불필요
     const it: PackageItem = {
-      model_id: m.id, name: m.name || "", category: m.category || "",
+      model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
       followers: m.instagram_followers || "",
@@ -311,7 +311,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
             {/* 모델 정보 — DB 연결 모델은 등록 정보를 그대로 표시(재입력 불필요), 직접추가 항목만 입력칸 노출 */}
             {it.model_id ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center", fontSize: 12.5, color: C.textSub, lineHeight: 1.6 }}>
-                {[it.category, it.country, it.age ? `${it.age}세` : "", sizeLine(it), it.followers ? `팔로워 ${it.followers}` : ""].filter(Boolean).join("  ·  ")}
+                {[(it.gender === "F" ? "여성" : it.gender === "M" ? "남성" : ""), it.category, it.country, it.age ? `${it.age}세` : "", sizeLine(it), it.followers ? `팔로워 ${it.followers}` : ""].filter(Boolean).join("  ·  ")}
                 <span style={{ fontSize: 11, color: C.muted }}>· 모델 정보에서 자동 반영 (수정은 ‘모델’ 메뉴에서)</span>
               </div>
             ) : (

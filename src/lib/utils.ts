@@ -90,6 +90,9 @@ export const visaViolation = (model: any, date: string) => {
   return null;
 };
 
+// 성별 코드(F/M) → 라벨(여성/남성). 그 외/미설정은 빈 문자열.
+export const genderLabel = (g?: string): string => g === "F" ? "여성" : g === "M" ? "남성" : "";
+
 export const makeModelId  = (name: string, ssn6: string) => `M_${name}_${ssn6}`;
 export const makeClientId = (name: string, phone4: string) => `C_${name}_${phone4}`;
 

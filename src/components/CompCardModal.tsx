@@ -81,7 +81,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
     return [
       ["이름(아이디)", model.name || "-"],
       ["나이", age !== null ? String(age) : "-"],
-      ["성별", model.category || "-"],
+      ["성별", (model.gender === "F" ? "여성" : model.gender === "M" ? "남성" : "") || "-"],
       ["키 cm", model.height || "-"],
       ["가슴 cm", model.bust || "-"],
       ["허리 cm", model.waist || "-"],
