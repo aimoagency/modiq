@@ -39,7 +39,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
-            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>에이전시 이익 (마진)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.blue }}>{fmt(margin)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>매출총이익</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.blue }}>{fmt(margin)}</p></div>
           </div>
         </div>
       );

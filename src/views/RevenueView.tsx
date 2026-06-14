@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { C, inp } from "../theme";
 import { Coins, Download, CheckCircle2 } from "../components/icons";
-import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal, bookingAgencyFee, bookingModelPay } from "../lib/utils";
+import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal, bookingAgencyFee, bookingModelPay, clientBalance } from "../lib/utils";
+import { STATUS } from "../constants";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
 import { exportAoaXlsx } from "../lib/xlsx";
@@ -34,15 +35,21 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   const marginAmt   = listed.reduce((s,b)=>s+bookingAgencyFee(b,models),0);  // 에이전시 이익(마진) = 공급가 − 모델 정산기준액
 
   const exportXlsx = async () => {
-    const head = ["촬영일","모델","고객사","프로젝트","상태","입금여부","매출(공급가)","모델지급","에이전시이익"];
+    const head = ["섭외ID","촬영일","모델","고객사","프로젝트","유형","상태","입금여부","매출(공급가)","계약금","잔금","모델지급액","매출총이익"];
     const rows = listed.map(b=>[
-      b.shoot_date||"", models.find((m:any)=>m.id===b.model_id)?.name||"",
-      customers.find((c:any)=>c.id===b.customer_id)?.name||"", b.project_name||"",
-      b.status, (b.status==="SETTLED"||b.is_paid)?"입금":"미입금", bookingTotal(b), bookingModelPay(b,models), bookingAgencyFee(b,models),
+      b.id||"-",
+      b.shoot_date||"-",
+      models.find((m:any)=>m.id===b.model_id)?.name||"-",
+      customers.find((c:any)=>c.id===b.customer_id)?.name||"-",
+      b.project_name||"-",
+      b.booking_type||"-",
+      STATUS[b.status]?.label||b.status||"-",
+      (b.status==="SETTLED"||b.is_paid)?"입금":"미입금",
+      bookingTotal(b), b.deposit_amt||0, clientBalance(b), bookingModelPay(b,models), bookingAgencyFee(b,models),
     ]);
-    const totalRow = ["합계","","","","","", listed.reduce((s,b)=>s+bookingTotal(b),0), modelPayAmt, marginAmt];
+    const totalRow = ["합계","","","","","","","", listed.reduce((s,b)=>s+bookingTotal(b),0), listed.reduce((s,b)=>s+(b.deposit_amt||0),0), listed.reduce((s,b)=>s+clientBalance(b),0), modelPayAmt, marginAmt];
     const who = sel ? `_${sel.name}` : "";
-    try { await exportAoaXlsx([head, ...rows, totalRow], `매출${who}_${preset}_${new Date().toISOString().slice(0,10)}.xlsx`, "매출현황", [12,14,16,16,12,10,14,13,13]); }
+    try { await exportAoaXlsx([head, ...rows, totalRow], `매출${who}_${preset}_${new Date().toISOString().slice(0,10)}.xlsx`, "매출현황", [20,12,14,16,16,9,11,10,14,12,12,13,13]); }
     catch (e) { alert("엑셀 생성 실패: " + String(e)); }
   };
 
@@ -51,7 +58,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
     { label:"예상매출 (확정 포함)", value:expectedAmt, color:C.yellow },
     { label:"미수금 (확정·미입금)", value:unpaidAmt,   color:C.red },
     { label:"모델 지급 (예상)",    value:modelPayAmt, color:"#c9a96e" },
-    { label:"에이전시 이익 (마진)", value:marginAmt,   color:C.blue },
+    { label:"매출총이익",          value:marginAmt,   color:C.blue },
   ];
 
   return (
@@ -114,7 +121,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
                 {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
               </span>
               <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
-              <span style={{ fontSize:11, color:C.blue, whiteSpace:"nowrap" }}>이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
+              <span style={{ fontSize:11, color:C.blue, whiteSpace:"nowrap" }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
               <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
               <Badge code={b.status} />
             </div>

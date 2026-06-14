@@ -65,7 +65,7 @@ export default function SettlementStatementModal({
   const download = async () => {
     const head = ["촬영일","계약ID","모델","고객사","프로젝트","세무유형","구분","공급가","부가세(10%)","고객청구(VAT포함)",
       "계약금","계약금입금일","계약금상태","잔금","잔금입금일","잔금상태",
-      "모델정산기준액","가감(원천/부가세)","모델실지급","모델지급일","모델지급상태","계산서발행일","계산서상태","에이전시마진"];
+      "모델정산기준액","가감(원천/부가세)","모델실지급","모델지급일","모델지급상태","계산서발행일","계산서상태","매출총이익"];
     const body = rows.map((r) => [
       r.date, r.id, r.model, r.customer, r.project, r.tax, r.session, r.supply, r.vat, r.charge,
       r.deposit, r.depositDate, r.depositPaid ? "입금" : "미입금", r.balance, r.balanceDate, r.balancePaid ? "입금" : "미입금",
@@ -109,7 +109,7 @@ export default function SettlementStatementModal({
 
       {/* 합계 요약 */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5,1fr)", gap: 8, marginBottom: 12 }}>
-        {[["고객 청구(VAT)", tot.charge, C.text], ["미입금 잔금", rows.filter(r=>!r.balancePaid).reduce((s,r)=>s+r.balance,0), C.orange], ["모델 실지급", tot.payout, "#c9a96e"], ["원천징수계", tot.withholding, C.red], ["에이전시 마진", tot.margin, C.green]].map(([l, v, col]) => (
+        {[["고객 청구(VAT)", tot.charge, C.text], ["미입금 잔금", rows.filter(r=>!r.balancePaid).reduce((s,r)=>s+r.balance,0), C.orange], ["모델 실지급", tot.payout, "#c9a96e"], ["원천징수계", tot.withholding, C.red], ["매출총이익", tot.margin, C.green]].map(([l, v, col]) => (
           <div key={String(l)} style={{ background: C.card2, borderRadius: 8, padding: "8px 10px" }}>
             <p style={{ margin: 0, fontSize: 10, color: C.muted }}>{l as string}</p>
             <p style={{ margin: "3px 0 0", fontSize: 13, fontWeight: 800, color: col as string }}>{won(v as number)}</p>
