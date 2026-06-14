@@ -1530,7 +1530,7 @@ async function sharePdf(){
                         const c=customers.find(x=>x.id===selectedBooking.customer_id);
                         const ev=bookingToCalEvent(selectedBooking, m?.name||"모델", c?.name||"고객사");
                         const input:any={ action: selectedBooking.gcal_event_id?"update":"create", agency_id:agency.id, event_id:selectedBooking.gcal_event_id, summary:ev.title, description:ev.description, location:ev.location, attendee_email:m.email };
-                        if(ev.start){ input.start=`${ev.date}T${ev.start}:00`; input.end=`${ev.date}T${ev.end||ev.start}:00`; input.all_day=false; }
+                        if(ev.start){ const hms=(s:string)=>{ const a=String(s).split(":"); return `${(a[0]||"00").padStart(2,"0")}:${a[1]||"00"}:${a[2]||"00"}`; }; input.start=`${ev.date}T${hms(ev.start)}`; input.end=`${ev.date}T${hms(ev.end||ev.start)}`; input.all_day=false; }
                         else { input.all_day=true; input.date=ev.date; }
                         const r=await gcalSync(input);
                         if(r.skipped) alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
