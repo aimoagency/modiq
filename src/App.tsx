@@ -2711,7 +2711,7 @@ async function sharePdf(){
 
           {/* ── 정산 · 세무 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"0 0 14px", background:C.card2 }}>
-            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에 미지정 시 이 기본값이 최초 반영)</span></p>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무</p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
               {([["foreigner", mIsForeign&&mVisaType==="E6"?"외국인 (E6/3.3%)":mIsForeign&&mVisaType==="C4"?"외국인 (C4/20%)":mIsForeign&&mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
