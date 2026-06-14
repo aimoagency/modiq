@@ -6,12 +6,13 @@ import { startGoogleConnect } from "../lib/gcal";
 
 // 회사(에이전시) 정보 + 소유권 이전 — owner 전용
 // 패턴: 보기 → 수정(연필) → 저장/취소 (모델·섭외 상세와 통일)
-export default function CompanyView({ agency, members, session, onSave, onTransferOwner }: {
+export default function CompanyView({ agency, members, session, onSave, onTransferOwner, onRevokeOwner }: {
   agency: any;
   members: any[];
   session: any;
   onSave: (updates: any) => void;
   onTransferOwner: (member: any) => void;
+  onRevokeOwner: (member: any) => void;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [name, setName]         = useState(agency?.name || "");
@@ -24,7 +25,8 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const [transferTo, setTransferTo] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const others = members.filter(m => m.user_id !== session?.id);
+  const owners = members.filter(m => m.role === "owner");
+  const grantable = members.filter(m => m.role !== "owner");
   const lbl = (t: string) => <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 5 }}>{t}</label>;
   const fmtBiz = (s: string) => { const n = String(s).replace(/[^0-9]/g, ""); return n.length === 10 ? `${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}` : (s || "-"); };
 
@@ -188,25 +190,39 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
         )}
       </div>
 
-      {/* 소유권 이전 */}
+      {/* 권한 부여 (공동 대표) */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
         <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 14, color: C.text }}>
-          <Crown size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 소유권 이전
+          <Crown size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 권한 부여 (공동 대표)
         </p>
         <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textSub }}>
-          소유자(대표) 권한을 다른 담당자에게 넘깁니다. 넘기면 본인은 일반 담당자가 되어 일부 권한을 잃습니다.
+          담당자에게 대표 권한을 추가로 부여합니다. 본인 권한은 그대로 유지되며, 부여받은 담당자도 설정·담당자·재무 등 대표 기능을 사용할 수 있습니다.
         </p>
-        {others.length === 0 ? (
-          <p style={{ fontSize: 13, color: C.muted }}>이전할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
+        {grantable.length === 0 ? (
+          <p style={{ fontSize: 13, color: C.muted }}>권한을 부여할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
         ) : (
           <div style={{ display: "flex", gap: 10 }}>
             <select style={{ ...inp, flex: 1, marginBottom: 0 }} value={transferTo} onChange={e => setTransferTo(e.target.value)}>
               <option value="">담당자 선택</option>
-              {others.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
+              {grantable.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
             </select>
             <button
-              onClick={() => { const t = others.find(m => m.id === transferTo); if (!t) return alert("담당자를 선택하세요"); onTransferOwner(t); }}
-              style={{ ...btnS(C.red), flexShrink: 0 }}>이전</button>
+              onClick={() => { const t = grantable.find(m => m.id === transferTo); if (!t) return alert("담당자를 선택하세요"); onTransferOwner(t); setTransferTo(""); }}
+              style={{ ...btnS(C.blue), flexShrink: 0 }}>권한 부여</button>
+          </div>
+        )}
+        {owners.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, color: C.muted }}>현재 대표 권한 보유자</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {owners.map(m => (
+                <span key={m.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 20, background: C.card2, border: `1px solid ${C.border}`, fontSize: 12, color: C.text }}>
+                  <Crown size={11} style={{ flexShrink: 0, color: "#c9a000" }} /> {m.name}
+                  {m.user_id !== session?.id && <button onClick={() => onRevokeOwner(m)} title="권한 회수" style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>✕</button>}
+                  {m.user_id === session?.id && <span style={{ fontSize: 10, color: C.muted }}>(나)</span>}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>

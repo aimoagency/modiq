@@ -947,21 +947,30 @@ export default function App() {
     }
   };
 
+  // 권한 부여 — 담당자에게 대표 권한 추가 (본인 권한은 유지, 공동 대표)
   const handleTransferOwner = async (target: any) => {
     if (!agency || !target) return;
-    if (!confirm(`소유권을 ${target.name}님에게 넘기시겠어요?\n넘기면 본인은 일반 담당자가 되어 일부 권한을 잃습니다.`)) return;
+    if (target.role === "owner") return alert(`${target.name}님은 이미 대표 권한을 가지고 있습니다.`);
+    if (!confirm(`${target.name}님에게 대표 권한을 부여하시겠어요?\n본인 권한은 그대로 유지되며, ${target.name}님도 설정·담당자·재무 기능을 사용할 수 있게 됩니다.`)) return;
     try {
-      const me = members.find(m=>m.user_id===session?.id);
       await sb("agency_members","PATCH",{role:"owner"},`?id=eq.${target.id}`);
-      if (me) await sb("agency_members","PATCH",{role:"member"},`?id=eq.${me.id}`);
-      await sb("agencies","PATCH",{owner_id:target.user_id, owner_email:target.email},`?id=eq.${agency.id}`);
-      const newMembers = members.map(m=> m.id===target.id ? {...m,role:"owner"} : (me&&m.id===me.id ? {...m,role:"member"} : m));
-      setMembers(newMembers);
-      const updatedAg = { ...agency, owner_id:target.user_id, owner_email:target.email };
-      setAgency(updatedAg); setMyRole("member"); saveSession(session, updatedAg, "member");
-      setPage("dashboard");
-      alert(`소유권이 ${target.name}님에게 이전되었습니다.`);
-    } catch (e) { alert("소유권 이전 실패: "+String(e)); }
+      setMembers(members.map(m=> m.id===target.id ? {...m,role:"owner"} : m));
+      alert(`${target.name}님에게 대표 권한을 부여했습니다.`);
+    } catch (e) { alert("권한 부여 실패: "+String(e)); }
+  };
+
+  // 권한 회수 — 부여했던 대표 권한을 일반 담당자로 되돌림 (본인은 회수 불가)
+  const handleRevokeOwner = async (target: any) => {
+    if (!agency || !target) return;
+    if (target.user_id === session?.id) return alert("본인 권한은 회수할 수 없습니다.");
+    const ownerCount = members.filter(m=>m.role==="owner").length;
+    if (ownerCount <= 1) return alert("대표 권한 보유자가 최소 1명은 있어야 합니다.");
+    if (!confirm(`${target.name}님의 대표 권한을 회수하시겠어요?\n일반 담당자로 전환됩니다.`)) return;
+    try {
+      await sb("agency_members","PATCH",{role:"member"},`?id=eq.${target.id}`);
+      setMembers(members.map(m=> m.id===target.id ? {...m,role:"member"} : m));
+      alert(`${target.name}님의 대표 권한을 회수했습니다.`);
+    } catch (e) { alert("권한 회수 실패: "+String(e)); }
   };
 
   // ── 정산 ──
@@ -1546,7 +1555,7 @@ async function sharePdf(){
 
         {/* ════ 담당자 ════ */}
         {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
-        {page==="company"&&myRole==="owner"&&<CompanyView agency={agency} members={members} session={session} onSave={handleSaveCompany} onTransferOwner={handleTransferOwner} />}
+        {page==="company"&&myRole==="owner"&&<CompanyView agency={agency} members={members} session={session} onSave={handleSaveCompany} onTransferOwner={handleTransferOwner} onRevokeOwner={handleRevokeOwner} />}
 
         {/* ════ 요금제 ════ */}
         {page==="plan"&&<PlanView agency={agency} myRole={myRole} planBilling={planBilling} setPlanBilling={setPlanBilling} handleChangePlan={handleChangePlan} />}
