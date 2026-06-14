@@ -14,6 +14,8 @@ export interface EmailOpts {
   text?: string;
   icsBase64?: string;
   icsFilename?: string;
+  fromName?: string;   // 발신 표시 이름(에이전시명)
+  replyTo?: string;    // 답장 받을 주소(에이전시 이메일)
 }
 
 export const sendEmail = async (opts: EmailOpts): Promise<{ ok: boolean; skipped?: boolean; error?: string }> => {
@@ -40,7 +42,7 @@ export const sendEmail = async (opts: EmailOpts): Promise<{ ok: boolean; skipped
 const b64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
 
 // 캘린더 일정을 모델에게 메일로 (구글 추가 링크 + .ics 첨부)
-export const sendCalEmail = (to: string, ev: CalEvent, modelName = "", subscribeUrl = "") => {
+export const sendCalEmail = (to: string, ev: CalEvent, modelName = "", subscribeUrl = "", agencyName = "", replyTo = "") => {
   const when = ev.start ? `${ev.date.replace(/-/g, ".")} ${ev.start}${ev.end ? `~${ev.end}` : ""}` : `${ev.date.replace(/-/g, ".")} (종일)`;
   const html = `
     <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:480px;margin:0 auto;color:#1a1d27">
@@ -57,11 +59,13 @@ export const sendCalEmail = (to: string, ev: CalEvent, modelName = "", subscribe
     </div>`;
   return sendEmail({
     to,
-    subject: `[일정] ${ev.title}`,
+    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 안내 · ${ev.title}`,
     html,
     text: `${ev.title}\n일시: ${when}${ev.location ? `\n장소: ${ev.location}` : ""}\n\n구글 캘린더에 추가: ${googleCalUrl(ev)}`,
     icsBase64: b64(icsText(ev)),
     icsFilename: `${ev.title}.ics`,
+    fromName: agencyName || undefined,
+    replyTo: replyTo || undefined,
   });
 };
 

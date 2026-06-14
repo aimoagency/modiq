@@ -87,12 +87,27 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
           <Calendar size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동
         </p>
         <p style={{ margin: "0 0 12px", fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
-          연동하면 섭외(촬영·실물미팅)를 확정할 때 구글 캘린더에 일정이 만들어지고, 모델이 게스트로 초대됩니다. 모델이 수락하면 이후 변경·취소가 자동 반영됩니다.
+          연동하면 섭외(촬영·실물미팅)를 확정할 때 <strong style={{ color: C.textSub }}>연동한 구글 계정</strong>의 캘린더에 일정이 만들어지고, 모델이 게스트로 초대됩니다. 모델이 수락하면 변경·취소가 자동 반영됩니다.
         </p>
-        <button onClick={() => startGoogleConnect(agency.id)} style={{ ...btnS(C.blue), fontSize: 13 }}>
-          <Calendar size={13} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동하기
-        </button>
-        <p style={{ margin: "10px 0 0", fontSize: 11, color: C.muted }}>※ 연동은 에이전시 1회. 구글 로그인 → 권한 허용 후 "연동 완료" 화면이 뜨면 이 탭으로 돌아오세요.</p>
+        {agency?.gcal_email ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.green + "18", border: `1px solid ${C.green}44`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: C.text, fontWeight: 700 }}>● 연동됨</span>
+              <span style={{ fontSize: 13, color: C.textSub }}>{agency.gcal_email}</span>
+            </div>
+            <button onClick={() => startGoogleConnect(agency.id)} style={{ padding: "8px 14px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              다른 구글 계정으로 변경
+            </button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => startGoogleConnect(agency.id)} style={{ ...btnS(C.blue), fontSize: 13 }}>
+              <Calendar size={13} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동하기
+            </button>
+            <p style={{ margin: "10px 0 0", fontSize: 12, color: C.text, fontWeight: 600 }}>※ 회사 대표(운영) 구글 계정으로 로그인하세요.</p>
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: C.muted, lineHeight: 1.6 }}>그 계정 캘린더에 일정이 생기고, 그 계정 이름으로 모델에게 초대가 발송됩니다. 로그인 → 권한 허용 후 "연동 완료" 화면이 뜨면 이 탭으로 돌아오세요. (연동은 에이전시 1회)</p>
+          </>
+        )}
       </div>
 
       {/* 기본 정보 */}

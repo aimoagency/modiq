@@ -856,7 +856,7 @@ export default function App() {
     const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
     if (!m?.email) return alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요.");
     const tok = await ensureCalToken(m);
-    const r = await sendCalEmail(m.email, bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"");
+    const r = await sendCalEmail(m.email, bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"", agency?.name||"", agency?.owner_email||"");
     if (r.ok) alert(`${m.email} 으로 일정을 보냈습니다.`);
     else if (r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(email-send 함수 배포 필요)");
     else alert("메일 발송 실패: "+(r.error||""));
