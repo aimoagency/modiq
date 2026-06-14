@@ -1619,13 +1619,18 @@ async function sharePdf(){
                   ["장소",    selectedBooking.location],
                   ["담당자",  selectedBooking.manager],
                   ["사용기간",selectedBooking.usage_period],
-                  ["사용국가",selectedBooking.usage_region],
                 ].filter(([,v])=>v).map(([k,v])=>(
                   <div key={String(k)}>
                     <p style={{ margin:0, fontSize:12, color:C.muted }}>{k}</p>
                     <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{v}</p>
                   </div>
                 ))}
+                {["SHOOT"].includes(selectedBooking.booking_type||"SHOOT")&&(
+                  <div>
+                    <p style={{ margin:0, fontSize:12, color:C.muted }}>사용국가</p>
+                    <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{selectedBooking.usage_region||"-"}</p>
+                  </div>
+                )}
               </div>
               {(selectedBooking.shoot_types||[]).length>0&&(
                 <div style={{ marginBottom:10 }}>
@@ -2249,19 +2254,20 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap" }}>
             <div style={{ minWidth:0 }}>
               <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-              <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
+              <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
+                {selectedModel.is_foreigner&&(()=>{
+                  const dday=visaDday(selectedModel.visa_exit);
+                  const ddayColor=dday==="만료"?C.red:C.orange;
+                  return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
+                })()}
+              </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap" }}>
-              {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"5px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
-              {selectedModel.is_foreigner&&(()=>{
-                const dday=visaDday(selectedModel.visa_exit);
-                const ddayColor=dday==="만료"?C.red:C.orange;
-                return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"5px 10px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
-              })()}
-              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
               <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
               <button onClick={async()=>{
                 const token=await ensureCalToken(selectedModel);
@@ -2271,6 +2277,7 @@ async function sharePdf(){
                 catch { prompt("구독 안내 링크(모델에게 보내세요):", url); }
               }} title="모델이 한 번 등록하면 자동 동기화되는 구독 링크" style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 구독 링크</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
+              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
@@ -2292,11 +2299,13 @@ async function sharePdf(){
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>출국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.yellow }}>{fmtDate(selectedModel.visa_exit)}</p></div>
             </>}
           </div>
-          {/* 링크 */}
-          <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-            {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 열기 →</a>}
-            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 열기 →</a>}
-            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 열기 →</a>}
+          {/* 링크/연락 — 인스타 · 카톡 · 구글드라이브 · 아이모 · 통장 순 */}
+          <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+            {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 →</a>}
+            {selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
+            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
+            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
+            {selectedModel.bank_info&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.card2, color:C.textSub, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}><Banknote size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedModel.bank_info}</span>}
           </div>
           {selectedModel.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedModel.memo}</p></div>}
           {/* 섭외 이력 + 모델별 정산 요약 */}
