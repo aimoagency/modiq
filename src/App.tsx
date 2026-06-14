@@ -275,6 +275,8 @@ export default function App() {
   const [mDrive,       setMDrive]       = useState("");
   const [mKakao,       setMKakao]       = useState("");
   const [mBank,        setMBank]        = useState("");
+  const [mBankName,    setMBankName]    = useState(""); // 은행명
+  const [mBankAcct,    setMBankAcct]    = useState(""); // 계좌번호
   const [mThumb,       setMThumb]       = useState("");
   const [mAimoUrl,     setMAimoUrl]     = useState("");
   const [mMemo,        setMMemo]        = useState("");
@@ -486,7 +488,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -508,7 +510,8 @@ export default function App() {
     setMCategory(m.category||""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
-    setMKakao(m.kakao_id||""); setMBank(m.bank_info||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
+    setMKakao(m.kakao_id||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
+    { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMEditMode(true);
@@ -2489,7 +2492,7 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>카테고리</label>
               <select style={inp} value={mCategory} onChange={e=>setMCategory(e.target.value)}>
@@ -2502,12 +2505,6 @@ async function sharePdf(){
               <select style={inp} value={mCountry} onChange={e=>setMCountry(e.target.value)}>
                 {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원) <span style={{ color:C.muted, fontSize:10 }}>· 참고용</span></label>
-              <input style={inp} type="text" placeholder="0"
-                value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
-                onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
             </div>
           </div>
           {/* ── 신체 정보 · 프로필 ── */}
@@ -2562,9 +2559,29 @@ async function sharePdf(){
             <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
           </div>
 
-          {/* ── 정산 세무 ── */}
+          {/* 외국인(외국 국적) 입출국일 — 정산·세무 위에 배치 */}
+          {mTaxType==="foreigner" && (
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:14 }}>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 입국일</label>
+                <input style={inp} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출국일</label>
+                <input style={inp} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ── 정산 · 세무 (단가 포함) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
-            <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
+            <div style={{ marginBottom:12, maxWidth:isMobile?undefined:240 }}>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 기본 단가 (원)</label>
+              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="0"
+                value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
+                onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
+            </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
               {([["foreigner","외국인 (전액)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
@@ -2583,7 +2600,6 @@ async function sharePdf(){
                   onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
                 <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
               </span>
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"계약금액(공급가)의 모델 몫":"건당 모델 정산액(부가세 제외)"}</span>
             </div>
             <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
               {mTaxType==="foreigner" ? "지급: 정산 기준액 전액 (원천징수·부가세 없음)"
@@ -2591,20 +2607,6 @@ async function sharePdf(){
                 : "지급: 정산 기준액 − 3.3% (소득세 3% + 지방세 0.3% 원천징수)"}
             </p>
           </div>
-
-          {/* 외국인 선택 시: 비자 입출국일 (국적은 위 국적 셀렉트) */}
-          {mTaxType==="foreigner" && (
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
-              <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 입국일</label>
-                <input style={inp} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출국일</label>
-                <input style={inp} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
-              </div>
-            </div>
-          )}
 
           {/* 링크 — 브랜드 아이콘 */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
@@ -2632,8 +2634,14 @@ async function sharePdf(){
               <input style={inp} placeholder="카카오톡 아이디" value={mKakao} onChange={e=>setMKakao(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 정보</label>
-              <input style={inp} placeholder="은행명 + 계좌번호" value={mBank} onChange={e=>setMBank(e.target.value)} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 (은행 · 계좌번호)</label>
+              <div style={{ display:"flex", gap:6 }}>
+                <select style={{ ...inp, width:120, flexShrink:0 }} value={mBankName} onChange={e=>{ const n=e.target.value; setMBankName(n); setMBank(`${n} ${mBankAcct}`.trim()); }}>
+                  <option value="">은행 선택</option>
+                  {["국민","신한","우리","하나","농협","기업","SC제일","씨티","카카오뱅크","토스뱅크","케이뱅크","새마을금고","우체국","수협","부산","대구","경남","광주","전북","제주"].map(b=><option key={b} value={b}>{b}</option>)}
+                </select>
+                <input style={{ ...inp, flex:1, minWidth:0 }} placeholder="계좌번호" value={mBankAcct} onChange={e=>{ const a=e.target.value; setMBankAcct(a); setMBank(`${mBankName} ${a}`.trim()); }} />
+              </div>
             </div>
           </div>
 
