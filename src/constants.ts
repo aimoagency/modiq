@@ -21,7 +21,8 @@ export const PLANS = [
 export const getTotalMemberLimit = (plan: string, extra = 0) => (PLAN_FEATURES[plan]?.baseMembers || 1) + extra;
 
 // ── 상수 ──────────────────────────────────────────────────────
-export const MODEL_CATEGORIES = ["여성","남성","시니어","키즈","플러스사이즈","기타"];
+export const GENDERS: [string,string][] = [["F","여성"],["M","남성"]]; // 성별 코드(F/M)+라벨
+export const MODEL_CATEGORIES = ["일반","시니어","키즈","플러스사이즈","기타"]; // 모델 타입(성별과 분리)
 export const MODEL_FIELDS = ["패션","뷰티","연기자","인플루언서","크리에이터","가수","댄서","운동"]; // 분야(복수 선택)
 export const HAIR_LENGTHS = ["숏","단발","미디엄","롱"];
 export const EYE_COLORS = ["검정","갈색","그레이","블루","그린","기타"];

@@ -4,9 +4,10 @@ import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
-  MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
+  MODEL_CATEGORIES, GENDERS, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
 } from "./constants";
+import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
 import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail } from "./lib/supabase";
 import {
@@ -184,7 +185,9 @@ export default function App() {
       }
     }
 
-    const projId = `PRJ_${Date.now()}`;
+    const projId = randomId("PRJ");
+    const _agNo = (agency as any).agency_no || 1;
+    const _baseCastSeq = nextCastSeq(bookings, _agNo);
     const proj = {
       id: projId, name: pName, customer_id: pCustomer, shoot_date: pDate,
       start_time: pStart, end_time: pEnd, location: pLocation, manager: pManager,
@@ -216,7 +219,7 @@ export default function App() {
       }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
-        id:`B_${Date.now()}_${i}`, project_id: projId, model_id: line.modelId,
+        id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
         customer_id: pCustomer, booking_type: pBookingType, shoot_date: lDate,
         start_time: lStart, end_time: lEnd, manager: pManager, status: finalStatus,
         project_name: pName, location: lLoc, shoot_types: pShootTypes,
@@ -268,6 +271,7 @@ export default function App() {
   const [mPhone,     setMPhone]     = useState("");
   const [mEmail,     setMEmail]     = useState("");
   const [mCategory,  setMCategory]  = useState("");
+  const [mGender,    setMGender]    = useState(""); // 성별 M/F (ID 생성용)
   const [mRate,      setMRate]      = useState(0);
   const [mCountry,     setMCountry]     = useState("대한민국");
   const [mEntry,       setMEntry]       = useState("");
@@ -489,15 +493,19 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
   const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
+    if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mTaxType==="foreigner";
-    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
+    const _natType = natTypeOf(mCountry);
+    const _agencyNo = (agency as any).agency_no || 1;
+    const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -508,7 +516,8 @@ export default function App() {
   const openEditModel = (m: any) => {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
-    setMCategory(m.category||""); setMRate(m.rate||0);
+    setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
+    setMCategory(["일반","시니어","키즈","플러스사이즈","기타"].includes(m.category)?m.category:""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
     setMKakao(m.kakao_id||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
@@ -521,7 +530,7 @@ export default function App() {
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
     const isFgn = mTaxType==="foreigner";
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:natTypeOf(mCountry), category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -550,7 +559,7 @@ export default function App() {
     if (!cName||!cPhone) return alert("고객사명과 전화번호 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const nc = { id:makeClientId(cName,cPhone.slice(-4)), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
+    const nc = { id:randomId("CL"), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
     try {
       await sb("customers","POST",nc);
       setCustomers([nc,...customers]);
@@ -799,7 +808,7 @@ export default function App() {
       if (!ok) return;
     }
     const finalStatus = autoHold ? "HOLD" : bStatus;
-    const nb = { id:`B_${Date.now()}`, model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, usage_region:bUsageRegion, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
+    const nb = { id:generateCastId((agency as any).agency_no||1, nextCastSeq(bookings,(agency as any).agency_no||1)), model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, usage_region:bUsageRegion, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
     try {
       await sb("bookings","POST",nb);
       let list=[nb,...bookings];
@@ -2533,9 +2542,16 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr", gap:10 }}>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>카테고리</label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>성별 *<span style={{ fontSize:10, color:C.muted }}> · ID 생성</span></label>
+              <select style={inp} value={mGender} onChange={e=>setMGender(e.target.value)}>
+                <option value="">선택</option>
+                {GENDERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 타입</label>
               <select style={inp} value={mCategory} onChange={e=>setMCategory(e.target.value)}>
                 <option value="">선택</option>
                 {MODEL_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
