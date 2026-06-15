@@ -205,7 +205,7 @@ const payoutSessionValue = (model: any, session: "day"|"half"|"hour"): number =>
   const v = session === "half" ? h : session === "hour" ? hr : d;
   return Number(v) || 0;
 };
-const payCfg = (b: any, model: any): { type: string; value: number } => {
+export const payCfg = (b: any, model: any): { type: string; value: number } => {
   if (b?.model_pay_type && b?.model_pay_value != null)
     return { type: b.model_pay_type, value: b.model_pay_value };
   return {

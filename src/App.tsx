@@ -16,7 +16,7 @@ import {
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
   modelTaxType, modelGross, modelWithholding, clientCharge,
-  bookingSession, sessionLabel, foreignerRate,
+  bookingSession, sessionLabel, foreignerRate, payCfg,
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import TypeIcon from "./components/TypeIcon";
@@ -1927,12 +1927,15 @@ async function sharePdf(){
               const taxTxt = t==="foreigner"?`${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`} 제외`:t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외";
               const sess = bookingSession(selectedBooking);
               const ovr = !!selectedBooking.model_pay_type;
+              const pay = payCfg(selectedBooking, mdl);
+              const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료율 ${pay.value||0}%`;
               return (
               <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <span style={{ color:C.muted, fontSize:12 }}>
                     모델 정산액
                     <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:sess==="half"?C.purple+"22":C.blue+"22", color:sess==="half"?C.purple:C.blue, fontSize:10, fontWeight:700 }}>{sessionLabel(selectedBooking)}</span>
+                    <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:C.green+"22", color:C.green, fontSize:10, fontWeight:700 }}>{rateTxt}</span>
                     <span style={{ marginLeft:6 }}>({taxTxt}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""}{ovr?", 건별 수정":""})</span>
                   </span>
                   <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
