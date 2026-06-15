@@ -2586,7 +2586,7 @@ async function sharePdf(){
 
       {/* ════ 모달: 고객사 수정 ════ */}
       {selectedCustomer&&cEditMode&&(
-        <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}}>
+        <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
           <BizLicenseUpload onExtracted={applyBizInfo} />
