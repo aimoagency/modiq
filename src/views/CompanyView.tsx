@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { C, btnS, inp } from "../theme";
-import { Building2, Crown, Save, Pencil } from "../components/icons";
+import { Building2, Crown, Save, Pencil, Calendar } from "../components/icons";
 import { validateBizNo } from "../lib/utils";
+import { startGoogleConnect } from "../lib/gcal";
 
 // 회사(에이전시) 정보 + 소유권 이전 — owner 전용
 // 패턴: 보기 → 수정(연필) → 저장/취소 (모델·섭외 상세와 통일)
-export default function CompanyView({ agency, members, session, onSave, onTransferOwner }: {
+export default function CompanyView({ agency, members, session, onSave, onTransferOwner, onRevokeOwner }: {
   agency: any;
   members: any[];
   session: any;
   onSave: (updates: any) => void;
   onTransferOwner: (member: any) => void;
+  onRevokeOwner: (member: any) => void;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [name, setName]         = useState(agency?.name || "");
@@ -23,7 +25,8 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const [transferTo, setTransferTo] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const others = members.filter(m => m.user_id !== session?.id);
+  const owners = members.filter(m => m.role === "owner");
+  const grantable = members.filter(m => m.role !== "owner");
   const lbl = (t: string) => <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 5 }}>{t}</label>;
   const fmtBiz = (s: string) => { const n = String(s).replace(/[^0-9]/g, ""); return n.length === 10 ? `${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}` : (s || "-"); };
 
@@ -79,6 +82,35 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: C.text }}>설정</h1>
+
+      {/* 구글 캘린더 연동 */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+        <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 14, color: C.text }}>
+          <Calendar size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동
+        </p>
+        <p style={{ margin: "0 0 12px", fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>
+          연동하면 섭외(촬영·실물미팅)를 확정할 때 <strong style={{ color: C.textSub }}>연동한 구글 계정</strong>의 캘린더에 일정이 만들어지고, 모델이 게스트로 초대됩니다. 모델이 수락하면 변경·취소가 자동 반영됩니다.
+        </p>
+        {agency?.gcal_email ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.green + "18", border: `1px solid ${C.green}44`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: C.text, fontWeight: 700 }}>● 연동됨</span>
+              <span style={{ fontSize: 13, color: C.textSub }}>{agency.gcal_email}</span>
+            </div>
+            <button onClick={() => startGoogleConnect(agency.id)} style={{ padding: "8px 14px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              다른 구글 계정으로 변경
+            </button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => startGoogleConnect(agency.id)} style={{ ...btnS(C.blue), fontSize: 13 }}>
+              <Calendar size={13} style={{ verticalAlign: -2, flexShrink: 0 }} /> 구글 캘린더 연동하기
+            </button>
+            <p style={{ margin: "10px 0 0", fontSize: 12, color: C.text, fontWeight: 600 }}>※ 회사 대표(운영) 구글 계정으로 로그인하세요.</p>
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: C.muted, lineHeight: 1.6 }}>그 계정 캘린더에 일정이 생기고, 그 계정 이름으로 모델에게 초대가 발송됩니다. 로그인 → 권한 허용 후 "연동 완료" 화면이 뜨면 이 탭으로 돌아오세요. (연동은 에이전시 1회)</p>
+          </>
+        )}
+      </div>
 
       {/* 기본 정보 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
@@ -158,25 +190,39 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
         )}
       </div>
 
-      {/* 소유권 이전 */}
+      {/* 권한 부여 (공동 대표) */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
         <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 14, color: C.text }}>
-          <Crown size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 소유권 이전
+          <Crown size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 권한 부여 (공동 대표)
         </p>
         <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textSub }}>
-          소유자(대표) 권한을 다른 담당자에게 넘깁니다. 넘기면 본인은 일반 담당자가 되어 일부 권한을 잃습니다.
+          담당자에게 대표 권한을 추가로 부여합니다. 본인 권한은 그대로 유지되며, 부여받은 담당자도 설정·담당자·재무 등 대표 기능을 사용할 수 있습니다.
         </p>
-        {others.length === 0 ? (
-          <p style={{ fontSize: 13, color: C.muted }}>이전할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
+        {grantable.length === 0 ? (
+          <p style={{ fontSize: 13, color: C.muted }}>권한을 부여할 담당자가 없습니다. 먼저 담당자를 추가하세요.</p>
         ) : (
           <div style={{ display: "flex", gap: 10 }}>
             <select style={{ ...inp, flex: 1, marginBottom: 0 }} value={transferTo} onChange={e => setTransferTo(e.target.value)}>
               <option value="">담당자 선택</option>
-              {others.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
+              {grantable.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
             </select>
             <button
-              onClick={() => { const t = others.find(m => m.id === transferTo); if (!t) return alert("담당자를 선택하세요"); onTransferOwner(t); }}
-              style={{ ...btnS(C.red), flexShrink: 0 }}>이전</button>
+              onClick={() => { const t = grantable.find(m => m.id === transferTo); if (!t) return alert("담당자를 선택하세요"); onTransferOwner(t); setTransferTo(""); }}
+              style={{ ...btnS(C.blue), flexShrink: 0 }}>권한 부여</button>
+          </div>
+        )}
+        {owners.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, color: C.muted }}>현재 대표 권한 보유자</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {owners.map(m => (
+                <span key={m.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 20, background: C.card2, border: `1px solid ${C.border}`, fontSize: 12, color: C.text }}>
+                  <Crown size={11} style={{ flexShrink: 0, color: "#c9a000" }} /> {m.name}
+                  {m.user_id !== session?.id && <button onClick={() => onRevokeOwner(m)} title="권한 회수" style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>✕</button>}
+                  {m.user_id === session?.id && <span style={{ fontSize: 10, color: C.muted }}>(나)</span>}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 export const APP_VERSION = "0.9.0";
 export const SESSION_KEY = "modiq_session_v6";
 export type AuthMode = "login"|"signup";
-export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company";
+export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages"|"studio";
 
 // ── 요금제 ─────────────────────────────────────────────────────
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {
@@ -21,7 +21,11 @@ export const PLANS = [
 export const getTotalMemberLimit = (plan: string, extra = 0) => (PLAN_FEATURES[plan]?.baseMembers || 1) + extra;
 
 // ── 상수 ──────────────────────────────────────────────────────
-export const MODEL_CATEGORIES = ["여성","남성","시니어","키즈","플러스사이즈","기타"];
+export const GENDERS: [string,string][] = [["F","여성"],["M","남성"]]; // 성별 코드(F/M)+라벨
+export const MODEL_CATEGORIES = ["키즈","주니어","성인","시니어","플러스사이즈"]; // 모델 타입(성별과 분리)
+export const MODEL_FIELDS = ["모델","배우","가수","댄서","성우","개그맨","스포츠","사회자","홈쇼핑","유투버","인플루언서","크리에이터"]; // 활동분야(복수 선택)
+export const HAIR_LENGTHS = ["숏","단발","미디엄","롱"];
+export const EYE_COLORS = ["검정","갈색","그레이","블루","그린","기타"];
 export const CLIENT_INDUSTRIES = ["광고대행사","마케팅에이전시","프로덕션","패션브랜드","뷰티","홈쇼핑","매거진/미디어","온라인플랫폼","웨딩/이벤트","브랜드(종합)","기타"];
 export const SHOOT_TYPES_PHOTO = ["광고사진","화보","카탈로그","SNS콘텐츠","룩북","제품사진"];
 export const USAGE_REGIONS = ["국내","해외"]; // 콘텐츠 사용 국가 범위
@@ -46,7 +50,7 @@ export const COUNTRIES = [
 ];
 export const SHOOT_TYPES_VIDEO = ["CF/TVC","바이럴영상","SNS영상","홈쇼핑","유튜브","브랜드필름"];
 export const USAGE_SCOPES = ["온라인","스폰서애드","잡지","옥외광고","인쇄물","홈쇼핑","TVC"];
-export const USAGE_PERIODS = ["6개월","12개월","18개월","24개월","기타"];
+export const USAGE_PERIODS = ["6개월","12개월","24개월","기타"];
 export const HOURS = [1,2,3,4,5,6,7,8,9,10,11,12];
 export const MINS  = [0,10,20,30,40,50];
 

@@ -44,7 +44,7 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
       </div>
 
       {!edit ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 12 }}>
           <div>{lbl("이름")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.name}</p></div>
           <div>{lbl("직위")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.position || "-"}</p></div>
           <div>{lbl("전화번호")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.phone || "-"}</p></div>
@@ -52,7 +52,7 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
         </div>
       ) : (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 10 }}>
             <div>{lbl("이름")}<input style={{ ...inp, marginTop: 5 }} value={name} onChange={e => setName(e.target.value)} placeholder="이름" /></div>
             <div>{lbl("직위")}<input style={{ ...inp, marginTop: 5 }} value={position} onChange={e => setPosition(e.target.value)} placeholder="예: 매니저" /></div>
             <div>{lbl("전화번호 (알림톡 발송에 사용)")}<input style={{ ...inp, marginTop: 5 }} value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" /></div>

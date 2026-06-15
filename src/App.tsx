@@ -4,9 +4,10 @@ import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
-  MODEL_CATEGORIES, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
+  MODEL_CATEGORIES, GENDERS, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
 } from "./constants";
+import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
 import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail } from "./lib/supabase";
 import {
@@ -15,15 +16,18 @@ import {
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
   modelTaxType, modelGross, modelWithholding, clientCharge,
+  bookingSession, sessionLabel, foreignerRate, payCfg,
 } from "./lib/utils";
 import Badge from "./components/Badge";
+import BizLicenseUpload from "./components/BizLicenseUpload";
+import type { BizLicenseInfo } from "./lib/ocr";
 import TypeIcon from "./components/TypeIcon";
 import Modal from "./components/Modal";
 import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
 import CalendarView from "./views/CalendarView";
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, Settings, AimoMark } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView";
@@ -35,7 +39,17 @@ import MembersView from "./views/MembersView";
 import PlanView from "./views/PlanView";
 import RevenueView from "./views/RevenueView";
 import CompanyView from "./views/CompanyView";
+import PackagesView from "./views/PackagesView";
+import ModelStudioView from "./views/ModelStudioView";
+import PackagePublicView from "./views/PackagePublicView";
+import CalendarAddView from "./views/CalendarAddView";
+import CalSubscribeView from "./views/CalSubscribeView";
+import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
+import { sendCalEmail } from "./lib/email";
+import { gcalSync } from "./lib/gcal";
+import type { Pkg } from "./lib/packages";
 import BulkUploadModal from "./components/BulkUploadModal";
+import CompCardModal from "./components/CompCardModal";
 import SettlementStatementModal from "./components/SettlementStatementModal";
 
 // ── 프리텐다드 폰트 로드 ──
@@ -49,7 +63,7 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   }
   const style = document.getElementById("pretendard-global") || document.createElement("style");
   style.id = "pretendard-global";
-  style.textContent = `*, *::before, *::after { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); }
+  style.textContent = `*, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
 :root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#ffffff; --c-text-sub:#c8ccd8; --c-muted:#6b7280; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
 html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#737a85; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }`;
@@ -74,7 +88,9 @@ export default function App() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [bookings,  setBookings]  = useState<any[]>([]);
   const [projects,  setProjects]  = useState<any[]>([]);
-  const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일
+  const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일(에이전시 전체)
+  const [modelOffs,   setModelOffs]   = useState<any[]>([]); // 모델별 휴무 기간
+  const [packages,    setPackages]    = useState<Pkg[]>([]); // 모델 사진 패키지
   const [selectedProjectId, setSelectedProjectId] = useState<string|null>(null); // 프로젝트 상세
   const isMobile = useIsMobile();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -84,6 +100,7 @@ export default function App() {
 
   const [page, setPage] = useState<Page>("dashboard");
   const [calInitModel, setCalInitModel] = useState("");  // 모델 상세 → 캘린더 이동 시 pre-선택
+  const [studioInitModel, setStudioInitModel] = useState("");  // 모델 수정 → 스튜디오 이동 시 pre-선택
   const [planBilling, setPlanBilling] = useState<"monthly"|"yearly">("monthly");
 
   // 필터
@@ -98,6 +115,7 @@ export default function App() {
   const [settlementModel,   setSettlementModel]   = useState("ALL");
   const [settlementMgr,     setSettlementMgr]     = useState("ALL");
   const [settlementProject, setSettlementProject] = useState("ALL");
+  const [settlementClient,  setSettlementClient]  = useState("ALL"); // 정산 고객사 필터
 
   // 모달
   const [showModelForm,    setShowModelForm]    = useState(false);
@@ -171,7 +189,9 @@ export default function App() {
       }
     }
 
-    const projId = `PRJ_${Date.now()}`;
+    const projId = randomId("PRJ");
+    const _agNo = (agency as any).agency_no || 1;
+    const _baseCastSeq = nextCastSeq(bookings, _agNo);
     const proj = {
       id: projId, name: pName, customer_id: pCustomer, shoot_date: pDate,
       start_time: pStart, end_time: pEnd, location: pLocation, manager: pManager,
@@ -203,7 +223,7 @@ export default function App() {
       }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
-        id:`B_${Date.now()}_${i}`, project_id: projId, model_id: line.modelId,
+        id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
         customer_id: pCustomer, booking_type: pBookingType, shoot_date: lDate,
         start_time: lStart, end_time: lEnd, manager: pManager, status: finalStatus,
         project_name: pName, location: lLoc, shoot_types: pShootTypes,
@@ -234,12 +254,15 @@ export default function App() {
   const [showMemberForm,   setShowMemberForm]   = useState(false);
   const [selectedBooking,    setSelectedBooking]    = useState<any>(null);
   const [selectedModel,      setSelectedModel]      = useState<any>(null);
+  const [compModel,          setCompModel]          = useState<any>(null); // 컴카드 모달 대상(모델 DB 상세에서 열기)
+  const [showSendMenu,       setShowSendMenu]       = useState(false); // 섭외 상세 '일정 보내기' 선택창
   const [selectedCustomer,   setSelectedCustomer]   = useState<any>(null); // 고객사 상세
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
   const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
   const [navHover, setNavHover] = useState(false); // 좌측 메뉴 호버 시 펼침
   const [mEditMode, setMEditMode] = useState(false);
   const [modelHistAll, setModelHistAll] = useState(false);
+  const [custHistAll, setCustHistAll] = useState(false);
   const [cEditMode, setCEditMode] = useState(false); // 고객사 수정 모드
 
   // 섭외 추가 - 검색
@@ -252,21 +275,55 @@ export default function App() {
   const [mPhone,     setMPhone]     = useState("");
   const [mEmail,     setMEmail]     = useState("");
   const [mCategory,  setMCategory]  = useState("");
+  const [mGender,    setMGender]    = useState(""); // 성별 M/F (ID 생성용)
   const [mRate,      setMRate]      = useState(0);
   const [mCountry,     setMCountry]     = useState("대한민국");
   const [mEntry,       setMEntry]       = useState("");
   const [mExit,        setMExit]        = useState("");
+  // 외국인 모델
+  const [mIsForeign,   setMIsForeign]   = useState(false);
+  const [mVisaType,    setMVisaType]    = useState("");   // 'E6'|'C4'|'OTHER'
+  const [mHasAlienCard,setMHasAlienCard]= useState(false);
+  const [mPayMethod,   setMPayMethod]   = useState("");   // 'bank'|'payoneer'|'wise'|'cash'
+  const [mPayDetail,   setMPayDetail]   = useState<any>({});
+  const [mTaxRate,     setMTaxRate]     = useState<number>(0);
+  const [showForeignModal, setShowForeignModal] = useState(false);
   const [mInstagram,   setMInstagram]   = useState("");
   const [mDrive,       setMDrive]       = useState("");
   const [mKakao,       setMKakao]       = useState("");
   const [mBank,        setMBank]        = useState("");
+  const [mBankName,    setMBankName]    = useState(""); // 은행명
+  const [mBankAcct,    setMBankAcct]    = useState(""); // 계좌번호
   const [mThumb,       setMThumb]       = useState("");
   const [mAimoUrl,     setMAimoUrl]     = useState("");
   const [mMemo,        setMMemo]        = useState("");
+  // ── 신체/프로필 확장 ──
+  const [mHeight,      setMHeight]      = useState("");
+  const [mShoe,        setMShoe]        = useState("");
+  const [mBust,        setMBust]        = useState("");
+  const [mWaist,       setMWaist]       = useState("");
+  const [mHip,         setMHip]         = useState("");
+  const [mHair,        setMHair]        = useState("");
+  const [mEye,         setMEye]         = useState("");
+  const [mTattoo,      setMTattoo]      = useState(false);
+  const [mUnderwear,   setMUnderwear]   = useState(false);
+  const [mFields,      setMFields]      = useState<string[]>([]);
+  const [mSpecialty,   setMSpecialty]   = useState("");
+  const [mFollowers,   setMFollowers]   = useState("");
+  const [mHairColor,   setMHairColor]   = useState("");
+  const [mSizeUnit,    setMSizeUnit]    = useState<"cm"|"inch">("cm"); // 3사이즈 입력 단위(저장은 항상 cm)
   // 정산 세무: 유형 + 기본 정산방식(섭외에서 미지정 시 사용)
   const [mTaxType,  setMTaxType]  = useState<"foreigner"|"freelancer"|"company">("freelancer");
   const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
-  const [mPayValue, setMPayValue] = useState(0);
+  const [mPayValue, setMPayValue] = useState(0); // (구) 단일 정산값 — 하위호환
+  // 정산방식 값(세션별): 비율이면 %, 정액이면 원
+  const [mPayDayValue,  setMPayDayValue]  = useState(0);
+  const [mPayHalfValue, setMPayHalfValue] = useState(0);
+  const [mPayHourValue, setMPayHourValue] = useState(0);
+  // 모델료(원): Day(9h) / Half day(5h) / Hour(1h)
+  const [mFeeDay,  setMFeeDay]  = useState(0);
+  const [mFeeHalf, setMFeeHalf] = useState(0);
+  const [mFeeHour, setMFeeHour] = useState(0);
 
   // ── 고객사 폼 ──
   const [cName,       setCName]       = useState("");
@@ -383,6 +440,14 @@ export default function App() {
       const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
       setHolidays(h||[]);
     } catch { setHolidays([]); } // holidays 테이블 미생성 시 무시
+    try {
+      const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
+      setModelOffs(mo||[]);
+    } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    try {
+      const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      setPackages(pk||[]);
+    } catch { setPackages([]); } // packages 테이블 미생성 시 무시
   };
 
   // ── 인증 ──
@@ -443,16 +508,24 @@ export default function App() {
     setAuthTokens(null, null);
     setSession(null); setAgency(null); setMyRole("member");
     setEmail(""); setPassword(""); setAgencyName("");
-    setModels([]); setCustomers([]); setBookings([]); setMembers([]);
+    setModels([]); setCustomers([]); setBookings([]); setMembers([]); setPackages([]);
     setPage("dashboard");
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMRate(0); setMEntry(""); setMExit(""); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  // 사이즈 단위 변환 (저장은 항상 cm)
+  const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
+  const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
+  const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
-    const isFgn = mTaxType==="foreigner";
-    const nm = { id:makeModelId(mName,mSSN), name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue, agency_id:agency.id };
+    if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
+    const isFgn = mIsForeign;
+    const _natType = isFgn ? "X" : "K";
+    const _agencyNo = (agency as any).agency_no || 1;
+    const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -463,18 +536,24 @@ export default function App() {
   const openEditModel = (m: any) => {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
+    setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
     setMCategory(m.category||""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
+    setMIsForeign(!!m.is_foreigner); setMVisaType(m.visa_type||""); setMHasAlienCard(!!m.has_alien_card); setMPayMethod(m.payment_method||""); setMPayDetail(m.payment_detail&&typeof m.payment_detail==="object"?m.payment_detail:{}); setMTaxRate(Number(m.tax_rate)||0);
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
-    setMKakao(m.kakao_id||""); setMBank(m.bank_info||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
+    setMKakao(m.kakao_id||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
+    { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
+    setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
+    setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
+    setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
     setMEditMode(true);
   };
 
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
-    const isFgn = mTaxType==="foreigner";
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayValue };
+    const isFgn = mIsForeign;
+    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -498,12 +577,24 @@ export default function App() {
   };
 
   // ── 고객사 추가 ──
+  // 사업자등록증 OCR 결과 → 고객사 폼 자동 입력 (스키마에 없는 항목은 메모에 보존)
+  const applyBizInfo = (info: BizLicenseInfo) => {
+    if (info.companyName) setCName(info.companyName);
+    if (info.businessNumber) setCBizNo(info.businessNumber);
+    const extra = [
+      info.representativeName && `대표: ${info.representativeName}`,
+      info.address && `주소: ${info.address}`,
+      (info.businessType || info.businessItem) && `업태/종목: ${[info.businessType, info.businessItem].filter(Boolean).join(" / ")}`,
+      info.corporateNumber && `법인등록번호: ${info.corporateNumber}`,
+    ].filter(Boolean).join("\n");
+    if (extra) setCMemo(prev => prev ? prev : extra);
+  };
   const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); };
   const handleAddCustomer = async () => {
     if (!cName||!cPhone) return alert("고객사명과 전화번호 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const nc = { id:makeClientId(cName,cPhone.slice(-4)), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
+    const nc = { id:randomId("CL"), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
     try {
       await sb("customers","POST",nc);
       setCustomers([nc,...customers]);
@@ -607,6 +698,15 @@ export default function App() {
     if (!selectedBooking) return;
     const prev = bookings.find(b=>b.id===selectedBooking.id);
     const oldDate = prev?.shoot_date;
+    // 모델 휴무 충돌(날짜·모델이 바뀌어 휴무일에 걸린 경우) — 경고 후 강행 허용
+    if (prev?.shoot_date!==selectedBooking.shoot_date || prev?.model_id!==selectedBooking.model_id) {
+      const eoff = modelOffOn(selectedBooking.model_id, selectedBooking.shoot_date);
+      if (eoff) {
+        const nm = models.find(m=>m.id===selectedBooking.model_id)?.name||"이 모델";
+        const ok = window.confirm(`⚠️ ${nm}은(는) ${fmtDate(eoff.start_date)} ~ ${fmtDate(eoff.end_date)} 휴무입니다${eoff.reason?` (${eoff.reason})`:""}.\n해당 날짜(${fmtDate(selectedBooking.shoot_date)})로 변경할까요?\n\n[확인] 그대로 저장  [취소] 중단`);
+        if (!ok) return;
+      }
+    }
     const updates: any = {
       booking_type: selectedBooking.booking_type,
       project_name: selectedBooking.project_name,
@@ -621,6 +721,8 @@ export default function App() {
       shoot_types:  selectedBooking.shoot_types,
       usage_scope:  selectedBooking.usage_scope,
       shoot_fee:    selectedBooking.shoot_fee,
+      model_pay_type:  selectedBooking.model_pay_type || null,
+      model_pay_value: selectedBooking.model_pay_type ? (Number(selectedBooking.model_pay_value)||0) : null,
       deposit_amt:  selectedBooking.deposit_amt,
       deposit_due:  selectedBooking.deposit_due,
       balance_amt:  clientBalance(selectedBooking),
@@ -713,6 +815,13 @@ export default function App() {
     const visa = visaViolation(model, bDate);
     if (visa) return alert("비자 오류: "+visa);
 
+    // 모델 휴무 충돌: 경고 후 강행 허용
+    const off = modelOffOn(bModel, bDate);
+    if (off) {
+      const ok = window.confirm(`⚠️ ${model?.name||"이 모델"}은(는) ${fmtDate(off.start_date)} ~ ${fmtDate(off.end_date)} 휴무입니다${off.reason?` (${off.reason})`:""}.\n해당 날짜(${fmtDate(bDate)})에 섭외를 진행할까요?\n\n[확인] 그래도 등록  [취소] 중단`);
+      if (!ok) return;
+    }
+
     // 우선순위 충돌 처리: 촬영 > 미팅/피팅/오디션
     const sameDay = bookings.filter(b=>b.model_id===bModel&&b.shoot_date===bDate&&b.status!=="CANCELLED");
     const newIsShoot = bBookingType==="SHOOT";
@@ -736,7 +845,7 @@ export default function App() {
       if (!ok) return;
     }
     const finalStatus = autoHold ? "HOLD" : bStatus;
-    const nb = { id:`B_${Date.now()}`, model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, usage_region:bUsageRegion, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
+    const nb = { id:generateCastId((agency as any).agency_no||1, nextCastSeq(bookings,(agency as any).agency_no||1)), model_id:bModel, customer_id:bCustomer, booking_type:bBookingType, shoot_date:bDate, start_time:bStart, end_time:bEnd, manager:bManager, status:finalStatus, project_name:bProject, location:bLocation, shoot_types:bShootTypes, usage_scope:bUsageScope, usage_period:bUsagePeriod, usage_region:bUsageRegion, shoot_fee:bBudget, deposit_amt:bDeposit, deposit_due:bDepositDue, balance_amt:bBalance, balance_due:bBalanceDue, result_drive_url:bResultDrive, memo:bMemo, commission_rate:15, is_paid:false, settlement_memo:"", messages:[], agency_id:agency.id, ...(bRefImages.length>0?{reference_images:bRefImages}:{}), ...(bRefVideos.length>0?{reference_videos:bRefVideos}:{}) };
     try {
       await sb("bookings","POST",nb);
       let list=[nb,...bookings];
@@ -759,6 +868,67 @@ export default function App() {
     if (!confirm("이 휴무일을 해제할까요?")) return;
     try { await sb("holidays","DELETE",null,`?id=eq.${id}`); setHolidays(holidays.filter(h=>h.id!==id)); }
     catch(e) { alert("휴무일 해제 실패: "+String(e)); }
+  };
+
+  // ── 모델 휴무(기간) ──
+  const handleAddModelOff = async (model_id: string, start_date: string, end_date: string, reason = "") => {
+    if (!model_id) return alert("모델을 선택하세요");
+    if (!start_date || !end_date) return alert("휴무 시작일과 종료일을 입력하세요");
+    if (end_date < start_date) return alert("종료일이 시작일보다 빠릅니다");
+    const row = { id:`MO_${Date.now()}`, agency_id: agency.id, model_id, start_date, end_date, reason: reason||"" };
+    try { await sb("model_offs","POST",row); setModelOffs([row, ...modelOffs]); }
+    catch(e) { alert("휴무 저장 실패 — Supabase에 model_offs 테이블이 필요합니다.\n(supabase/model_offs_setup.sql 실행)\n"+String(e)); }
+  };
+  const handleDeleteModelOff = async (id: string) => {
+    if (!confirm("이 휴무를 해제할까요?")) return;
+    try { await sb("model_offs","DELETE",null,`?id=eq.${id}`); setModelOffs(modelOffs.filter(o=>o.id!==id)); }
+    catch(e) { alert("휴무 해제 실패: "+String(e)); }
+  };
+  // 해당 모델이 그 날짜에 휴무인지 → 휴무 레코드(or null)
+  const modelOffOn = (model_id: string, date: string) =>
+    modelOffs.find(o => o.model_id===model_id && date>=o.start_date && date<=o.end_date) || null;
+
+  // ── 섭외 일정 → 모델에게 보내기 (3가지 방법) ──
+  const doGcalSync = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    const ev = bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사");
+    const input: any = { action: b.gcal_event_id?"update":"create", agency_id: agency.id, event_id: b.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: m?.email||"" };
+    if (ev.start) { const hms=(s:string)=>{ const a=String(s).split(":"); return `${(a[0]||"00").padStart(2,"0")}:${a[1]||"00"}:${a[2]||"00"}`; }; input.start=`${ev.date}T${hms(ev.start)}`; input.end=`${ev.date}T${hms(ev.end||ev.start)}`; input.all_day=false; }
+    else { input.all_day=true; input.date=ev.date; }
+    const r = await gcalSync(input);
+    if (r.skipped) return alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
+    if (r.ok) { if (!b.gcal_event_id && r.event_id) { try { await sb("bookings","PATCH",{gcal_event_id:r.event_id},`?id=eq.${b.id}`); setBookings(bookings.map(x=>x.id===b.id?{...x,gcal_event_id:r.event_id}:x)); setSelectedBooking((s:any)=>s?{...s,gcal_event_id:r.event_id}:s); } catch {} } alert(`구글 캘린더에 일정이 등록되고 ${m?.email||"모델"} 으로 초대를 보냈습니다.`); }
+    else alert("구글 일정 등록 실패: "+(r.error||""));
+  };
+  const doSendCalMail = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    if (!m?.email) return alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요.");
+    const tok = await ensureCalToken(m);
+    const r = await sendCalEmail(m.email, bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"), m?.name||"", tok?calSubscribePageUrl(tok):"", agency?.name||"", agency?.owner_email||"");
+    if (r.ok) alert(`${m.email} 으로 일정을 보냈습니다.`);
+    else if (r.skipped) alert("메일 발송이 아직 연결되지 않았습니다.\n(email-send 함수 배포 필요)");
+    else alert("메일 발송 실패: "+(r.error||""));
+  };
+  const doCopyCalLink = async () => {
+    const b = selectedBooking; if (!b) return;
+    const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
+    const url = calShareUrl(bookingToCalEvent(b, m?.name||"모델", c?.name||"고객사"));
+    try { await navigator.clipboard.writeText(url); alert("캘린더 링크가 복사되었습니다.\n카톡·메시지에 붙여 보내면 모델이 자기 캘린더에 추가할 수 있어요.\n\n"+url); }
+    catch { prompt("아래 링크를 복사해 모델에게 보내세요:", url); }
+  };
+
+  // 모델 캘린더 구독 토큰 보장(없으면 생성·저장). 실패(컬럼 미생성) 시 null.
+  const ensureCalToken = async (m: any): Promise<string | null> => {
+    if (m?.cal_token) return m.cal_token;
+    const token = genCalToken();
+    try {
+      await sb("models", "PATCH", { cal_token: token }, `?id=eq.${m.id}`);
+      setModels(models.map(x => x.id===m.id ? { ...x, cal_token: token } : x));
+      if (selectedModel?.id===m.id) setSelectedModel({ ...selectedModel, cal_token: token });
+      return token;
+    } catch { return null; }
   };
 
   const handleChangeStatus = async (id: string, status: string) => {
@@ -805,21 +975,30 @@ export default function App() {
     }
   };
 
+  // 권한 부여 — 담당자에게 대표 권한 추가 (본인 권한은 유지, 공동 대표)
   const handleTransferOwner = async (target: any) => {
     if (!agency || !target) return;
-    if (!confirm(`소유권을 ${target.name}님에게 넘기시겠어요?\n넘기면 본인은 일반 담당자가 되어 일부 권한을 잃습니다.`)) return;
+    if (target.role === "owner") return alert(`${target.name}님은 이미 대표 권한을 가지고 있습니다.`);
+    if (!confirm(`${target.name}님에게 대표 권한을 부여하시겠어요?\n본인 권한은 그대로 유지되며, ${target.name}님도 설정·담당자·재무 기능을 사용할 수 있게 됩니다.`)) return;
     try {
-      const me = members.find(m=>m.user_id===session?.id);
       await sb("agency_members","PATCH",{role:"owner"},`?id=eq.${target.id}`);
-      if (me) await sb("agency_members","PATCH",{role:"member"},`?id=eq.${me.id}`);
-      await sb("agencies","PATCH",{owner_id:target.user_id, owner_email:target.email},`?id=eq.${agency.id}`);
-      const newMembers = members.map(m=> m.id===target.id ? {...m,role:"owner"} : (me&&m.id===me.id ? {...m,role:"member"} : m));
-      setMembers(newMembers);
-      const updatedAg = { ...agency, owner_id:target.user_id, owner_email:target.email };
-      setAgency(updatedAg); setMyRole("member"); saveSession(session, updatedAg, "member");
-      setPage("dashboard");
-      alert(`소유권이 ${target.name}님에게 이전되었습니다.`);
-    } catch (e) { alert("소유권 이전 실패: "+String(e)); }
+      setMembers(members.map(m=> m.id===target.id ? {...m,role:"owner"} : m));
+      alert(`${target.name}님에게 대표 권한을 부여했습니다.`);
+    } catch (e) { alert("권한 부여 실패: "+String(e)); }
+  };
+
+  // 권한 회수 — 부여했던 대표 권한을 일반 담당자로 되돌림 (본인은 회수 불가)
+  const handleRevokeOwner = async (target: any) => {
+    if (!agency || !target) return;
+    if (target.user_id === session?.id) return alert("본인 권한은 회수할 수 없습니다.");
+    const ownerCount = members.filter(m=>m.role==="owner").length;
+    if (ownerCount <= 1) return alert("대표 권한 보유자가 최소 1명은 있어야 합니다.");
+    if (!confirm(`${target.name}님의 대표 권한을 회수하시겠어요?\n일반 담당자로 전환됩니다.`)) return;
+    try {
+      await sb("agency_members","PATCH",{role:"member"},`?id=eq.${target.id}`);
+      setMembers(members.map(m=> m.id===target.id ? {...m,role:"member"} : m));
+      alert(`${target.name}님의 대표 권한을 회수했습니다.`);
+    } catch (e) { alert("권한 회수 실패: "+String(e)); }
   };
 
   // ── 정산 ──
@@ -850,7 +1029,7 @@ export default function App() {
   // ── 모달 백스택: 다른 상세에서 연 모달을 닫으면 직전 상세로 복귀 ──
   const clearAllDetails = () => {
     setSelectedBooking(null); setEditingBooking(false); setShowBocInput(false); setBocReason(""); setBocAmount(0);
-    setSelectedSettlement(null); setSelectedModel(null); setModelHistAll(false); setSelectedCustomer(null); setSelectedProjectId(null);
+    setSelectedSettlement(null); setSelectedModel(null); setModelHistAll(false); setCustHistAll(false); setSelectedCustomer(null); setSelectedProjectId(null);
   };
   const openDetailById = (type: string, id: string) => {
     if (type==="booking")        { const b=bookings.find(x=>x.id===id); if(b){ setEditingBooking(false); setSelectedBooking(b); } }
@@ -927,46 +1106,55 @@ export default function App() {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#eceff3;color:#1f2430;padding:22px 16px 30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sheet{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e2e6ec;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(0,0,0,.3)}
-.top{display:flex;justify-content:space-between;align-items:flex-start;padding:26px 30px;background:#ffffff;color:#1f2430;border-bottom:3px solid #c9a96e}
-.hd{display:flex;align-items:center;gap:14px}
-.logo{height:54px;width:auto;max-width:170px;object-fit:contain;flex-shrink:0}
-.brand{font-size:13px;letter-spacing:.5px;color:#a8842c;font-weight:800}
-.ttl{font-size:23px;font-weight:800;margin-top:4px;color:#1f2430}
-.sub{font-size:12px;color:#8a92a0;margin-top:6px}
-.tag{display:inline-block;padding:2px 9px;border-radius:6px;font-weight:800;font-size:11px;margin-right:7px;vertical-align:1px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 26px;background:#ffffff;color:#1f2430;border-bottom:3px solid #c9a96e}
+.hd{display:flex;align-items:center;gap:13px}
+.logo{height:48px;width:auto;max-width:150px;object-fit:contain;flex-shrink:0}
+.brand{font-size:12px;letter-spacing:.5px;color:#a8842c;font-weight:800}
+.ttl{font-size:20px;font-weight:800;margin-top:3px;color:#1f2430}
+.sub{font-size:11px;color:#8a92a0;margin-top:5px}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:800;font-size:10px;margin-right:6px;vertical-align:1px}
 .tag.ok{background:#1c8f5a;color:#fff}.tag.prov{background:#d9822b;color:#fff}
-.meta{text-align:right;font-size:12px;color:#8a92a0;line-height:1.7}
-.meta b{color:#1f2430;font-size:13px}
-.body{padding:24px 30px 30px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
-.box{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;background:#fafbfc}
-.box h4{font-size:11px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:9px;text-transform:uppercase}
-.r{display:flex;gap:10px;font-size:13px;padding:3px 0}
-.r .l{color:#7c8595;min-width:74px;flex-shrink:0}
+.meta{text-align:right;font-size:11px;color:#8a92a0;line-height:1.65}
+.meta b{color:#1f2430;font-size:12px}
+.body{padding:18px 26px 22px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px;margin-bottom:13px}
+.box{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;background:#fafbfc}
+.box h4{font-size:10.5px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
+.r{display:flex;gap:9px;font-size:12px;padding:2px 0}
+.r .l{color:#7c8595;min-width:70px;flex-shrink:0}
 .r .v{color:#1f2430;font-weight:600;word-break:keep-all;overflow-wrap:break-word}
-.modelbar{display:flex;align-items:center;gap:12px;background:#1c2330;color:#fff;border-radius:10px;padding:14px 18px;margin-bottom:18px}
-.modelbar .lab{font-size:11px;color:#c9a96e;font-weight:800}
-.modelbar .nm{font-size:20px;font-weight:800}
-.sec{font-size:11px;color:#7c8595;font-weight:800;letter-spacing:.4px;margin:0 0 8px;text-transform:uppercase}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px}
-td{padding:10px 12px;border-bottom:1px solid #eef1f5}
+.modelbar{display:flex;align-items:center;gap:11px;background:#1c2330;color:#fff;border-radius:10px;padding:11px 16px;margin-bottom:13px}
+.modelbar .lab{font-size:10.5px;color:#c9a96e;font-weight:800}
+.modelbar .nm{font-size:18px;font-weight:800}
+.sec{font-size:10.5px;color:#7c8595;font-weight:800;letter-spacing:.4px;margin:0 0 7px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:13px}
+td{padding:7px 11px;border-bottom:1px solid #eef1f5}
 td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:15px;font-weight:800;color:#8a6d2f}
-tr.due td{color:#5a6373;font-size:12px}
-.notice{font-size:10.5px;color:#6b7280;line-height:1.75;background:#f6f8fa;border-radius:8px;padding:12px 14px;margin-bottom:18px}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:14px 16px;min-height:96px;position:relative}
-.sigbox .who{font-size:12px;color:#7c8595;font-weight:700}
-.sigbox .nm{font-size:14px;font-weight:800;margin-top:4px;color:#1f2430}
-.sigbox .seal{position:absolute;right:14px;bottom:12px;font-size:11px;color:#b8bfca}
-.foot{text-align:center;font-size:10px;color:#9aa2af;margin-top:16px;line-height:1.7}
+tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:14px;font-weight:800;color:#8a6d2f}
+tr.due td{color:#5a6373;font-size:11px}
+.notice{font-size:10px;color:#6b7280;line-height:1.65;background:#f6f8fa;border-radius:8px;padding:9px 12px;margin-bottom:13px}
+.sign{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px}
+.sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;min-height:74px;position:relative}
+.sigbox .who{font-size:11px;color:#7c8595;font-weight:700}
+.sigbox .nm{font-size:13px;font-weight:800;margin-top:4px;color:#1f2430}
+.sigbox .seal{position:absolute;right:13px;bottom:11px;font-size:10px;color:#b8bfca}
+.foot{text-align:center;font-size:9.5px;color:#9aa2af;margin-top:11px;line-height:1.6}
 .bar{display:flex;gap:10px;justify-content:center;max-width:760px;margin:0 auto;padding:18px 0 4px}
 .bb{flex:1 1 0;max-width:300px;border:none;border-radius:10px;padding:15px 16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:#3a4350}
 .bb.share{background:#2f6fed}.bb.print{background:#1c8f5a}
 .topbar{max-width:760px;margin:0 auto 10px;display:flex;justify-content:flex-end}
 .xbtn{display:inline-flex;align-items:center;gap:6px;background:rgba(31,36,48,.88);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}
-@media print{.topbar{display:none}}
-@media print{body{background:#fff;padding:0}.sheet{border:none;box-shadow:none;border-radius:0;max-width:none}.bar{display:none}}
+@page{size:A4 portrait;margin:12mm 14mm}
+@media print{
+  html,body{background:#fff;padding:0;margin:0}
+  .topbar,.bar{display:none}
+  .sheet{border:none;box-shadow:none;border-radius:0;max-width:none;width:100%}
+  .top{padding:14px 4px}
+  .body{padding:14px 4px 4px}
+  .grid2,.modelbar,table,.notice{margin-bottom:10px}
+  /* A4 1장 보장: 살짝 축소 */
+  .sheet{zoom:0.95}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1100,7 +1288,7 @@ async function sharePdf(){
   };
 
   // ── 정산 필터 ──
-  const settlementData = useMemo(()=>bookings.filter(b=>["COMPLETED","SETTLED"].includes(b.status)),[bookings]);
+  const settlementData = useMemo(()=>bookings.filter(b=>["COMPLETED","SETTLED"].includes(b.status) && BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract && bookingTotal(b)>0),[bookings]);
   const filteredSettlement = useMemo(()=>{
     return settlementData.filter(b=>{
       if (settlementTab==="PENDING"){ if(b.status!=="COMPLETED"||b.is_paid) return false; }
@@ -1108,11 +1296,10 @@ async function sharePdf(){
       if (settlementTab==="UNPAID") { if(!(b.status==="SETTLED"&&!b.is_paid)) return false; }
       if (settlementMonth!=="ALL"&&!b.shoot_date?.startsWith(settlementMonth)) return false;
       if (settlementModel!=="ALL"&&b.model_id!==settlementModel) return false;
-      if (settlementMgr!=="ALL"&&b.manager!==settlementMgr) return false;
-      if (settlementProject!=="ALL"&&b.project_name!==settlementProject) return false;
+      if (settlementClient!=="ALL"&&b.customer_id!==settlementClient) return false;
       return true;
     });
-  },[settlementData,settlementTab,settlementMonth,settlementModel,settlementMgr,settlementProject]);
+  },[settlementData,settlementTab,settlementMonth,settlementModel,settlementClient]);
 
   const settlementSummary = useMemo(()=>{
     const total = filteredSettlement.reduce((s,b)=>s+bookingTotal(b),0);
@@ -1188,6 +1375,16 @@ async function sharePdf(){
   );
 
   // ══════════════════════════════════════════════
+  // 공개 패키지 라우트 (?pkg=토큰) — 로그인 불필요, 고객사용
+  // ══════════════════════════════════════════════
+  const pkgToken = new URLSearchParams(window.location.search).get("pkg");
+  if (pkgToken) return <PackagePublicView token={pkgToken} />;
+  const calData = new URLSearchParams(window.location.search).get("cal");
+  if (calData) return <CalendarAddView data={calData} />;
+  const subToken = new URLSearchParams(window.location.search).get("sub");
+  if (subToken) return <CalSubscribeView token={subToken} />;
+
+  // ══════════════════════════════════════════════
   // 로그인 화면
   // ══════════════════════════════════════════════
   if (!session||!agency) {
@@ -1241,7 +1438,7 @@ async function sharePdf(){
           <p style={{ margin:"0 0 14px" }}><Ban size={40} color={C.red} /></p>
           <h2 style={{ color:C.text, margin:"0 0 8px" }}>무료 체험이 만료되었습니다</h2>
           <p style={{ color:C.textSub, marginBottom:28 }}>계속 사용하려면 요금제를 선택하세요.<br/>데이터는 안전하게 보관되어 있습니다.</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12, marginBottom:20 }}>
             {PLANS.map(plan=>(
               <div key={plan.id} style={{ background:"white", borderRadius:10, padding:16, cursor:"pointer", border:"2px solid transparent", transition:"border 0.2s" }}
                 onClick={()=>handleChangePlan(plan.id)}
@@ -1266,6 +1463,8 @@ async function sharePdf(){
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
     { target:"models"     as Page, label:"모델",     icon:User },
+    { target:"studio"     as Page, label:"스튜디오", icon:Camera },
+    { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
@@ -1275,14 +1474,14 @@ async function sharePdf(){
   const adminItems = [
     ...(myRole==="owner"?[{target:"members" as Page,label:"담당자",icon:Agents}]:[]),
     ...(myRole==="owner"?[{target:"company" as Page,label:"설정",icon:Settings}]:[]),
-    { target:"plan" as Page, label:"요금제", icon:CardCheck },
+    { target:"plan" as Page, label:"요금제", icon:CreditCard },
   ];
 
   // ══════════════════════════════════════════════
   // 메인 레이아웃
   // ══════════════════════════════════════════════
   return (
-    <div style={{ display:"flex", minHeight:"100vh", width:"100vw", background:C.bg, color:C.text }}>
+    <div style={{ display:"flex", minHeight:"100vh", width:"100%", maxWidth:"100vw", background:C.bg, color:C.text }}>
 
       {/* ── 데스크탑 상단 바 (로고 / 업체명·다크모드·로그아웃) ── */}
       {!isMobile&&(
@@ -1361,6 +1560,9 @@ async function sharePdf(){
             holidays={holidays}
             onAddHoliday={handleAddHoliday}
             onDeleteHoliday={handleDeleteHoliday}
+            modelOffs={modelOffs}
+            onAddModelOff={handleAddModelOff}
+            onDeleteModelOff={handleDeleteModelOff}
             bookings={bookings}
             models={models}
             customers={customers}
@@ -1377,16 +1579,20 @@ async function sharePdf(){
         {/* ════ 모델 ════ */}
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
 
+        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
+
+        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} />}
+
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
-        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementMgr={settlementMgr} setSettlementMgr={setSettlementMgr} settlementProject={settlementProject} setSettlementProject={setSettlementProject} settlementProjects={settlementProjects} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} memberNames={memberNames} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
+        {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementClient={settlementClient} setSettlementClient={setSettlementClient} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
 
         {/* ════ 담당자 ════ */}
         {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
-        {page==="company"&&myRole==="owner"&&<CompanyView agency={agency} members={members} session={session} onSave={handleSaveCompany} onTransferOwner={handleTransferOwner} />}
+        {page==="company"&&myRole==="owner"&&<CompanyView agency={agency} members={members} session={session} onSave={handleSaveCompany} onTransferOwner={handleTransferOwner} onRevokeOwner={handleRevokeOwner} />}
 
         {/* ════ 요금제 ════ */}
         {page==="plan"&&<PlanView agency={agency} myRole={myRole} planBilling={planBilling} setPlanBilling={setPlanBilling} handleChangePlan={handleChangePlan} />}
@@ -1397,11 +1603,13 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            <div style={{ display:"flex", gap:8 }}>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!editingBooking
                 ? <>
+                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
+                      <button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
                     {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
                   </>
@@ -1412,6 +1620,41 @@ async function sharePdf(){
               }
             </div>
           </div>
+
+          {/* 일정 보내기 선택창 */}
+          {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
+            <div onClick={()=>setShowSendMenu(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
+                <h3 style={{ margin:"0 0 4px", color:C.text, fontSize:16 }}><Calendar size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델에게 일정 보내기</h3>
+                <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
+
+                <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>구글 캘린더에 일정 생성 + 모델 초대. 모델이 수락하면 변경·취소가 자동 동기화돼요. (설정에서 구글 연동 필요)</div>
+                </div>
+
+                <div onClick={async()=>{ if(!hasEmail){ alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요."); return; } setShowSendMenu(false); await doSendCalMail(); }} style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:hasEmail?"pointer":"not-allowed", opacity:hasEmail?1:0.5, background:C.card2 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text }}>✉️ 이메일로 보내기</div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>모델 이메일로 일정(.ics 첨부)과 구독 링크를 발송. {hasEmail?"":"※ 모델 이메일 없음"}</div>
+                </div>
+
+                <div onClick={async()=>{ setShowSendMenu(false); await doCopyCalLink(); }} style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.card2 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text }}>🔗 캘린더 링크 복사</div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>카톡·메시지에 붙여 보낼 "캘린더에 추가" 링크를 복사. (일회성, 자동 동기화 아님)</div>
+                </div>
+
+                {m && <>
+                <p style={{ margin:"14px 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>② 앞으로 자동 동기화 (구독)</p>
+                <div onClick={async()=>{ setShowSendMenu(false); const token=await ensureCalToken(m); if(!token){ alert("구독 토큰 저장에 실패했어요.\nSupabase models 테이블에 cal_token 컬럼이 필요합니다:\nalter table models add column if not exists cal_token text;"); return; } const url=calSubscribePageUrl(token); try{ await navigator.clipboard.writeText(url); alert("구독 링크가 복사되었습니다.\n\n이 링크를 모델에게 보내면, 폰 기종(아이폰/안드로이드)에 맞는 설치·구독 방법이 자동 안내돼요. 모델이 한 번 구독하면 이후 모든 확정 일정이 자동 동기화됩니다.\n\n"+url); }catch{ prompt("구독 링크(모델에게 보내세요):", url); } }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>🔗 구독 링크 복사 <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>한 번 구독하면 이 모델의 모든 확정 일정이 자동으로 들어와요. (모델당 한 번만 설정)</div>
+                </div>
+                </>}
+
+                <button onClick={()=>setShowSendMenu(false)} style={{ ...btnS("#555"), width:"100%", marginTop:4 }}>닫기</button>
+              </div>
+            </div>
+          ); })()}
 
           {/* 상태 (보기=배지 / 편집=선택) */}
           <div style={{ marginBottom:16 }}>
@@ -1430,7 +1673,7 @@ async function sharePdf(){
           {/* 조회 모드 */}
           {!editingBooking ? (
             <>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:12, marginBottom:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
                 {/* 모델 (클릭 → 모델 상세) */}
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p>
@@ -1452,13 +1695,18 @@ async function sharePdf(){
                   ["장소",    selectedBooking.location],
                   ["담당자",  selectedBooking.manager],
                   ["사용기간",selectedBooking.usage_period],
-                  ["사용국가",selectedBooking.usage_region],
                 ].filter(([,v])=>v).map(([k,v])=>(
                   <div key={String(k)}>
                     <p style={{ margin:0, fontSize:12, color:C.muted }}>{k}</p>
                     <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{v}</p>
                   </div>
                 ))}
+                {["SHOOT"].includes(selectedBooking.booking_type||"SHOOT")&&(
+                  <div>
+                    <p style={{ margin:0, fontSize:12, color:C.muted }}>사용국가</p>
+                    <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{selectedBooking.usage_region||"-"}</p>
+                  </div>
+                )}
               </div>
               {(selectedBooking.shoot_types||[]).length>0&&(
                 <div style={{ marginBottom:10 }}>
@@ -1492,7 +1740,7 @@ async function sharePdf(){
                   ))}
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명</label>
                   <input style={inp} value={selectedBooking.project_name||""} onChange={e=>setSelectedBooking((p:any)=>({...p,project_name:e.target.value}))} /></div>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>고객사</label>
@@ -1511,7 +1759,7 @@ async function sharePdf(){
                   <TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} />
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
                   <input style={inp} value={selectedBooking.location||""} onChange={e=>setSelectedBooking((p:any)=>({...p,location:e.target.value}))} placeholder="예: 스튜디오 A" /></div>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>담당자</label>
@@ -1541,7 +1789,7 @@ async function sharePdf(){
                 </div>
               )}
               {/* 사용 범위 + 기간 (추가폼과 동일) */}
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
                 <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={selectedBooking.usage_scope||[]} onChange={(v:string[])=>setSelectedBooking((p:any)=>({...p,usage_scope:v}))} />
                 <div style={{ marginBottom:10 }}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -1605,7 +1853,7 @@ async function sharePdf(){
             {editingBooking ? (
               /* 편집 모드: 계약총액·계약금 입력 → 잔금 자동계산 */
               <>
-                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                   <div>
                     <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>계약 총액</label>
                     <div style={{ position:"relative" }}>
@@ -1633,7 +1881,7 @@ async function sharePdf(){
                     </div>
                   </div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                   <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                     <input style={{ ...inp, marginBottom:0 }} type="date" value={selectedBooking.deposit_due||""} onChange={e=>setSelectedBooking((p:any)=>({...p,deposit_due:e.target.value}))} /></div>
                   <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>잔금 입금 예정일</label>
@@ -1642,7 +1890,7 @@ async function sharePdf(){
               </>
             ) : (
               /* 조회 모드: 계약금/잔금 입금 확인 */
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div>
                   <p style={{ margin:"0 0 4px", color:C.muted, fontSize:11 }}>계약금</p>
                   <p style={{ margin:"0 0 4px", color:C.text, fontWeight:700 }}>{selectedBooking.deposit_amt?selectedBooking.deposit_amt.toLocaleString()+"원":"-"}</p>
@@ -1695,12 +1943,54 @@ async function sharePdf(){
                 ))}
               </div>
             )}
-            {bookingTotal(selectedBooking)>0&&(
-              <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8, display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:C.muted, fontSize:12 }}>모델 정산액 ({(()=>{ const t=modelTaxType(models.find(m=>m.id===selectedBooking.model_id)); return t==="foreigner"?"외국인·전액":t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외"; })()}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""})</span>
-                <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+            {bookingTotal(selectedBooking)>0&&(()=>{
+              const mdl = models.find(m=>m.id===selectedBooking.model_id);
+              const t = modelTaxType(mdl);
+              const taxTxt = t==="foreigner"?`${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`} 제외`:t==="company"?"소속사·+10% 계산서":"프리랜서·3.3% 제외";
+              const sess = bookingSession(selectedBooking);
+              const ovr = !!selectedBooking.model_pay_type;
+              const pay = payCfg(selectedBooking, mdl);
+              const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료율 ${pay.value||0}%`;
+              return (
+              <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ color:C.muted, fontSize:12 }}>
+                    모델 정산액
+                    <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:sess==="half"?C.purple+"22":C.blue+"22", color:sess==="half"?C.purple:C.blue, fontSize:10, fontWeight:700 }}>{sessionLabel(selectedBooking)}</span>
+                    <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:C.green+"22", color:C.green, fontSize:10, fontWeight:700 }}>{rateTxt}</span>
+                    <span style={{ marginLeft:6 }}>({taxTxt}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""}{ovr?", 건별 수정":""})</span>
+                  </span>
+                  <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+                </div>
+                {/* 모델료(세션) · 매출총이익 */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6, paddingTop:6, borderTop:`1px solid ${C.border}` }}>
+                  <span style={{ color:C.muted, fontSize:12 }}>모델료 ({sessionLabel(selectedBooking)}) {(()=>{ const f = sess==="half" ? (Number(mdl?.fee_half)||Number(mdl?.fee_day)||0) : (Number(mdl?.fee_day)||0); return <b style={{ color:C.textSub, fontWeight:700 }}>{f>0?f.toLocaleString()+"원":"-"}</b>; })()}</span>
+                  <span style={{ color:C.muted, fontSize:12 }}>매출총이익 <b style={{ color:C.blue, fontWeight:800, fontSize:13 }}>{bookingAgencyFee(selectedBooking, models).toLocaleString()}원</b></span>
+                </div>
+                {/* 편집 모드: 모델 지급 정산방식·금액 건별 수정 */}
+                {editingBooking&&(
+                  <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:11, color:C.muted, minWidth:54 }}>지급 방식</span>
+                      {([["","모델 기본"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+                        <button key={k||"def"} type="button" onClick={()=>setSelectedBooking((p:any)=>({...p, model_pay_type:k||null, ...(k===""?{model_pay_value:null}:{})}))} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${(selectedBooking.model_pay_type||"")===k?C.green:C.border}`, background:(selectedBooking.model_pay_type||"")===k?C.green+"22":"transparent", color:(selectedBooking.model_pay_type||"")===k?C.green:C.muted, fontSize:12, fontWeight:(selectedBooking.model_pay_type||"")===k?700:500, cursor:"pointer" }}>{l}</button>
+                      ))}
+                      {selectedBooking.model_pay_type&&(
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
+                          <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
+                            placeholder={selectedBooking.model_pay_type==="rate"?"수수료율":"정액"}
+                            value={selectedBooking.model_pay_value!=null&&selectedBooking.model_pay_value!==""?(selectedBooking.model_pay_type==="fixed"?Number(selectedBooking.model_pay_value).toLocaleString("ko-KR"):String(selectedBooking.model_pay_value)):""}
+                            onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setSelectedBooking((p:any)=>({...p, model_pay_value:v===""?null:Number(v)})); }} />
+                          <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{selectedBooking.model_pay_type==="rate"?"%":"원"}</span>
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 수수료율/정액을 선택해 입력하세요.`}</p>
+                  </div>
+                )}
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* 촬영 레퍼런스 */}
@@ -1781,6 +2071,8 @@ async function sharePdf(){
         <Modal onClose={()=>setShowMoreMenu(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>메뉴</h3>
           {([
+            { t:"studio" as Page, l:"스튜디오", I:Camera },
+            { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
             ...(myRole==="owner"?[{ t:"members" as Page, l:"담당자", I:Users }]:[]),
@@ -1813,7 +2105,7 @@ async function sharePdf(){
         return (
           <Modal onClose={closeDetail} wide>
             <h3 style={{ marginTop:0, color:C.text }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>촬영일</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{fmtDate(pbs[0]?.shoot_date)}</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{pbs.length}명</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>총 금액</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:800, color:C.yellow }}>{totalFee>0?totalFee.toLocaleString()+"원":"-"}</p></div>
@@ -1965,6 +2257,12 @@ async function sharePdf(){
                     <span style={{ color:C.red }}>−{wh.toLocaleString()}원</span>
                   </div>
                 )}
+                {t==="foreigner" && (
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>원천징수 ({mdl?.visa_type==="E6"?"E6 3.3%":mdl?.visa_type==="C4"?"C4 20%":`${foreignerRate(mdl)}%`})</span>
+                    <span style={{ color:C.red }}>−{wh.toLocaleString()}원</span>
+                  </div>
+                )}
                 {t==="company" && (
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                     <span style={{ color:C.muted }}>부가세 (10%, 세금계산서)</span>
@@ -1972,11 +2270,11 @@ async function sharePdf(){
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?"(외국인·전액)":t==="company"?"(소속사)":"(프리랜서)"}</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:t==="company"?"(소속사)":"(프리랜서)"}</span>
                   <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
-                  <span style={{ color:C.muted }}>에이전시 마진</span>
+                  <span style={{ color:C.muted }}>매출총이익</span>
                   <span style={{ color:C.blue }}>{margin.toLocaleString()}원</span>
                 </div>
               </div>
@@ -2008,13 +2306,13 @@ async function sharePdf(){
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:78 }}>정산 방식</span>
-              {([["","모델 기본값"],["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["","모델 기본값"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setEditPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${editPayType===k?C.green:C.border}`, background:editPayType===k?C.green+"22":"transparent", color:editPayType===k?C.green:C.muted, fontSize:12, fontWeight:editPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
               {editPayType!==""&&(
                 <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                   <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
-                    placeholder={editPayType==="rate"?"모델 몫":"정액"}
+                    placeholder={editPayType==="rate"?"수수료율":"정액"}
                     value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
                     onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
                   <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{editPayType==="rate"?"%":"원"}</span>
@@ -2027,14 +2325,14 @@ async function sharePdf(){
               const mdl = models.find(m=>m.id===selectedSettlement.model_id);
               const bb = { ...selectedSettlement, shoot_fee: Number(editFee)||0, overcharges: editOvercharges, model_pay_type: editPayType||null, model_pay_value: editPayType?(Number(editPayValue)||0):null };
               const g = modelGross(bb, mdl); const pay = bookingModelPay(bb, models); const t = modelTaxType(mdl);
-              return <p style={{ margin:"8px 0 0", fontSize:12, color:C.text }}>→ 모델 실지급 <strong style={{ color:"#c9a96e", fontSize:14 }}>{pay.toLocaleString()}원</strong> <span style={{ color:C.muted, fontSize:11 }}>(기준액 {g.toLocaleString()}원 · {t==="foreigner"?"외국인 전액":t==="company"?"+10% 계산서":"−3.3%"})</span></p>;
+              return <p style={{ margin:"8px 0 0", fontSize:12, color:C.text }}>→ 모델 실지급 <strong style={{ color:"#c9a96e", fontSize:14 }}>{pay.toLocaleString()}원</strong> <span style={{ color:C.muted, fontSize:11 }}>({sessionLabel(bb)} · 기준액 {g.toLocaleString()}원 · {t==="foreigner"?`외국인 −${foreignerRate(mdl)}%`:t==="company"?"+10% 계산서":"−3.3%"})</span></p>;
             })()}
           </div>
 
           {/* ── 정산 단계: 날짜 + 상태 (정산 내역서에 반영) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 단계 (날짜·상태)</p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {(()=>{ const depAmt = selectedSettlement.deposit_amt||0; const hasDep = depAmt>0; return (
               <div style={{ opacity:hasDep?1:0.5 }}>
                 <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:hasDep&&editDepositPaid?C.blue:C.muted, marginBottom:4, cursor:hasDep?"pointer":"not-allowed" }}>
@@ -2082,31 +2380,33 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 10px", borderRadius:10 }}>{selectedModel.category}{ageFromSSN6(selectedModel.ssn6)!==null?` · ${ageFromSSN6(selectedModel.ssn6)}세`:""}</span>}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap" }}>
+            <div style={{ minWidth:0 }}>
+              <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
+              <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+                {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}</span>}
                 {selectedModel.is_foreigner&&(()=>{
                   const dday=visaDday(selectedModel.visa_exit);
                   const ddayColor=dday==="만료"?C.red:C.orange;
-                  return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"3px 10px", borderRadius:10 }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
+                  return <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:12, fontWeight:700, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>;
                 })()}
               </div>
-              <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
             </div>
-            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
+              <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
+              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
               ["이메일",   selectedModel.email],
               ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
-              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`비율 ${selectedModel.payout_pay_value}%`) : "-"],
+              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료율 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
             ].map(([k,v])=>(
               <div key={String(k)}>
@@ -2119,11 +2419,38 @@ async function sharePdf(){
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>출국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.yellow }}>{fmtDate(selectedModel.visa_exit)}</p></div>
             </>}
           </div>
-          {/* 링크 */}
-          <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-            {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 열기 →</a>}
-            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 열기 →</a>}
-            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 열기 →</a>}
+          {/* 신체 · 프로필 (컴카드·패키지에 쓰이는 정보) */}
+          {(()=>{ const m=selectedModel; const three=[m.bust,m.waist,m.hip].filter(Boolean).join("-"); const rows:[string,any][]=[
+              ...(m.height?[["키",`${m.height}cm`]] as [string,any][]:[]),
+              ...(three?[["3사이즈",three]] as [string,any][]:[]),
+              ...(m.shoe?[["신발",`${m.shoe}mm`]] as [string,any][]:[]),
+              ...(m.hair_length?[["머리",m.hair_length]] as [string,any][]:[]),
+              ...(m.hair_color?[["머리색",m.hair_color]] as [string,any][]:[]),
+              ...(m.eye_color?[["눈동자",m.eye_color]] as [string,any][]:[]),
+              ["타투", m.tattoo?"있음":"없음"],
+              ["언더웨어", m.underwear_ok?"가능":"불가"],
+              ...(m.instagram_followers?[["인스타 팔로워",Number(m.instagram_followers).toLocaleString()]] as [string,any][]:[]),
+            ];
+            const hasAny = rows.length>2 || (Array.isArray(m.fields)&&m.fields.length) || m.specialty;
+            if(!hasAny) return null;
+            return (
+              <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px", marginBottom:14 }}>
+                <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 · 프로필</p>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:10 }}>
+                  {rows.map(([k,v])=>(<div key={k}><p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p><p style={{ margin:"2px 0 0", fontSize:13.5, fontWeight:600, color:C.text }}>{v}</p></div>))}
+                </div>
+                {Array.isArray(m.fields)&&m.fields.length>0&&<div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:6 }}>{m.fields.map((f:string)=><span key={f} style={{ background:C.card, color:C.textSub, fontSize:11, padding:"3px 9px", borderRadius:10, border:`1px solid ${C.border}` }}>{f}</span>)}</div>}
+                {m.specialty&&<p style={{ margin:"8px 0 0", fontSize:12, color:C.textSub }}>특기: {m.specialty}</p>}
+              </div>
+            );
+          })()}
+          {/* 링크/연락 — 인스타 · 카톡 · 구글드라이브 · 아이모 · 통장 순 */}
+          <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+            {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 →</a>}
+            {selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
+            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
+            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
+            {selectedModel.bank_info&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.card2, color:C.textSub, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}><Banknote size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedModel.bank_info}</span>}
           </div>
           {selectedModel.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedModel.memo}</p></div>}
           {/* 섭외 이력 + 모델별 정산 요약 */}
@@ -2135,7 +2462,7 @@ async function sharePdf(){
             const shown = modelHistAll ? mb : mb.slice(0,5);
             return (
             <div>
-              <div style={{ background:C.card2, borderRadius:10, padding:"12px 14px", marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+              <div style={{ background:C.card2, borderRadius:10, padding:"12px 14px", marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 완료(입금)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.green }}>{settledAmt.toLocaleString()}원</p></div>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 대기</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.yellow }}>{pendingAmt.toLocaleString()}원</p></div>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>모델 실지급(정산)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:"#c9a96e" }}>{modelPay.toLocaleString()}원</p></div>
@@ -2184,7 +2511,7 @@ async function sharePdf(){
             </div>
             <button onClick={()=>openEditCustomer(selectedCustomer)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["담당자명", selectedCustomer.manager_name],
               ["전화번호", selectedCustomer.phone?<a href={`tel:${selectedCustomer.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedCustomer.phone}</a>:null],
@@ -2200,18 +2527,38 @@ async function sharePdf(){
             ))}
           </div>
           {selectedCustomer.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedCustomer.memo}</p></div>}
-          <div>
-            <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({bookings.filter(b=>b.customer_id===selectedCustomer.id).length}건)</p>
-            {bookings.filter(b=>b.customer_id===selectedCustomer.id).slice(0,5).map(b=>(
-              <div key={b.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
-                <div>
-                  <span style={{ fontSize:13, color:C.text }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
-                  <span style={{ fontSize:12, color:C.muted, marginLeft:8 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+          {(()=>{
+            const cb = bookings.filter(b=>b.customer_id===selectedCustomer.id).sort((a,b)=>(b.shoot_date||"").localeCompare(a.shoot_date||""));
+            const shown = custHistAll ? cb : cb.slice(0,5);
+            return (
+            <div>
+              <p style={{ fontSize:13, fontWeight:700, color:C.text, margin:"0 0 10px" }}>섭외 이력 ({cb.length}건)</p>
+              {cb.length===0&&<p style={{ color:C.muted, fontSize:13 }}>섭외 이력이 없습니다.</p>}
+              {shown.map(b=>(
+                <div key={b.id} onClick={()=>openDetail("booking", b.id)}
+                  className="hist-row"
+                  style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}`, cursor:"pointer", gap:8 }}
+                  onMouseEnter={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.blue; }}
+                  onMouseLeave={e=>{ const el=e.currentTarget.querySelector(".hist-name") as HTMLElement|null; if(el) el.style.color=C.text; }}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <span className="hist-name" style={{ fontSize:13, color:C.text, fontWeight:600, transition:"color 0.15s" }}>{models.find(m=>m.id===b.model_id)?.name||"?"}</span>
+                    {b.project_name&&<span style={{ fontSize:12, color:C.blue, marginLeft:8 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    <span style={{ fontSize:12, color:C.textSub, marginLeft:8, fontWeight:700 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                    {bookingTotal(b)>0&&<span style={{ fontSize:12, color:C.yellow, fontWeight:700 }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{bookingTotal(b).toLocaleString()}원</span>}
+                    <Badge code={b.status} type={b.booking_type} />
+                  </div>
                 </div>
-                <Badge code={b.status} type={b.booking_type} />
-              </div>
-            ))}
-          </div>
+              ))}
+              {cb.length>5&&(
+                <button onClick={()=>setCustHistAll(v=>!v)} style={{ width:"100%", marginTop:10, padding:"9px", fontSize:12, fontWeight:700, color:C.blue, background:"transparent", border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer" }}>
+                  {custHistAll ? "접기 ▲" : `더 보기 (${cb.length-5}건 더) ▼`}
+                </button>
+              )}
+            </div>
+            );
+          })()}
           <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
@@ -2221,15 +2568,16 @@ async function sharePdf(){
         <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}}>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <BizLicenseUpload onExtracted={applyBizInfo} />
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label><input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호</label><input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업종</label>
               <select style={inp} value={cIndustry} onChange={e=>setCIndustry(e.target.value)}>
@@ -2238,7 +2586,7 @@ async function sharePdf(){
               </select>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
@@ -2252,9 +2600,17 @@ async function sharePdf(){
         </Modal>
       )}
       {(showModelForm||mEditMode)&&(
-        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}}>
-          <h3 style={{ marginTop:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
-          {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedModel?.id}</p>}
+        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
+            <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
+            {mEditMode&&selectedModel&&(
+              <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.blue}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+                <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.purple}`, background:"transparent", color:C.purple, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Camera size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 스튜디오</button>
+              </div>
+            )}
+          </div>
+          {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedModel?.id}</p>}
 
           {/* 썸네일 업로드 */}
           <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:14 }}>
@@ -2282,7 +2638,7 @@ async function sharePdf(){
             </div>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델명 *</label>
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
@@ -2292,7 +2648,7 @@ async function sharePdf(){
               <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호</label>
               <input style={inp} type="tel" value={mPhone} onChange={e=>setMPhone(e.target.value)} />
@@ -2302,9 +2658,16 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>카테고리</label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>성별 *<span style={{ fontSize:10, color:C.muted }}> · ID 생성</span></label>
+              <select style={inp} value={mGender} onChange={e=>setMGender(e.target.value)}>
+                <option value="">선택</option>
+                {GENDERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 타입</label>
               <select style={inp} value={mCategory} onChange={e=>setMCategory(e.target.value)}>
                 <option value="">선택</option>
                 {MODEL_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
@@ -2316,59 +2679,127 @@ async function sharePdf(){
                 {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>기본 단가 (원) <span style={{ color:C.muted, fontSize:10 }}>· 참고용</span></label>
-              <input style={inp} type="text" placeholder="0"
-                value={mRate ? Number(mRate).toLocaleString("ko-KR") : ""}
-                onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setMRate(Number(v)); }} />
-            </div>
           </div>
-          {/* ── 정산 세무 ── */}
+          {/* ── 신체 정보 · 프로필 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
-            <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ fontWeight:500, color:C.muted }}>(섭외에서 미지정 시 이 기본값 사용)</span></p>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
-              <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {([["foreigner","외국인 (전액)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
-                <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 정보 · 프로필 <span style={{ fontWeight:500, color:C.muted }}>(컴카드·패키지에 표시)</span></p>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(2,minmax(0,1fr))", gap:8, marginBottom:8, maxWidth:isMobile?undefined:320 }}>
+              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="키(cm)" value={mHeight} onChange={e=>setMHeight(e.target.value)} />
+              <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="신발(mm)" value={mShoe} onChange={e=>setMShoe(e.target.value)} />
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5, flexWrap:"wrap" }}>
+              <span style={{ fontSize:11, color:C.muted }}>가슴·허리·엉덩이 단위</span>
+              {(["cm","inch"] as const).map(u=>(
+                <button key={u} type="button" onClick={()=>switchSizeUnit(u)} style={{ padding:"3px 11px", borderRadius:14, border:`1px solid ${mSizeUnit===u?C.blue:C.border}`, background:mSizeUnit===u?C.blue+"22":"transparent", color:mSizeUnit===u?C.blue:C.muted, fontSize:11, fontWeight:mSizeUnit===u?700:500, cursor:"pointer" }}>{u}</button>
+              ))}
+              <span style={{ fontSize:10, color:C.muted }}>{mSizeUnit==="inch"?"※ 저장 시 cm로 자동 변환":"cm로 저장·표시"}</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:8, marginBottom:10, maxWidth:isMobile?undefined:480 }}>
+              {([[`가슴(${mSizeUnit})`,mBust,setMBust],[`허리(${mSizeUnit})`,mWaist,setMWaist],[`엉덩이(${mSizeUnit})`,mHip,setMHip]] as [string,string,(v:string)=>void][]).map(([ph,val,set])=>(
+                <input key={ph} style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder={ph} value={val} onChange={e=>set(e.target.value)} />
               ))}
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:8, marginBottom:10 }}>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>머리 길이</label>
+                <select style={{ ...inp, marginBottom:0 }} value={mHair} onChange={e=>setMHair(e.target.value)}>
+                  <option value="">선택</option>
+                  {HAIR_LENGTHS.map(h=><option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>머리색</label>
+                <input style={{ ...inp, marginBottom:0 }} placeholder="예: 다크블론드" value={mHairColor} onChange={e=>setMHairColor(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>눈동자색</label>
+                <select style={{ ...inp, marginBottom:0 }} value={mEye} onChange={e=>setMEye(e.target.value)}>
+                  <option value="">선택</option>
+                  {EYE_COLORS.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize:11, color:"#E1306C", display:"block", marginBottom:5 }}>인스타 팔로워 수</label>
+                <input style={{ ...inp, marginBottom:0 }} type="text" placeholder="예: 12500" value={mFollowers} onChange={e=>setMFollowers(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+              <button type="button" onClick={()=>setMTattoo(v=>!v)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mTattoo?C.purple:C.border}`, background:mTattoo?C.purple+"22":"transparent", color:mTattoo?C.purple:C.muted, fontSize:12, fontWeight:mTattoo?700:500, cursor:"pointer" }}>타투 {mTattoo?"있음":"없음"}</button>
+              <button type="button" onClick={()=>setMUnderwear(v=>!v)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mUnderwear?C.purple:C.border}`, background:mUnderwear?C.purple+"22":"transparent", color:mUnderwear?C.purple:C.muted, fontSize:12, fontWeight:mUnderwear?700:500, cursor:"pointer" }}>언더웨어 촬영 {mUnderwear?"가능":"불가"}</button>
+            </div>
+            <MultiCheck label="분야 (복수 선택)" options={MODEL_FIELDS} value={mFields} onChange={setMFields} />
+            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>특기 <span style={{ color:C.muted }}>(쉼표로 구분 — 노래, 외국어, 수영, 스키 등)</span></label>
+            <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
+          </div>
+
+          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
+          <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
+              {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
+            </div>
+            {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
+          </div>
+
+          {/* ── 모델료 (Day / Half day / Hour) ── */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+              {([["Day (9h)",mFeeDay,setMFeeDay],["Half day (5h)",mFeeHalf,setMFeeHalf],["Hour (1h)",mFeeHour,setMFeeHour]] as [string,number,(v:number)=>void][]).map(([lab,val,set])=>(
+                <div key={lab}>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
+                  <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                    <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric" placeholder="0"
+                      value={val ? Number(val).toLocaleString("ko-KR") : ""}
+                      onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) set(Number(v)||0); }} />
+                    <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>원</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── 정산 · 세무 ── */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"0 0 14px", background:C.card2 }}>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무</p>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+              <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
+              {mIsForeign ? (
+                <>
+                  <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
+                  <span style={{ fontSize:11, color:C.muted }}>🔒 비자·정산 정보에서 설정됨</span>
+                </>
+              ) : (
+                ([["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
+                ))
+              )}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
-              {([["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mPayType===k?C.green:C.border}`, background:mPayType===k?C.green+"22":"transparent", color:mPayType===k?C.green:C.muted, fontSize:12, fontWeight:mPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
-              <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
-                <input style={{ ...inp, marginBottom:0, width:130 }} type="text" inputMode="numeric"
-                  placeholder={mPayType==="rate"?"모델 몫":"정액"}
-                  value={mPayValue ? (mPayType==="fixed"? Number(mPayValue).toLocaleString("ko-KR") : String(mPayValue)) : ""}
-                  onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setMPayValue(Number(v)); }} />
-                <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
-              </span>
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"계약금액(공급가)의 모델 몫":"건당 모델 정산액(부가세 제외)"}</span>
+              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"에이전시 수수료율 — 모델은 나머지 수령":"정액 그대로(모델료 무관)"}</span>
             </div>
-            <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
-              {mTaxType==="foreigner" ? "지급: 정산 기준액 전액 (원천징수·부가세 없음)"
-                : mTaxType==="company" ? "지급: 정산 기준액 + 10% (세금계산서 수취)"
-                : "지급: 정산 기준액 − 3.3% (소득세 3% + 지방세 0.3% 원천징수)"}
-            </p>
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+              {([["Day","Day(9h)",mPayDayValue,setMPayDayValue],["Half","Half day(5h)",mPayHalfValue,setMPayHalfValue],["Hour","Hours(1h)",mPayHourValue,setMPayHourValue]] as [string,string,number,(v:number)=>void][]).map(([key,lab,val,set])=>(
+                <div key={key}>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
+                  <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                    <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric"
+                      placeholder={mPayType==="rate"?"수수료율":"정액"}
+                      value={val ? (mPayType==="fixed"? Number(val).toLocaleString("ko-KR") : String(val)) : ""}
+                      onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) set(Number(v)||0); }} />
+                    <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* 외국인 선택 시: 비자 입출국일 (국적은 위 국적 셀렉트) */}
-          {mTaxType==="foreigner" && (
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
-              <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Plane size={11} style={{ verticalAlign:-2 }}/> 입국일</label>
-                <input style={inp} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출국일</label>
-                <input style={inp} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
-              </div>
-            </div>
-          )}
-
           {/* 링크 — 브랜드 아이콘 */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#E1306C", marginBottom:5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg>
@@ -2384,7 +2815,7 @@ async function sharePdf(){
               <input style={inp} type="url" placeholder="https://drive.google.com/..." value={mDrive} onChange={e=>setMDrive(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, marginBottom:5, color:"#3A2A00" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24"><ellipse cx="12" cy="11" rx="10" ry="8.5" fill="#FEE500"/><circle cx="9" cy="11" r="1.2" fill="#3A1D00"/><circle cx="12" cy="11" r="1.2" fill="#3A1D00"/><circle cx="15" cy="11" r="1.2" fill="#3A1D00"/></svg>
@@ -2393,8 +2824,14 @@ async function sharePdf(){
               <input style={inp} placeholder="카카오톡 아이디" value={mKakao} onChange={e=>setMKakao(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 정보</label>
-              <input style={inp} placeholder="은행명 + 계좌번호" value={mBank} onChange={e=>setMBank(e.target.value)} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 (은행 · 계좌번호)</label>
+              <div style={{ display:"flex", gap:6 }}>
+                <select style={{ ...inp, width:120, flexShrink:0 }} value={mBankName} onChange={e=>{ const n=e.target.value; setMBankName(n); setMBank(`${n} ${mBankAcct}`.trim()); }}>
+                  <option value="">은행 선택</option>
+                  {["국민","신한","우리","하나","농협","기업","SC제일","씨티","카카오뱅크","토스뱅크","케이뱅크","새마을금고","우체국","수협","부산","대구","경남","광주","전북","제주"].map(b=><option key={b} value={b}>{b}</option>)}
+                </select>
+                <input style={{ ...inp, flex:1, minWidth:0 }} placeholder="계좌번호" value={mBankAcct} onChange={e=>{ const a=e.target.value; setMBankAcct(a); setMBank(`${mBankName} ${a}`.trim()); }} />
+              </div>
             </div>
           </div>
 
@@ -2416,11 +2853,117 @@ async function sharePdf(){
           </div>
         </Modal>
       )}
+      {/* ════ 모달: 외국인 비자·정산 정보 (모델 폼 위 팝업) ════ */}
+      {showForeignModal && (
+        <Modal onClose={()=>setShowForeignModal(false)}>
+          <h3 style={{ marginTop:0, color:C.text }}><Plane size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 외국인 비자 · 정산 정보</h3>
+          <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>비자 유형을 선택하면 세율·기본 지급방식이 자동 설정됩니다. (세율은 정보용 — 정산 계산은 정산·세무 설정 사용)</p>
+
+          {/* 비자 유형 */}
+          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>비자 유형 *</label>
+          <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+            {([["E6","E-6 연예흥행","원천 3.3% · 국내계좌"],["C4","C-4 단기취업","원천 20% · 해외송금"],["OTHER","기타 비자","원천 20% · 수기"]] as const).map(([k,l,d])=>(
+              <button key={k} type="button" onClick={()=>{
+                setMVisaType(k);
+                if(k==="E6"){ setMTaxRate(3.3); setMPayMethod(p=>p||"bank"); }
+                else if(k==="C4"){ setMTaxRate(20); setMHasAlienCard(false); setMPayMethod(p=>p||"payoneer"); }
+                else { setMTaxRate(20); setMPayMethod(p=>p||"bank"); }
+              }} style={{ flex:1, minWidth:0, textAlign:"center", padding:"10px 8px", borderRadius:8, border:`1px solid ${mVisaType===k?C.blue:C.border}`, background:mVisaType===k?C.blue+"22":C.card2, color:mVisaType===k?C.blue:C.textSub, cursor:"pointer" }}>
+                <div style={{ fontSize:13, fontWeight:700 }}>{l}</div>
+                <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{d}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* 입출국 + 세율 */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:14 }}>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>입국일</label>
+              <input style={{ ...inp, marginBottom:0 }} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>체류 만료일</label>
+              <input style={{ ...inp, marginBottom:0 }} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>원천징수율 (%)</label>
+              <input style={{ ...inp, marginBottom:0 }} type="number" step="0.1" value={mTaxRate||""} onChange={e=>setMTaxRate(Number(e.target.value)||0)} />
+            </div>
+          </div>
+
+          {/* 외국인등록증 — E-6만 */}
+          {mVisaType==="E6" && (
+            <div style={{ marginBottom:14 }}>
+              <button type="button" onClick={()=>setMHasAlienCard(v=>!v)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mHasAlienCard?C.green:C.border}`, background:mHasAlienCard?C.green+"22":"transparent", color:mHasAlienCard?C.green:C.muted, fontSize:12, fontWeight:mHasAlienCard?700:500, cursor:"pointer" }}>외국인등록증 {mHasAlienCard?"있음":"없음"}</button>
+              <span style={{ fontSize:11, color:C.muted, marginLeft:8 }}>등록증 보유 시 국내계좌 정산 가능</span>
+            </div>
+          )}
+
+          {/* 지급 방식 */}
+          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>지급 방식</label>
+          <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+            {([["bank","국내 계좌이체"],["payoneer","Payoneer"],["wise","Wise"],["cash","현금"]] as const).map(([k,l])=>(
+              <button key={k} type="button" onClick={()=>setMPayMethod(k)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mPayMethod===k?C.purple:C.border}`, background:mPayMethod===k?C.purple+"22":"transparent", color:mPayMethod===k?C.purple:C.muted, fontSize:12, fontWeight:mPayMethod===k?700:500, cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+
+          {/* 지급 상세 — 방식별 분기 */}
+          <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:16, background:C.card2 }}>
+            {mPayMethod==="bank" && (
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+                <div>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>은행</label>
+                  <select style={{ ...inp, marginBottom:0 }} value={mPayDetail.bank||""} onChange={e=>setMPayDetail({ ...mPayDetail, bank:e.target.value })}>
+                    <option value="">선택</option>
+                    {["국민","신한","우리","하나","농협","기업","SC제일","씨티","카카오뱅크","토스뱅크","케이뱅크"].map(b=><option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계좌번호</label>
+                  <input style={{ ...inp, marginBottom:0 }} value={mPayDetail.account||""} onChange={e=>setMPayDetail({ ...mPayDetail, account:e.target.value })} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>예금주</label>
+                  <input style={{ ...inp, marginBottom:0 }} value={mPayDetail.holder||""} onChange={e=>setMPayDetail({ ...mPayDetail, holder:e.target.value })} />
+                </div>
+              </div>
+            )}
+            {mPayMethod==="payoneer" && (
+              <div>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>Payoneer 등록 이메일</label>
+                <input style={{ ...inp, marginBottom:0 }} type="email" placeholder="payee@email.com" value={mPayDetail.email||""} onChange={e=>setMPayDetail({ ...mPayDetail, email:e.target.value })} />
+              </div>
+            )}
+            {mPayMethod==="wise" && (
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+                <div>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>수취인 이름 (영문)</label>
+                  <input style={{ ...inp, marginBottom:0 }} placeholder="Full name" value={mPayDetail.holder||""} onChange={e=>setMPayDetail({ ...mPayDetail, holder:e.target.value })} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계좌/IBAN 또는 이메일</label>
+                  <input style={{ ...inp, marginBottom:0 }} value={mPayDetail.account||""} onChange={e=>setMPayDetail({ ...mPayDetail, account:e.target.value })} />
+                </div>
+              </div>
+            )}
+            {mPayMethod==="cash" && (
+              <input style={{ ...inp, marginBottom:0 }} placeholder="현금 지급 메모 (선택)" value={mPayDetail.note||""} onChange={e=>setMPayDetail({ ...mPayDetail, note:e.target.value })} />
+            )}
+            {!mPayMethod && <p style={{ margin:0, fontSize:12, color:C.muted }}>지급 방식을 먼저 선택하세요.</p>}
+          </div>
+
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={()=>setShowForeignModal(false)} style={{ ...btnS(C.green), flex:1 }}>저장</button>
+            <button onClick={()=>{ setShowForeignModal(false); }} style={{ ...btnS("#333"), flex:1 }}>닫기</button>
+          </div>
+        </Modal>
+      )}
       {/* ════ 모달: 고객사 추가 ════ */}
       {showCustomerForm&&(
-        <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}}>
+        <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <BizLicenseUpload onExtracted={applyBizInfo} />
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label>
               <input style={inp} value={cName} onChange={e=>setCName(e.target.value)} />
@@ -2430,7 +2973,7 @@ async function sharePdf(){
               <input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label>
               <input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} />
@@ -2440,7 +2983,7 @@ async function sharePdf(){
               <input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label>
               <input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} />
@@ -2453,7 +2996,7 @@ async function sharePdf(){
               </select>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label>
               <input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" />
@@ -2475,6 +3018,16 @@ async function sharePdf(){
       {/* ════ 모달: 정산 내역서 (월별/기간별 + 엑셀) ════ */}
       {showStatement && (
         <SettlementStatementModal bookings={bookings} models={models} customers={customers} isMobile={isMobile} onClose={()=>setShowStatement(false)} />
+      )}
+
+      {/* ════ 모달: 컴카드 (모델 DB 상세에서 열기) ════ */}
+      {compModel && (
+        <CompCardModal model={compModel} agency={agency} onClose={()=>setCompModel(null)}
+          onSave={async (compcard)=>{
+            await sb("models","PATCH",{ compcard }, `?id=eq.${compModel.id}`);
+            setModels(models.map(m=>m.id===compModel.id?{...m,compcard}:m));
+            setCompModel((c:any)=>c?{...c,compcard}:c);
+          }} />
       )}
 
       {/* ════ 모달: 대량 등록 (모델·고객사 공용) ════ */}
@@ -2554,7 +3107,7 @@ async function sharePdf(){
                       </div>
                       {/* 모델별 일정·장소 (기본=프로젝트 공통, 개별 변경 가능) */}
                       <div style={{ background:C.card2, borderRadius:8, padding:"8px 10px", marginBottom:bt.hasContract?10:0 }}>
-                        <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:8, marginBottom:8 }}>
+                        <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:8, marginBottom:8 }}>
                           <div>
                             <label style={{ fontSize:10, color:C.muted, display:"block", marginBottom:3 }}>촬영일</label>
                             <input type="date" style={{ ...inp, marginBottom:0, padding:"5px 8px", fontSize:12 }} value={line.date} onChange={e=>updateProjectModelLine(line.modelId,"date",e.target.value)} />
@@ -2571,7 +3124,7 @@ async function sharePdf(){
                         </div>
                       </div>
                       {bt.hasContract ? (
-                        <MoneyInput label="계약 총액 (이 모델 몫)" value={line.fee} onChange={v=>updateProjectModelLine(line.modelId,"fee",v)} />
+                        <MoneyInput label="계약 총액 (이 모델)" value={line.fee} onChange={v=>updateProjectModelLine(line.modelId,"fee",v)} />
                       ) : null}
                     </div>
                   );
@@ -2582,7 +3135,7 @@ async function sharePdf(){
                   return (
                   <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px" }}>
                     <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약금 / 잔금 (프로젝트 전체)</p>
-                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                       <div>
                         <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>총 계약 (자동)</label>
                         <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", color:"#c9a96e", fontWeight:700 }}>{totalFee.toLocaleString()}원</div>
@@ -2593,7 +3146,7 @@ async function sharePdf(){
                         <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", color:C.text, fontWeight:700 }}>{bal.toLocaleString()}원</div>
                       </div>
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginTop:4 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginTop:4 }}>
                       <div>
                         <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                         <input style={inp} type="date" value={pDepositDue} onChange={e=>setPDepositDue(e.target.value)} />
@@ -2628,7 +3181,7 @@ async function sharePdf(){
           </div>
 
           {/* 프로젝트명 + 고객사 */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명 *</label>
               <input style={inp} placeholder="예) 2026 SS 룩북" value={pName} onChange={e=>setPName(e.target.value)} />
@@ -2654,7 +3207,7 @@ async function sharePdf(){
           </div>
 
           {/* 담당자 + 상태 (장소·일정은 모델별로 설정) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자</label>
               <select style={inp} value={pManager} onChange={e=>setPManager(e.target.value)}>
@@ -2704,7 +3257,7 @@ async function sharePdf(){
           ) : null}
 
           {/* 사용 범위 + 기간 (단일 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
             <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={pUsageScope} onChange={setPUsageScope} />
             <div style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -2782,7 +3335,7 @@ async function sharePdf(){
         <Modal onClose={()=>setShowAddPicker(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>섭외 추가</h3>
           <p style={{ margin:"0 0 16px", fontSize:12, color:C.muted }}>추가할 섭외 유형을 선택하세요.{addPrefill.date?` (${fmtDate(addPrefill.date)})`:""}</p>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12 }}>
             <button onClick={()=>{
               resetBookingForm();
               if(addPrefill.model){ const m=models.find(mm=>mm.id===addPrefill.model); setBModel(addPrefill.model); setBModelSearch(m?.name||""); }
@@ -2810,7 +3363,7 @@ async function sharePdf(){
 
       {/* ════ 모달: 단일 섭외 추가 ════ */}
       {showBookingForm&&(
-        <Modal onClose={()=>{setShowBookingForm(false);resetBookingForm();}} wide maxW={780}>
+        <Modal onClose={()=>{setShowBookingForm(false);resetBookingForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 단일 섭외 추가</h3>
 
           {/* 모델 (첫 항목) */}
@@ -2871,7 +3424,7 @@ async function sharePdf(){
             </div>
           </div>
           {/* 프로젝트명 + 고객사 (프로젝트 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명</label>
               <input style={inp} value={bProject} onChange={e=>setBProject(e.target.value)} />
@@ -2911,7 +3464,7 @@ async function sharePdf(){
           </div>
 
           {/* 장소 + 담당자 + 상태 (프로젝트 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
               <input style={inp} value={bLocation} onChange={e=>setBLocation(e.target.value)} placeholder="예: 스튜디오 A" />
@@ -2963,7 +3516,7 @@ async function sharePdf(){
           </div>
 
           {/* 사용 범위 + 기간 (2열) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
             <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={bUsageScope} onChange={setBUsageScope} />
             <div style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -3028,8 +3581,16 @@ async function sharePdf(){
           {/* 금액 — 촬영 타입만 표시 */}
           {BOOKING_TYPES[bBookingType]?.hasContract&&(
           <div style={{ background:C.card2, borderRadius:8, padding:14, marginBottom:10 }}>
+            {(()=>{ const m=models.find(mm=>mm.id===bModel); if(!m) return null; const f=(v:any)=>Number(v)>0?Number(v).toLocaleString("ko-KR")+"원":"-"; return (
+              <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", marginBottom:12, padding:"8px 12px", background:C.card, borderRadius:6, border:`1px solid ${C.border}`, fontSize:12 }}>
+                <span style={{ color:"#c9a96e", fontWeight:800 }}>모델료</span>
+                <span style={{ color:C.muted }}>Day <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_day)}</b></span>
+                <span style={{ color:C.muted }}>Half day <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_half)}</b></span>
+                <span style={{ color:C.muted }}>Hour <b style={{ color:C.text, fontWeight:700 }}>{f(m.fee_hour)}</b></span>
+              </div>
+            ); })()}
             <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약 금액</p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, alignItems:"end" }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, alignItems:"end" }}>
               <MoneyInput label="계약 총액" value={bBudget}  onChange={v=>{ setBBudget(v);  setBBalance(Math.max(0, v - bDeposit)); }} />
               <MoneyInput label="계약금"    value={bDeposit} onChange={v=>{ setBDeposit(v); setBBalance(Math.max(0, bBudget - v)); }} />
               <div style={{ marginBottom:10 }}>
@@ -3039,7 +3600,7 @@ async function sharePdf(){
                 </div>
               </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginTop:4 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginTop:4 }}>
               <div>
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                 <input style={inp} type="date" value={bDepositDue} onChange={e=>setBDepositDue(e.target.value)} />

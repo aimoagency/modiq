@@ -4,36 +4,17 @@ import { fmt, fmtDate, bookingTotal, bookingAgencyFee, bookingModelPay } from ".
 import Badge from "../components/Badge";
 import { Coins, Calendar, User, Folder, CheckCircle2 } from "../components/icons";
 
-export default function SettlementView({ settlementTab, setSettlementTab, settlementMonth, setSettlementMonth, settlementMonths, settlementModel, setSettlementModel, settlementMgr, setSettlementMgr, settlementProject, setSettlementProject, settlementProjects, settlementSummary, filteredSettlement, models, customers, memberNames, openSettlement, onOpenStatement, isMobile = false }: {
+export default function SettlementView({ settlementTab, setSettlementTab, settlementMonth, setSettlementMonth, settlementMonths, settlementModel, setSettlementModel, settlementClient, setSettlementClient, settlementSummary, filteredSettlement, models, customers, openSettlement, onOpenStatement, isMobile = false }: {
   settlementTab: "PENDING"|"SETTLED"|"UNPAID"; setSettlementTab: (v:"PENDING"|"SETTLED"|"UNPAID")=>void;
   settlementMonth: string; setSettlementMonth: (v:string)=>void; settlementMonths: string[];
   settlementModel: string; setSettlementModel: (v:string)=>void;
-  settlementMgr: string; setSettlementMgr: (v:string)=>void;
-  settlementProject: string; setSettlementProject: (v:string)=>void; settlementProjects: string[];
+  settlementClient: string; setSettlementClient: (v:string)=>void;
   settlementSummary: { total:number; commission:number; modelPay:number; clientPaid:number; clientUnpaid:number; modelPaidAmt:number; modelUnpaidAmt:number };
-  filteredSettlement: any[]; models: any[]; customers: any[]; memberNames: string[];
+  filteredSettlement: any[]; models: any[]; customers: any[];
   openSettlement: (b:any)=>void;
   onOpenStatement?: ()=>void;
   isMobile?: boolean;
 }) {
-  const [view, setView] = useState<"item"|"model"|"client">("item");
-  // 모델별/고객사별 집계
-  const agg = (keyFn:(b:any)=>string, nameFn:(b:any)=>string) => {
-    const map = new Map<string, { name:string; cnt:number; total:number; fee:number; pay:number; paidTotal:number; paidPay:number }>();
-    filteredSettlement.forEach(b=>{
-      const k = keyFn(b) || "?";
-      if(!map.has(k)) map.set(k, { name:nameFn(b)||"?", cnt:0, total:0, fee:0, pay:0, paidTotal:0, paidPay:0 });
-      const g = map.get(k)!;
-      g.cnt++; g.total += bookingTotal(b); g.fee += bookingAgencyFee(b,models); g.pay += bookingModelPay(b,models);
-      if(b.is_paid) g.paidTotal += bookingTotal(b);
-      if(b.model_paid) g.paidPay += bookingModelPay(b,models);
-    });
-    return Array.from(map.values()).sort((a,b)=>b.total-a.total);
-  };
-  const modelRows  = view==="model"  ? agg(b=>b.model_id, b=>models.find((m:any)=>m.id===b.model_id)?.name) : [];
-  const clientRows = view==="client" ? agg(b=>b.customer_id, b=>customers.find((c:any)=>c.id===b.customer_id)?.name) : [];
-  const cell = { padding:"10px 12px", fontSize:13, whiteSpace:"nowrap" as const };
-  const numCell = { ...cell, textAlign:"right" as const, fontVariantNumeric:"tabular-nums" as const };
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", margin:"0 0 20px" }}>
@@ -58,17 +39,13 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
           <option value="ALL">전체 모델</option>
           {models.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 120px" }} value={settlementMgr} onChange={e=>setSettlementMgr(e.target.value)}>
-          <option value="ALL">전체 담당자</option>
-          {memberNames.map(m=><option key={m} value={m}>{m}</option>)}
-        </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 130px" }} value={settlementProject} onChange={e=>setSettlementProject(e.target.value)}>
-          <option value="ALL">전체 프로젝트</option>
-          {settlementProjects.map(p=><option key={p} value={p}>{p}</option>)}
+        <select style={{ ...inp, marginBottom:0, flex:"1 1 130px" }} value={settlementClient} onChange={e=>setSettlementClient(e.target.value)}>
+          <option value="ALL">전체 고객사</option>
+          {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
       {/* ── 두 흐름 분리: 받을 돈(고객사) / 줄 돈(모델) ── */}
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:isMobile?8:12, marginBottom:10 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:isMobile?8:12, marginBottom:10 }}>
         {/* 받을 돈 — 고객사 입금 */}
         <div style={{ background:C.card, border:`1px solid ${C.blue}55`, borderRadius:10, padding:16 }}>
           <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:800, color:C.blue }}><Coins size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금액</p>
@@ -89,62 +66,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 마진 (수익)</span>
         <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
-      {/* 보기 전환: 건별 / 모델별 / 고객사별 */}
-      <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-        {([["item","건별"],["model","모델별"],["client","고객사별"]] as const).map(([k,l])=>(
-          <button key={k} onClick={()=>setView(k)} style={{ padding:"7px 16px", borderRadius:8, border:`1px solid ${view===k?C.blue:C.border}`, background:view===k?C.blue+"22":C.card, color:view===k?C.blue:C.textSub, fontWeight:700, fontSize:13, cursor:"pointer" }}>{l}</button>
-        ))}
-      </div>
-
-      {/* 모델별 집계 */}
-      {view==="model"&&(modelRows.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, overflow:"auto" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", background:C.card2, borderBottom:`1px solid ${C.border}`, fontWeight:700, color:C.textSub, fontSize:12, minWidth:520 }}>
-            <span style={cell}>모델</span><span style={numCell}>건수</span><span style={numCell}>총촬영비</span><span style={numCell}>수수료</span><span style={numCell}>모델지급</span>
-          </div>
-          {modelRows.map((r,i)=>(
-            <div key={i} style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", borderBottom:`1px solid ${C.border}`, alignItems:"center", minWidth:520 }}>
-              <span style={{ ...cell, color:C.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis" }}>{r.name}</span>
-              <span style={numCell}>{r.cnt}건</span>
-              <span style={{ ...numCell, color:C.text, fontWeight:700 }}>{fmt(r.total)}</span>
-              <span style={{ ...numCell, color:C.blue }}>{fmt(r.fee)}</span>
-              <span style={{ ...numCell, color:"#c9a96e", fontWeight:700 }}>{fmt(r.pay)}</span>
-            </div>
-          ))}
-          <div style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", background:C.card2, fontWeight:800, minWidth:520 }}>
-            <span style={{ ...cell, color:C.text }}>합계</span><span style={numCell}>{modelRows.reduce((s,r)=>s+r.cnt,0)}건</span>
-            <span style={{ ...numCell, color:C.text }}>{fmt(modelRows.reduce((s,r)=>s+r.total,0))}</span>
-            <span style={{ ...numCell, color:C.blue }}>{fmt(modelRows.reduce((s,r)=>s+r.fee,0))}</span>
-            <span style={{ ...numCell, color:"#c9a96e" }}>{fmt(modelRows.reduce((s,r)=>s+r.pay,0))}</span>
-          </div>
-        </div>
-      ))}
-
-      {/* 고객사별 집계 */}
-      {view==="client"&&(clientRows.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, overflow:"auto" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", background:C.card2, borderBottom:`1px solid ${C.border}`, fontWeight:700, color:C.textSub, fontSize:12, minWidth:520 }}>
-            <span style={cell}>고객사</span><span style={numCell}>건수</span><span style={numCell}>총 청구액</span><span style={numCell}>입금완료</span><span style={numCell}>미입금</span>
-          </div>
-          {clientRows.map((r,i)=>(
-            <div key={i} style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", borderBottom:`1px solid ${C.border}`, alignItems:"center", minWidth:520 }}>
-              <span style={{ ...cell, color:C.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis" }}>{r.name}</span>
-              <span style={numCell}>{r.cnt}건</span>
-              <span style={{ ...numCell, color:C.text, fontWeight:700 }}>{fmt(r.total)}</span>
-              <span style={{ ...numCell, color:C.green }}>{fmt(r.paidTotal)}</span>
-              <span style={{ ...numCell, color:(r.total-r.paidTotal)>0?C.red:C.muted }}>{fmt(r.total-r.paidTotal)}</span>
-            </div>
-          ))}
-          <div style={{ display:"grid", gridTemplateColumns:"1.6fr .6fr 1fr 1fr 1fr", background:C.card2, fontWeight:800, minWidth:520 }}>
-            <span style={{ ...cell, color:C.text }}>합계</span><span style={numCell}>{clientRows.reduce((s,r)=>s+r.cnt,0)}건</span>
-            <span style={{ ...numCell, color:C.text }}>{fmt(clientRows.reduce((s,r)=>s+r.total,0))}</span>
-            <span style={{ ...numCell, color:C.green }}>{fmt(clientRows.reduce((s,r)=>s+r.paidTotal,0))}</span>
-            <span style={{ ...numCell, color:C.red }}>{fmt(clientRows.reduce((s,r)=>s+(r.total-r.paidTotal),0))}</span>
-          </div>
-        </div>
-      ))}
-
-      {view==="item"&&(filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
+      {(filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
         <div style={{ display:"grid", gap:8 }}>
           {filteredSettlement.map(b=>{
             const model = models.find((m:any)=>m.id===b.model_id);

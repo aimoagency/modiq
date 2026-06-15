@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { C } from "../theme";
-import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance } from "../lib/utils";
+import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance, bookingAgencyFee } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
 import { BOOKING_TYPES } from "../constants";
@@ -23,10 +23,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
     {/* 매출 카드 (재무 권한자만) */}
     {canViewFinance && (()=>{
       const now=new Date(); const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-      const mb=bookings.filter(b=>(b.shoot_date||"").startsWith(ym)&&["CONFIRMED","COMPLETED","SETTLED"].includes(b.status));
+      const mb=bookings.filter(b=>(b.shoot_date||"").startsWith(ym)&&["CONFIRMED","COMPLETED","SETTLED"].includes(b.status)&&BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract&&bookingTotal(b)>0);
       const real=mb.filter(b=>b.status==="SETTLED"||b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
       const expected=mb.reduce((s,b)=>s+bookingTotal(b),0);
       const unpaid=mb.filter(b=>(b.status==="CONFIRMED"||b.status==="COMPLETED")&&!b.is_paid).reduce((s,b)=>s+bookingTotal(b),0);
+      const margin=mb.reduce((s,b)=>s+bookingAgencyFee(b,models),0);
       return (
         <div onClick={()=>setPage("revenue")} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16, cursor:"pointer", transition:"border-color 0.2s" }}
           onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)} onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
@@ -34,10 +35,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}>이번 달 매출</p>
             <span style={{ fontSize:12, color:C.blue, fontWeight:600 }}>매출 현황 전체 보기 →</span>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:12 }}>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
             <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>매출총이익</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.blue }}>{fmt(margin)}</p></div>
           </div>
         </div>
       );
@@ -101,7 +103,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
         { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
       ];
       return (
-        <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":`repeat(${statCards.length},1fr)`, gap:12, marginBottom:16 }}>
+        <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":`repeat(${statCards.length},minmax(0,1fr))`, gap:12, marginBottom:16 }}>
           {statCards.map(item=>(
             <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
               <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
@@ -227,7 +229,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
           </div>
 
           {/* 요일별 바 */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(0,1fr))", gap:4 }}>
             {weekDays.map(wd=>{
               const cnt = live.filter(b=>b.shoot_date===wd.date).length;
               const isToday = wd.date===todayStr;

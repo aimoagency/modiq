@@ -25,6 +25,8 @@ export const BarChart = I("<path d=\"M4 4v16.5h16.5\"></path><rect x=\"7.5\" y=\
 export const CoinStack = I("<ellipse cx=\"12\" cy=\"6\" rx=\"6\" ry=\"2.5\"></ellipse><path d=\"M6 6v5c0 1.38 2.7 2.5 6 2.5s6-1.12 6-2.5V6\"></path><path d=\"M6 11v5c0 1.38 2.7 2.5 6 2.5s6-1.12 6-2.5v-5\"></path>");
 export const Agents = I("<circle cx=\"9\" cy=\"8\" r=\"2.8\"></circle><path d=\"M4 19v-1a5 5 0 0 1 10 0v1\"></path><circle cx=\"16.5\" cy=\"9.5\" r=\"2.3\"></circle><path d=\"M14.7 19v-1a4 4 0 0 1 6.3-3.2\"></path>");
 export const CardCheck = I("<rect x=\"2.5\" y=\"5.5\" width=\"16\" height=\"11\" rx=\"2\"></rect><path d=\"M2.5 9.5h16\"></path><circle cx=\"17.5\" cy=\"17\" r=\"4\"></circle><path d=\"m15.8 17 1.2 1.2 2.4-2.6\"></path>");
+// 카드 묶음(레이어) — 패키지 메뉴용
+export const CardStack = I("<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\"></rect><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"></path>");
 // Aimo 브랜드 마크 (라임그린 A•) — 외부 링크용, 고정 컬러
 export const AimoMark = ({ size = 18, style }: { size?: number; style?: CSSProperties }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" style={style} aria-hidden="true">

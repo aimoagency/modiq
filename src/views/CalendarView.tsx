@@ -8,7 +8,7 @@ import TypeIcon from "../components/TypeIcon";
 import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, Plane, AlertTriangle, Flag, Coins } from "../components/icons";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
-export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", holidays = [], onAddHoliday, onDeleteHoliday, isMobile = false }: {
+export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", holidays = [], onAddHoliday, onDeleteHoliday, modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
   bookings: any[]; models: any[]; customers: any[];
   onSelectBooking: (b: any) => void;
   onAddBooking: (preModel?: string, preDate?: string) => void;
@@ -16,6 +16,9 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   holidays?: any[];
   onAddHoliday?: (date: string, label?: string) => void;
   onDeleteHoliday?: (id: string) => void;
+  modelOffs?: any[];
+  onAddModelOff?: (model_id: string, start: string, end: string, reason?: string) => void;
+  onDeleteModelOff?: (id: string) => void;
   isMobile?: boolean;
 }) {
   const today = new Date();
@@ -27,6 +30,13 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const [hDate,  setHDate]  = useState("");
   const [hLabel, setHLabel] = useState("휴무일");
   const [dayView, setDayView] = useState<"list"|"timeline">("list"); // 날짜 패널 보기 모드
+  // 모델 휴무(기간) 등록 폼
+  const [showOffForm, setShowOffForm] = useState(false);
+  const [offModel,  setOffModel]  = useState("");
+  const [offStart,  setOffStart]  = useState("");
+  const [offEnd,    setOffEnd]    = useState("");
+  const [offReason, setOffReason] = useState("");
+  const [offModelQ, setOffModelQ] = useState(""); // 휴무 모델 검색어
 
   // 화면 폭에 따라 월간 셀 최대 표시 개수 (넓으면 5, 좁으면 4)
   const [winW, setWinW] = useState(typeof window!=="undefined"?window.innerWidth:1440);
@@ -64,6 +74,12 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const holidayByDate: Record<string, any> = {};
   holidays.forEach(h=>{ if(h.date) holidayByDate[h.date]=h; });
 
+  // 모델 휴무: 해당 날짜에 걸친 휴무들 (모델 필터 시 그 모델만)
+  const modelName = (id:string) => models.find(m=>m.id===id)?.name || "?";
+  const offsForDate = (date:string) =>
+    modelOffs.filter(o => (!modelFilter || o.model_id===modelFilter) && date>=o.start_date && date<=o.end_date);
+  const fmtD = (d?:string) => (d||"").replace(/-/g,".");
+
   const prevMonth = () => { if(calMonth===0){setCalYear(y=>y-1);setCalMonth(11);}else{setCalMonth(m=>m-1);}; setSelDate(null); };
   const nextMonth = () => { if(calMonth===11){setCalYear(y=>y+1);setCalMonth(0);}else{setCalMonth(m=>m+1);}; setSelDate(null); };
 
@@ -97,6 +113,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><CalendarDays size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더</h1>
         <div style={{ display:"flex", gap:8 }}>
           <button onClick={()=>{ setHDate(selDate||todayStr); setHLabel("휴무일"); setShowHolidayForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.border}`, color:C.textSub }}><CalendarOff size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 지정</button>
+          <button onClick={()=>{ setOffModel(modelFilter||""); setOffModelQ(modelFilter ? (models.find(m=>m.id===modelFilter)?.name||"") : ""); setOffStart(selDate||todayStr); setOffEnd(selDate||todayStr); setOffReason(""); setShowOffForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.orange}55`, color:C.orange }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무</button>
           <button onClick={()=>onAddBooking(modelFilter||undefined, selDate||undefined)} style={btnS(C.green)}>+ 섭외 추가</button>
         </div>
       </div>
@@ -252,13 +269,13 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       {/* 달력 */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden", ...((!isMobile && selDate)?{flex:1, minWidth:0}:{marginBottom:selDate?16:0}) }}>
         {/* 요일 헤더 */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", borderBottom:`1px solid ${C.border}` }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(0,1fr))", borderBottom:`1px solid ${C.border}` }}>
           {DOW.map((d,i)=>(
             <div key={d} style={{ padding:"9px 0", textAlign:"center", fontSize:11, fontWeight:700, color:i===0?C.red:i===6?C.blue:C.muted }}>{d}</div>
           ))}
         </div>
         {/* 날짜 셀 */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(0,1fr))" }}>
           {cells.map((cell,i)=>{
             const col=i%7;
             const isToday    = cell.cur&&cell.date===todayStr;
@@ -268,6 +285,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const isVisaExit = !!cell.date && !!visaExit && cell.date===visaExit;
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
             const manHol = cell.date ? holidayByDate[cell.date] : undefined;
+            const dayOffs = cell.cur && cell.date ? offsForDate(cell.date) : [];
 
             // ── [추가] 충돌 정보 ──
             const dayConflict = cell.date ? conflictByDate[cell.date] : undefined;
@@ -276,9 +294,10 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             let cellBg = "transparent";
             if (isSel)         cellBg = C.blue+"18";
             else if (isToday)  cellBg = C.card2;
+            else if (modelFilter && dayOffs.length) cellBg = C.muted+"22"; // 모델 휴무 구간 음영
 
             return (
-              <div key={i} onClick={()=>{ if(cell.cur&&cell.date){ const has=(bookingsByDate[cell.date]||[]).length>0; if(has){ setSelDate(cell.date===selDate?null:cell.date); } else { onAddBooking(modelFilter||undefined, cell.date); } }}}
+              <div key={i} onClick={()=>{ if(cell.cur&&cell.date){ const has=(bookingsByDate[cell.date]||[]).length>0||dayOffs.length>0; if(has){ setSelDate(cell.date===selDate?null:cell.date); } else { onAddBooking(modelFilter||undefined, cell.date); } }}}
                 style={{ height:isMobile?52:"calc((100vh - 360px) / 6)", minHeight:isMobile?52:110, overflow:"hidden", padding:isMobile?"4px 2px":"7px 7px 5px", borderRight:col<6?`1px solid ${C.border}`:"none", borderBottom:i<35?`1px solid ${C.border}`:"none", background:cellBg, cursor:cell.cur?"pointer":"default", transition:"background 0.12s", position:"relative",
                   ...(conflictColor ? { boxShadow:`inset 0 0 0 2px ${conflictColor}` } : {}) }}
                 onMouseEnter={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=C.card2; }}
@@ -295,6 +314,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
                   {!isMobile&&!krHol&&manHol&&<span style={{ fontSize:9, color:C.orange, fontWeight:700, marginLeft:2 }}>{manHol.label}</span>}
+                  {dayOffs.length>0&&<span title={dayOffs.map((o:any)=>`${modelName(o.model_id)} 휴무 (${fmtD(o.start_date)}~${fmtD(o.end_date)})`).join("\n")} style={{ fontSize:9, color:C.muted, fontWeight:700, marginLeft:2, whiteSpace:"nowrap" }}><CalendarOff size={9} style={{ verticalAlign:-1, flexShrink:0 }}/>{isMobile?"":(modelFilter?" 휴무":` 휴무 ${dayOffs.length}`)}</span>}
                 </div>
 
                 {/* 섭외 표시: 모바일=점, 데스크톱=뱃지 */}
@@ -368,6 +388,20 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
               </button>
             </div>
           </div>
+
+          {/* 모델 휴무 안내 */}
+          {selDate&&offsForDate(selDate).length>0&&(
+            <div style={{ background:C.muted+"14", border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>
+              {offsForDate(selDate).map((o:any)=>(
+                <div key={o.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"3px 0" }}>
+                  <span style={{ fontSize:12.5, color:C.text }}>
+                    <CalendarOff size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> <strong>{modelName(o.model_id)}</strong> · {fmtD(o.start_date)} ~ {fmtD(o.end_date)} 휴무{o.reason?` (${o.reason})`:""}
+                  </span>
+                  {onDeleteModelOff&&<button onClick={()=>onDeleteModelOff(o.id)} style={{ background:"transparent", border:`1px solid ${C.red}55`, color:C.red, borderRadius:6, padding:"3px 9px", fontSize:11, fontWeight:700, cursor:"pointer", flexShrink:0 }}>해제</button>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* 보기 토글: 목록 / 타임라인 */}
           {!isMobile&&(
@@ -496,6 +530,45 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
               setShowHolidayForm(false);
             }} style={{ ...btnS(C.green), flex:1, padding:"10px 0", fontSize:13 }}>저장</button>
             <button onClick={()=>setShowHolidayForm(false)} style={{ ...btnS("#333"), flex:1, padding:"10px 0", fontSize:13 }}>취소</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ════ 모달: 모델 휴무(기간) 등록 ════ */}
+      {showOffForm&&(
+        <Modal onClose={()=>setShowOffForm(false)}>
+          <h3 style={{ marginTop:0, color:C.text }}><CalendarOff size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무 등록</h3>
+          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 * <span style={{ color:C.muted, fontWeight:400 }}>(이름 검색 후 선택)</span></label>
+          <input style={inp} type="text" placeholder="모델 이름 검색" value={offModelQ} onChange={e=>{ setOffModelQ(e.target.value); setOffModel(""); }} />
+          {offModelQ.trim() && !offModel && (() => { const r = models.filter(m=>(m.name||"").toLowerCase().includes(offModelQ.trim().toLowerCase())); return (
+            <div style={{ border:`1px solid ${C.border}`, borderRadius:8, marginTop:-6, marginBottom:10, maxHeight:200, overflowY:"auto" }}>
+              {r.length ? r.slice(0,50).map(m=>(
+                <div key={m.id} onClick={()=>{ setOffModel(m.id); setOffModelQ(m.name||""); }} style={{ padding:"9px 12px", fontSize:13, color:C.text, cursor:"pointer", borderBottom:`1px solid ${C.border}` }}>{m.name}{m.category?` · ${m.category}`:""}</div>
+              )) : <div style={{ padding:"9px 12px", fontSize:12, color:C.muted }}>일치하는 모델이 없습니다</div>}
+            </div>
+          ); })()}
+          {offModel && <p style={{ margin:"-4px 0 10px", fontSize:12, color:C.green, fontWeight:700 }}>✓ 선택: {models.find(m=>m.id===offModel)?.name}</p>}
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ flex:1 }}>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>시작일 *</label>
+              <input style={inp} type="date" value={offStart} onChange={e=>setOffStart(e.target.value)} />
+            </div>
+            <div style={{ flex:1 }}>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>종료일 *</label>
+              <input style={inp} type="date" value={offEnd} onChange={e=>setOffEnd(e.target.value)} />
+            </div>
+          </div>
+          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사유 (선택)</label>
+          <input style={inp} type="text" placeholder="예: 개인 휴가, 학업, 해외 체류" value={offReason} onChange={e=>setOffReason(e.target.value)} />
+          <div style={{ display:"flex", gap:10, marginTop:6 }}>
+            <button onClick={()=>{
+              if (!offModel) return alert("모델을 선택하세요");
+              if (!offStart||!offEnd) return alert("시작일과 종료일을 입력하세요");
+              if (offEnd<offStart) return alert("종료일이 시작일보다 빠릅니다");
+              onAddModelOff&&onAddModelOff(offModel, offStart, offEnd, offReason.trim());
+              setShowOffForm(false);
+            }} style={{ ...btnS(C.green), flex:1, padding:"10px 0", fontSize:13 }}>저장</button>
+            <button onClick={()=>setShowOffForm(false)} style={{ ...btnS("#333"), flex:1, padding:"10px 0", fontSize:13 }}>취소</button>
           </div>
         </Modal>
       )}
