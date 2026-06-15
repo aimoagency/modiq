@@ -14,6 +14,7 @@ import { ageFromSSN6 } from "../lib/utils";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
 import PackagePublicView from "./PackagePublicView";
+import ModelBrowser from "../components/ModelBrowser";
 
 // 사진 리사이즈 → base64 (기존 reference_images 패턴과 동일)
 const resizeImage = (file: File, cb: (data: string) => void) => {
@@ -49,6 +50,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
+  const [picked, setPicked] = useState<Set<string>>(new Set()); // 검색에서 담을 모델 체크
   const [pickQ, setPickQ] = useState("");
   const [compModel, setCompModel] = useState<any | null>(null);
 
@@ -88,6 +90,9 @@ export default function PackagesView({ packages, setPackages, models, customers,
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
+  const addedIds = useMemo(() => new Set((draft?.items || []).map(i => i.model_id).filter((x): x is string => !!x)), [draft]);
+  const togglePicked = (m: any) => setPicked(p => { const n = new Set(p); n.has(m.id) ? n.delete(m.id) : n.add(m.id); return n; });
+  const addPicked = () => { const toAdd = models.filter(m => picked.has(m.id) && !addedIds.has(m.id)); toAdd.forEach(addModelItem); setPicked(new Set()); };
   const addPhotos = (idx: number, files: FileList | null) => {
     if (!files) return;
     Array.from(files).forEach(f => resizeImage(f, data =>
@@ -207,7 +212,9 @@ export default function PackagesView({ packages, setPackages, models, customers,
 
   // ──────────────────────────────── 빌더 화면 ────────────────────────────────
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
+      <ModelBrowser models={models} isMobile={isMobile} multi pickedIds={picked} addedIds={addedIds} onSelect={togglePicked} onAddPicked={addPicked} />
+      <div style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.text }}>{isNew ? "새 패키지" : "패키지 편집"}</h1>
         <div style={{ display: "flex", gap: 8 }}>
@@ -269,8 +276,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
       </div>
 
       {/* 모델 항목들 */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <button onClick={() => setModelPick(true)} style={btnS(C.blue)}>＋ 모델 추가 (DB)</button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: C.muted }}>왼쪽 검색에서 모델을 골라 담거나</span>
         <button onClick={addBlankItem} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>＋ 직접 추가</button>
       </div>
 
@@ -343,6 +350,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
       <div style={{ marginTop: 14 }}>
         <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>패키지 메모 (고객사에게 보일 안내문, 선택)</label>
         <textarea style={{ ...inp, minHeight: 60, resize: "vertical" }} placeholder="예: 아래 모델들 스케줄 가능합니다. 컨펌 주시면 상세 프로필 보내드립니다." value={draft.memo || ""} onChange={e => upd({ memo: e.target.value })} />
+      </div>
+
       </div>
 
       {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)} />}
