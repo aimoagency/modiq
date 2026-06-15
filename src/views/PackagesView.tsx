@@ -315,7 +315,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
                 <span style={{ fontSize: 11, color: C.muted }}>· 모델 정보에서 자동 반영 (수정은 ‘모델’ 메뉴에서)</span>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(4,minmax(0,1fr))", gap: 8 }}>
                 <input style={{ ...inp, marginBottom: 0 }} placeholder="이름" value={it.name} onChange={e => updItem(idx, { name: e.target.value })} />
                 <input style={{ ...inp, marginBottom: 0 }} placeholder="카테고리" value={it.category || ""} onChange={e => updItem(idx, { category: e.target.value })} />
                 <input style={{ ...inp, marginBottom: 0 }} placeholder="키(cm)" value={it.height || ""} onChange={e => updItem(idx, { height: e.target.value })} />

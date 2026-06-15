@@ -268,13 +268,13 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       {/* 달력 */}
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden", ...((!isMobile && selDate)?{flex:1, minWidth:0}:{marginBottom:selDate?16:0}) }}>
         {/* 요일 헤더 */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", borderBottom:`1px solid ${C.border}` }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(0,1fr))", borderBottom:`1px solid ${C.border}` }}>
           {DOW.map((d,i)=>(
             <div key={d} style={{ padding:"9px 0", textAlign:"center", fontSize:11, fontWeight:700, color:i===0?C.red:i===6?C.blue:C.muted }}>{d}</div>
           ))}
         </div>
         {/* 날짜 셀 */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,minmax(0,1fr))" }}>
           {cells.map((cell,i)=>{
             const col=i%7;
             const isToday    = cell.cur&&cell.date===todayStr;

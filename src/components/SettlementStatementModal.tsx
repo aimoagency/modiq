@@ -108,7 +108,7 @@ export default function SettlementStatementModal({
       </div>
 
       {/* 합계 요약 */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5,1fr)", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(5,minmax(0,1fr))", gap: 8, marginBottom: 12 }}>
         {[["고객 청구(VAT)", tot.charge, C.text], ["미입금 잔금", rows.filter(r=>!r.balancePaid).reduce((s,r)=>s+r.balance,0), C.orange], ["모델 실지급", tot.payout, "#c9a96e"], ["원천징수계", tot.withholding, C.red], ["매출총이익", tot.margin, C.green]].map(([l, v, col]) => (
           <div key={String(l)} style={{ background: C.card2, borderRadius: 8, padding: "8px 10px" }}>
             <p style={{ margin: 0, fontSize: 10, color: C.muted }}>{l as string}</p>

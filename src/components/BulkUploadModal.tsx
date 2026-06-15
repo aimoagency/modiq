@@ -325,7 +325,7 @@ export default function BulkUploadModal({
               {rawRows.slice(0, 6).map((r, i) => <option key={i} value={i}>{i + 1}행: {r.slice(0, 4).join(" / ").slice(0, 30) || "(빈 행)"}</option>)}
             </select>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, maxHeight: "50vh", overflowY: "auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 10, maxHeight: "50vh", overflowY: "auto" }}>
             {FIELDS.map((f) => (
               <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 12, color: f.required ? C.text : C.muted, minWidth: 92, fontWeight: f.required ? 700 : 500 }}>{f.label}{f.required && " *"}</span>

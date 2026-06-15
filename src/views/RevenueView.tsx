@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C, inp } from "../theme";
 import { Coins, Download, CheckCircle2 } from "../components/icons";
 import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal, bookingAgencyFee, bookingModelPay, clientBalance } from "../lib/utils";
-import { STATUS } from "../constants";
+import { STATUS, BOOKING_TYPES } from "../constants";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
 import { exportAoaXlsx } from "../lib/xlsx";
@@ -20,6 +20,8 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   // 기간 + 매출인정 상태 필터
   const inPeriod = (b:any) => {
     if (!REVENUE_STATUSES.includes(b.status)) return false;
+    if (!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract) return false; // 실물미팅·피팅·오디션 제외
+    if (bookingTotal(b) <= 0) return false; // 촬영+계약총액 입력 이후부터 매출 인정
     const d = b.shoot_date || "";
     if (period.from && d < period.from) return false;
     if (period.to && d > period.to) return false;
@@ -54,8 +56,8 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   };
 
   const cards = [
-    { label:"실매출 (입금 완료)", value:realAmt,     color:C.green },
     { label:"예상매출 (확정 포함)", value:expectedAmt, color:C.yellow },
+    { label:"실매출 (입금 완료)", value:realAmt,     color:C.green },
     { label:"미수금 (확정·미입금)", value:unpaidAmt,   color:C.red },
     { label:"모델 지급 (예상)",    value:modelPayAmt, color:"#c9a96e" },
     { label:"매출총이익",          value:marginAmt,   color:C.blue },
@@ -85,11 +87,11 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       </div>
 
       {/* 매출 요약 카드 */}
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)", gap:12, marginBottom:18 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(5,minmax(0,1fr))", gap:12, marginBottom:18 }}>
         {cards.map(c=>(
-          <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
+          <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", ...(isMobile&&c.label==="매출총이익"?{ gridColumn:"1 / -1" }:{}) }}>
             <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:22, fontWeight:800, color:c.color }}>{fmt(c.value)}</p>
+            <p style={{ margin:"8px 0 0", fontSize:isMobile?(c.label==="매출총이익"?20:16):22, fontWeight:800, color:c.color, whiteSpace:"nowrap", textAlign:"right" }}>{Number(c.value||0).toLocaleString("ko-KR")}<span style={{ fontSize:isMobile?12:14, fontWeight:700, marginLeft:1, opacity:0.8 }}>원</span></p>
           </div>
         ))}
       </div>
@@ -115,15 +117,23 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       {listed.length===0 ? <p style={{ color:C.muted }}>이 기간에 매출이 없습니다.</p> : (
         <div style={{ display:"grid", gap:6 }}>
           {listed.map(b=>(
-            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-              <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-              <span style={{ flex:1, minWidth:120, fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
-              </span>
-              <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap" }}>{bookingTotal(b).toLocaleString()}원</span>
-              <span style={{ fontSize:11, color:C.blue, whiteSpace:"nowrap" }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
-              <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
-              <Badge code={b.status} />
+            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                  <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
+                  <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
+                    {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
+                  </span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
+                  <Badge code={b.status} />
+                </div>
+              </div>
+              <div style={{ flexShrink:0, textAlign:"right", whiteSpace:"nowrap" }}>
+                <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</div>
+                <div style={{ fontSize:11, color:C.blue, marginTop:3 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</div>
+              </div>
             </div>
           ))}
         </div>

@@ -61,7 +61,7 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   }
   const style = document.getElementById("pretendard-global") || document.createElement("style");
   style.id = "pretendard-global";
-  style.textContent = `*, *::before, *::after { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); }
+  style.textContent = `*, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
 :root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#ffffff; --c-text-sub:#c8ccd8; --c-muted:#6b7280; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
 html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#737a85; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }`;
@@ -1103,7 +1103,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .meta{text-align:right;font-size:11px;color:#8a92a0;line-height:1.65}
 .meta b{color:#1f2430;font-size:12px}
 .body{padding:18px 26px 22px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:13px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px;margin-bottom:13px}
 .box{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;background:#fafbfc}
 .box h4{font-size:10.5px;color:#c9a96e;font-weight:800;letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
 .r{display:flex;gap:9px;font-size:12px;padding:2px 0}
@@ -1119,7 +1119,7 @@ td.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 tr.tot td{background:#fbf7ef;border-top:2px solid #c9a96e;border-bottom:none;font-size:14px;font-weight:800;color:#8a6d2f}
 tr.due td{color:#5a6373;font-size:11px}
 .notice{font-size:10px;color:#6b7280;line-height:1.65;background:#f6f8fa;border-radius:8px;padding:9px 12px;margin-bottom:13px}
-.sign{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.sign{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px}
 .sigbox{border:1px solid #e6e9ef;border-radius:10px;padding:11px 13px;min-height:74px;position:relative}
 .sigbox .who{font-size:11px;color:#7c8595;font-weight:700}
 .sigbox .nm{font-size:13px;font-weight:800;margin-top:4px;color:#1f2430}
@@ -1274,7 +1274,7 @@ async function sharePdf(){
   };
 
   // ── 정산 필터 ──
-  const settlementData = useMemo(()=>bookings.filter(b=>["COMPLETED","SETTLED"].includes(b.status)),[bookings]);
+  const settlementData = useMemo(()=>bookings.filter(b=>["COMPLETED","SETTLED"].includes(b.status) && BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract && bookingTotal(b)>0),[bookings]);
   const filteredSettlement = useMemo(()=>{
     return settlementData.filter(b=>{
       if (settlementTab==="PENDING"){ if(b.status!=="COMPLETED"||b.is_paid) return false; }
@@ -1424,7 +1424,7 @@ async function sharePdf(){
           <p style={{ margin:"0 0 14px" }}><Ban size={40} color={C.red} /></p>
           <h2 style={{ color:C.text, margin:"0 0 8px" }}>무료 체험이 만료되었습니다</h2>
           <p style={{ color:C.textSub, marginBottom:28 }}>계속 사용하려면 요금제를 선택하세요.<br/>데이터는 안전하게 보관되어 있습니다.</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12, marginBottom:20 }}>
             {PLANS.map(plan=>(
               <div key={plan.id} style={{ background:"white", borderRadius:10, padding:16, cursor:"pointer", border:"2px solid transparent", transition:"border 0.2s" }}
                 onClick={()=>handleChangePlan(plan.id)}
@@ -1467,7 +1467,7 @@ async function sharePdf(){
   // 메인 레이아웃
   // ══════════════════════════════════════════════
   return (
-    <div style={{ display:"flex", minHeight:"100vh", width:"100vw", background:C.bg, color:C.text }}>
+    <div style={{ display:"flex", minHeight:"100vh", width:"100%", maxWidth:"100vw", background:C.bg, color:C.text }}>
 
       {/* ── 데스크탑 상단 바 (로고 / 업체명·다크모드·로그아웃) ── */}
       {!isMobile&&(
@@ -1589,9 +1589,9 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            <div style={{ display:"flex", gap:8 }}>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!editingBooking
                 ? <>
                     {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
@@ -1651,7 +1651,7 @@ async function sharePdf(){
           {/* 조회 모드 */}
           {!editingBooking ? (
             <>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:12, marginBottom:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
                 {/* 모델 (클릭 → 모델 상세) */}
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p>
@@ -1718,7 +1718,7 @@ async function sharePdf(){
                   ))}
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명</label>
                   <input style={inp} value={selectedBooking.project_name||""} onChange={e=>setSelectedBooking((p:any)=>({...p,project_name:e.target.value}))} /></div>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>고객사</label>
@@ -1737,7 +1737,7 @@ async function sharePdf(){
                   <TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} />
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
                   <input style={inp} value={selectedBooking.location||""} onChange={e=>setSelectedBooking((p:any)=>({...p,location:e.target.value}))} placeholder="예: 스튜디오 A" /></div>
                 <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>담당자</label>
@@ -1767,7 +1767,7 @@ async function sharePdf(){
                 </div>
               )}
               {/* 사용 범위 + 기간 (추가폼과 동일) */}
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
                 <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={selectedBooking.usage_scope||[]} onChange={(v:string[])=>setSelectedBooking((p:any)=>({...p,usage_scope:v}))} />
                 <div style={{ marginBottom:10 }}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -1831,7 +1831,7 @@ async function sharePdf(){
             {editingBooking ? (
               /* 편집 모드: 계약총액·계약금 입력 → 잔금 자동계산 */
               <>
-                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                   <div>
                     <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>계약 총액</label>
                     <div style={{ position:"relative" }}>
@@ -1859,7 +1859,7 @@ async function sharePdf(){
                     </div>
                   </div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                   <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                     <input style={{ ...inp, marginBottom:0 }} type="date" value={selectedBooking.deposit_due||""} onChange={e=>setSelectedBooking((p:any)=>({...p,deposit_due:e.target.value}))} /></div>
                   <div><label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:5 }}>잔금 입금 예정일</label>
@@ -1868,7 +1868,7 @@ async function sharePdf(){
               </>
             ) : (
               /* 조회 모드: 계약금/잔금 입금 확인 */
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div>
                   <p style={{ margin:"0 0 4px", color:C.muted, fontSize:11 }}>계약금</p>
                   <p style={{ margin:"0 0 4px", color:C.text, fontWeight:700 }}>{selectedBooking.deposit_amt?selectedBooking.deposit_amt.toLocaleString()+"원":"-"}</p>
@@ -2078,7 +2078,7 @@ async function sharePdf(){
         return (
           <Modal onClose={closeDetail} wide>
             <h3 style={{ marginTop:0, color:C.text }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>촬영일</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{fmtDate(pbs[0]?.shoot_date)}</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{pbs.length}명</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>총 금액</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:800, color:C.yellow }}>{totalFee>0?totalFee.toLocaleString()+"원":"-"}</p></div>
@@ -2305,7 +2305,7 @@ async function sharePdf(){
           {/* ── 정산 단계: 날짜 + 상태 (정산 내역서에 반영) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <p style={{ margin:"0 0 8px", fontSize:12, fontWeight:700, color:C.text }}>정산 단계 (날짜·상태)</p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {(()=>{ const depAmt = selectedSettlement.deposit_amt||0; const hasDep = depAmt>0; return (
               <div style={{ opacity:hasDep?1:0.5 }}>
                 <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:hasDep&&editDepositPaid?C.blue:C.muted, marginBottom:4, cursor:hasDep?"pointer":"not-allowed" }}>
@@ -2380,7 +2380,7 @@ async function sharePdf(){
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
               ["이메일",   selectedModel.email],
@@ -2416,7 +2416,7 @@ async function sharePdf(){
             return (
               <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px", marginBottom:14 }}>
                 <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 · 프로필</p>
-                <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4, 1fr)", gap:10 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:10 }}>
                   {rows.map(([k,v])=>(<div key={k}><p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p><p style={{ margin:"2px 0 0", fontSize:13.5, fontWeight:600, color:C.text }}>{v}</p></div>))}
                 </div>
                 {Array.isArray(m.fields)&&m.fields.length>0&&<div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:6 }}>{m.fields.map((f:string)=><span key={f} style={{ background:C.card, color:C.textSub, fontSize:11, padding:"3px 9px", borderRadius:10, border:`1px solid ${C.border}` }}>{f}</span>)}</div>}
@@ -2442,7 +2442,7 @@ async function sharePdf(){
             const shown = modelHistAll ? mb : mb.slice(0,5);
             return (
             <div>
-              <div style={{ background:C.card2, borderRadius:10, padding:"12px 14px", marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+              <div style={{ background:C.card2, borderRadius:10, padding:"12px 14px", marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 완료(입금)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.green }}>{settledAmt.toLocaleString()}원</p></div>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>정산 대기</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:C.yellow }}>{pendingAmt.toLocaleString()}원</p></div>
                 <div><p style={{ margin:0, fontSize:11, color:C.muted }}>모델 실지급(정산)</p><p style={{ margin:"4px 0 0", fontSize:14, fontWeight:800, color:"#c9a96e" }}>{modelPay.toLocaleString()}원</p></div>
@@ -2491,7 +2491,7 @@ async function sharePdf(){
             </div>
             <button onClick={()=>openEditCustomer(selectedCustomer)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:14, marginBottom:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["담당자명", selectedCustomer.manager_name],
               ["전화번호", selectedCustomer.phone?<a href={`tel:${selectedCustomer.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedCustomer.phone}</a>:null],
@@ -2548,15 +2548,15 @@ async function sharePdf(){
         <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}}>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label><input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호</label><input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업종</label>
               <select style={inp} value={cIndustry} onChange={e=>setCIndustry(e.target.value)}>
@@ -2565,7 +2565,7 @@ async function sharePdf(){
               </select>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
@@ -2617,7 +2617,7 @@ async function sharePdf(){
             </div>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델명 *</label>
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
@@ -2627,7 +2627,7 @@ async function sharePdf(){
               <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호</label>
               <input style={inp} type="tel" value={mPhone} onChange={e=>setMPhone(e.target.value)} />
@@ -2637,7 +2637,7 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>성별 *<span style={{ fontSize:10, color:C.muted }}> · ID 생성</span></label>
               <select style={inp} value={mGender} onChange={e=>setMGender(e.target.value)}>
@@ -2662,7 +2662,7 @@ async function sharePdf(){
           {/* ── 신체 정보 · 프로필 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 정보 · 프로필 <span style={{ fontWeight:500, color:C.muted }}>(컴카드·패키지에 표시)</span></p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(2, 1fr)", gap:8, marginBottom:8, maxWidth:isMobile?undefined:320 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(2,minmax(0,1fr))", gap:8, marginBottom:8, maxWidth:isMobile?undefined:320 }}>
               <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="키(cm)" value={mHeight} onChange={e=>setMHeight(e.target.value)} />
               <input style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder="신발(mm)" value={mShoe} onChange={e=>setMShoe(e.target.value)} />
             </div>
@@ -2673,12 +2673,12 @@ async function sharePdf(){
               ))}
               <span style={{ fontSize:10, color:C.muted }}>{mSizeUnit==="inch"?"※ 저장 시 cm로 자동 변환":"cm로 저장·표시"}</span>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginBottom:10, maxWidth:isMobile?undefined:480 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:8, marginBottom:10, maxWidth:isMobile?undefined:480 }}>
               {([[`가슴(${mSizeUnit})`,mBust,setMBust],[`허리(${mSizeUnit})`,mWaist,setMWaist],[`엉덩이(${mSizeUnit})`,mHip,setMHip]] as [string,string,(v:string)=>void][]).map(([ph,val,set])=>(
                 <input key={ph} style={{ ...inp, marginBottom:0 }} type="text" inputMode="numeric" placeholder={ph} value={val} onChange={e=>set(e.target.value)} />
               ))}
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4, 1fr)", gap:8, marginBottom:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:8, marginBottom:10 }}>
               <div>
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>머리 길이</label>
                 <select style={{ ...inp, marginBottom:0 }} value={mHair} onChange={e=>setMHair(e.target.value)}>
@@ -2723,7 +2723,7 @@ async function sharePdf(){
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day (9h)",mFeeDay,setMFeeDay],["Half day (5h)",mFeeHalf,setMFeeHalf],["Hour (1h)",mFeeHour,setMFeeHour]] as [string,number,(v:number)=>void][]).map(([lab,val,set])=>(
                 <div key={lab}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
@@ -2754,7 +2754,7 @@ async function sharePdf(){
               ))}
               <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"모델료 × 비율%":"정액 그대로(모델료 무관)"}</span>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day","Day(9h)",mPayDayValue,setMPayDayValue],["Half","Half day(5h)",mPayHalfValue,setMPayHalfValue],["Hour","Hours(1h)",mPayHourValue,setMPayHourValue]] as [string,string,number,(v:number)=>void][]).map(([key,lab,val,set])=>(
                 <div key={key}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
@@ -2777,7 +2777,7 @@ async function sharePdf(){
           </div>
 
           {/* 링크 — 브랜드 아이콘 */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#E1306C", marginBottom:5 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg>
@@ -2793,7 +2793,7 @@ async function sharePdf(){
               <input style={inp} type="url" placeholder="https://drive.google.com/..." value={mDrive} onChange={e=>setMDrive(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, marginBottom:5, color:"#3A2A00" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24"><ellipse cx="12" cy="11" rx="10" ry="8.5" fill="#FEE500"/><circle cx="9" cy="11" r="1.2" fill="#3A1D00"/><circle cx="12" cy="11" r="1.2" fill="#3A1D00"/><circle cx="15" cy="11" r="1.2" fill="#3A1D00"/></svg>
@@ -2854,7 +2854,7 @@ async function sharePdf(){
           </div>
 
           {/* 입출국 + 세율 */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:14 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>입국일</label>
               <input style={{ ...inp, marginBottom:0 }} type="date" value={mEntry} onChange={e=>setMEntry(e.target.value)} />
@@ -2888,7 +2888,7 @@ async function sharePdf(){
           {/* 지급 상세 — 방식별 분기 */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:16, background:C.card2 }}>
             {mPayMethod==="bank" && (
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>은행</label>
                   <select style={{ ...inp, marginBottom:0 }} value={mPayDetail.bank||""} onChange={e=>setMPayDetail({ ...mPayDetail, bank:e.target.value })}>
@@ -2913,7 +2913,7 @@ async function sharePdf(){
               </div>
             )}
             {mPayMethod==="wise" && (
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>수취인 이름 (영문)</label>
                   <input style={{ ...inp, marginBottom:0 }} placeholder="Full name" value={mPayDetail.holder||""} onChange={e=>setMPayDetail({ ...mPayDetail, holder:e.target.value })} />
@@ -2940,7 +2940,7 @@ async function sharePdf(){
       {showCustomerForm&&(
         <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}}>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label>
               <input style={inp} value={cName} onChange={e=>setCName(e.target.value)} />
@@ -2950,7 +2950,7 @@ async function sharePdf(){
               <input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label>
               <input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} />
@@ -2960,7 +2960,7 @@ async function sharePdf(){
               <input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label>
               <input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} />
@@ -2973,7 +2973,7 @@ async function sharePdf(){
               </select>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label>
               <input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" />
@@ -3084,7 +3084,7 @@ async function sharePdf(){
                       </div>
                       {/* 모델별 일정·장소 (기본=프로젝트 공통, 개별 변경 가능) */}
                       <div style={{ background:C.card2, borderRadius:8, padding:"8px 10px", marginBottom:bt.hasContract?10:0 }}>
-                        <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:8, marginBottom:8 }}>
+                        <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:8, marginBottom:8 }}>
                           <div>
                             <label style={{ fontSize:10, color:C.muted, display:"block", marginBottom:3 }}>촬영일</label>
                             <input type="date" style={{ ...inp, marginBottom:0, padding:"5px 8px", fontSize:12 }} value={line.date} onChange={e=>updateProjectModelLine(line.modelId,"date",e.target.value)} />
@@ -3112,7 +3112,7 @@ async function sharePdf(){
                   return (
                   <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px" }}>
                     <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약금 / 잔금 (프로젝트 전체)</p>
-                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                       <div>
                         <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>총 계약 (자동)</label>
                         <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", color:"#c9a96e", fontWeight:700 }}>{totalFee.toLocaleString()}원</div>
@@ -3123,7 +3123,7 @@ async function sharePdf(){
                         <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", color:C.text, fontWeight:700 }}>{bal.toLocaleString()}원</div>
                       </div>
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginTop:4 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginTop:4 }}>
                       <div>
                         <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                         <input style={inp} type="date" value={pDepositDue} onChange={e=>setPDepositDue(e.target.value)} />
@@ -3158,7 +3158,7 @@ async function sharePdf(){
           </div>
 
           {/* 프로젝트명 + 고객사 */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명 *</label>
               <input style={inp} placeholder="예) 2026 SS 룩북" value={pName} onChange={e=>setPName(e.target.value)} />
@@ -3184,7 +3184,7 @@ async function sharePdf(){
           </div>
 
           {/* 담당자 + 상태 (장소·일정은 모델별로 설정) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginBottom:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자</label>
               <select style={inp} value={pManager} onChange={e=>setPManager(e.target.value)}>
@@ -3234,7 +3234,7 @@ async function sharePdf(){
           ) : null}
 
           {/* 사용 범위 + 기간 (단일 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
             <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={pUsageScope} onChange={setPUsageScope} />
             <div style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -3312,7 +3312,7 @@ async function sharePdf(){
         <Modal onClose={()=>setShowAddPicker(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>섭외 추가</h3>
           <p style={{ margin:"0 0 16px", fontSize:12, color:C.muted }}>추가할 섭외 유형을 선택하세요.{addPrefill.date?` (${fmtDate(addPrefill.date)})`:""}</p>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12 }}>
             <button onClick={()=>{
               resetBookingForm();
               if(addPrefill.model){ const m=models.find(mm=>mm.id===addPrefill.model); setBModel(addPrefill.model); setBModelSearch(m?.name||""); }
@@ -3401,7 +3401,7 @@ async function sharePdf(){
             </div>
           </div>
           {/* 프로젝트명 + 고객사 (프로젝트 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>프로젝트명</label>
               <input style={inp} value={bProject} onChange={e=>setBProject(e.target.value)} />
@@ -3441,7 +3441,7 @@ async function sharePdf(){
           </div>
 
           {/* 장소 + 담당자 + 상태 (프로젝트 폼과 동일) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>촬영 장소</label>
               <input style={inp} value={bLocation} onChange={e=>setBLocation(e.target.value)} placeholder="예: 스튜디오 A" />
@@ -3493,7 +3493,7 @@ async function sharePdf(){
           </div>
 
           {/* 사용 범위 + 기간 (2열) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"3fr 2fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,3fr) minmax(0,2fr)", gap:12 }}>
             <MultiCheck label="사용 범위" options={USAGE_SCOPES} value={bUsageScope} onChange={setBUsageScope} />
             <div style={{ marginBottom:10 }}>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>사용 기간</label>
@@ -3567,7 +3567,7 @@ async function sharePdf(){
               </div>
             ); })()}
             <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:700, color:C.yellow }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 계약 금액</p>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr", gap:10, alignItems:"end" }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, alignItems:"end" }}>
               <MoneyInput label="계약 총액" value={bBudget}  onChange={v=>{ setBBudget(v);  setBBalance(Math.max(0, v - bDeposit)); }} />
               <MoneyInput label="계약금"    value={bDeposit} onChange={v=>{ setBDeposit(v); setBBalance(Math.max(0, bBudget - v)); }} />
               <div style={{ marginBottom:10 }}>
@@ -3577,7 +3577,7 @@ async function sharePdf(){
                 </div>
               </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:10, marginTop:4 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginTop:4 }}>
               <div>
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계약금 입금 예정일</label>
                 <input style={inp} type="date" value={bDepositDue} onChange={e=>setBDepositDue(e.target.value)} />

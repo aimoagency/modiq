@@ -45,7 +45,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         </select>
       </div>
       {/* ── 두 흐름 분리: 받을 돈(고객사) / 줄 돈(모델) ── */}
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:isMobile?8:12, marginBottom:10 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:isMobile?8:12, marginBottom:10 }}>
         {/* 받을 돈 — 고객사 입금 */}
         <div style={{ background:C.card, border:`1px solid ${C.blue}55`, borderRadius:10, padding:16 }}>
           <p style={{ margin:"0 0 12px", fontSize:12, fontWeight:800, color:C.blue }}><Coins size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금액</p>

@@ -276,6 +276,7 @@ export const entityRevenue = (bookings: any[], key: string, id: string, period?:
   const bs = bookings.filter(b => {
     if (b[key] !== id) return false;
     if (!REVENUE_STATUSES.includes(b.status)) return false;
+    if (bookingTotal(b) <= 0) return false; // 비촬영(미팅·피팅·오디션)·계약총액 미입력 제외
     const d = b.shoot_date || "";
     if (period?.from && d < period.from) return false;
     if (period?.to && d > period.to) return false;

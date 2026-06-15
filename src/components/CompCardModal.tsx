@@ -131,7 +131,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
         {/* 사진 영역: 왼쪽 메인 + 오른쪽 2×2 */}
         <div style={{ display: "flex", gap: 6, flex: 1, minHeight: 0 }}>
           <Slot i={0} style={{ flex: 1.12, borderRadius: 3 }} />
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 6 }}>
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gridTemplateRows: "minmax(0,1fr) minmax(0,1fr)", gap: 6 }}>
             <Slot i={1} style={{ borderRadius: 3 }} />
             <Slot i={2} style={{ borderRadius: 3 }} />
             <Slot i={3} style={{ borderRadius: 3 }} />
