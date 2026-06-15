@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { C, inp, btnS } from "../theme";
 import Modal from "./Modal";
-import { MODEL_CATEGORIES, CLIENT_INDUSTRIES } from "../constants";
+import { MODEL_CATEGORIES, CLIENT_CATEGORIES } from "../constants";
 import { makeModelId, makeClientId, normalizeInstagram, validateBizNo, parseNum } from "../lib/utils";
 import { User, Building2, AlertTriangle } from "./icons";
 
@@ -51,14 +51,18 @@ const MODEL_FIELDS: FieldDef[] = [
 ];
 
 const CUSTOMER_FIELDS: FieldDef[] = [
-  { key: "name", label: "고객사명", required: true, aliases: ["고객사", "고객사명", "회사", "회사명", "업체", "업체명", "거래처", "상호", "name", "client"] },
+  { key: "name", label: "상호(고객사명)", required: true, aliases: ["고객사", "고객사명", "회사", "회사명", "업체", "업체명", "거래처", "상호", "법인명", "name", "client"] },
+  { key: "category", label: "분야", aliases: ["분야", "카테고리", "분류", "category"] },
+  { key: "rep_name", label: "대표자(성명)", aliases: ["대표", "대표자", "대표자명", "성명", "대표이사", "ceo", "representative"] },
   { key: "phone", label: "전화번호", required: true, aliases: ["전화", "연락처", "phone", "번호", "대표번호", "tel", "휴대폰"] },
-  { key: "brand", label: "브랜드명", aliases: ["브랜드", "브랜드명", "brand"] },
   { key: "manager_name", label: "담당자명", aliases: ["담당자", "담당", "담당자명", "manager", "매니저", "담당자성함"] },
   { key: "email", label: "이메일", aliases: ["이메일", "email", "메일", "e-mail"] },
-  { key: "industry", label: "업종", options: CLIENT_INDUSTRIES, aliases: ["업종", "분야", "industry", "업태", "카테고리"] },
   { key: "biz_no", label: "사업자등록번호", aliases: ["사업자", "사업자등록번호", "사업자번호", "bizno", "사업자등록"] },
+  { key: "address", label: "사업장주소", aliases: ["주소", "사업장주소", "사업장소재지", "소재지", "address"] },
+  { key: "biz_type", label: "업태", aliases: ["업태", "biztype"] },
+  { key: "biz_item", label: "종목", aliases: ["종목", "bizitem", "item"] },
   { key: "tax_email", label: "계산서이메일", aliases: ["계산서", "세금계산서", "계산서이메일", "taxemail", "세금계산서이메일"] },
+  { key: "brand", label: "브랜드명", aliases: ["브랜드", "브랜드명", "brand"] },
   { key: "memo", label: "메모", aliases: ["메모", "비고", "특이사항", "memo", "note", "참고"] },
 ];
 
