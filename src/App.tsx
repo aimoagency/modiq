@@ -2591,8 +2591,9 @@ async function sharePdf(){
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
           <BizLicenseUpload onExtracted={applyBizInfo} />
           {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"repeat(3, minmax(0,1fr))", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={[...(agency?.client_categories||[]), ...customerCategories]} onAdd={addClientCategory} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -2612,7 +2613,6 @@ async function sharePdf(){
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
-          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={{ ...inp, marginBottom:0 }} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
@@ -2987,8 +2987,9 @@ async function sharePdf(){
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
           <BizLicenseUpload onExtracted={applyBizInfo} />
           {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"repeat(3, minmax(0,1fr))", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={[...(agency?.client_categories||[]), ...customerCategories]} onAdd={addClientCategory} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3008,7 +3009,6 @@ async function sharePdf(){
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
-          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={{ ...inp, marginBottom:0 }} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
