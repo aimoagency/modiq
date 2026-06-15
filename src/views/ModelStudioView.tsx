@@ -74,6 +74,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [packaging, setPackaging] = useState(false);
   const [compModel, setCompModel] = useState<any | null>(null); // 컴카드 모달 대상
+  const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -82,6 +83,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
 
   const sel = models.find(m => m.id === selId) || null;
   const photos: string[] = Array.isArray(sel?.photos) ? sel!.photos : [];
+  const liked: string[] = Array.isArray(sel?.liked_photos) ? sel!.liked_photos : [];
 
   const savePhotos = async (next: string[]) => {
     if (!sel) return;
@@ -92,6 +94,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     } catch (e) { alert("사진 저장 실패: " + String(e)); }
     setSaving(false);
   };
+
+  // 좋아요(즐겨찾기) 저장 — liked_photos 컬럼(사진 데이터 배열)
+  const saveLikes = async (next: string[]) => {
+    if (!sel) return;
+    try {
+      await sb("models", "PATCH", { liked_photos: next }, `?id=eq.${sel.id}`);
+      setModels(prev => prev.map(m => m.id === sel.id ? { ...m, liked_photos: next } : m));
+    } catch (e) { alert("좋아요 저장 실패: " + String(e)); }
+  };
+  const toggleLike = (url: string) => saveLikes(liked.includes(url) ? liked.filter(l => l !== url) : [...liked, url]);
 
   const addPhotos = (files: FileList | null) => {
     if (!files || !sel) return;
@@ -107,7 +119,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     }));
   };
 
-  const removePhoto = (i: number) => savePhotos(photos.filter((_, x) => x !== i));
+  const removePhoto = (i: number) => { const url = photos[i]; savePhotos(photos.filter((_, x) => x !== i)); if (liked.includes(url)) saveLikes(liked.filter(l => l !== url)); setViewer(null); };
   const makePrimary = (i: number) => { if (i === 0) return; const next = [...photos]; const [p] = next.splice(i, 1); next.unshift(p); savePhotos(next); };
 
   // ── 패키징 모드 ──
@@ -124,8 +136,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
 
   const modelToItem = (m: any): PackageItem => {
     const age = ageFromSSN6(m.ssn6);
-    // 전체 사진을 저장(최대 15) → 고객 갤러리에서 전부 노출. 카드/컴카드는 앞쪽 일부만 표시.
-    const photos: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos.slice(0, MAX_PHOTOS) : (m.thumb_url ? [m.thumb_url] : []);
+    // 좋아요 찍은 컷을 앞쪽으로 → 패키지·컴카드에 우선 노출. 전체 사진도 갤러리에 포함(최대 15).
+    const likedSet: string[] = Array.isArray(m.liked_photos) ? m.liked_photos : [];
+    const all: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
+    const ordered = likedSet.length ? [...all.filter(p => likedSet.includes(p)), ...all.filter(p => !likedSet.includes(p))] : all;
+    const photos: string[] = ordered.slice(0, MAX_PHOTOS);
     return {
       model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
@@ -274,7 +289,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               {/* 사진 업로드 영역 */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <strong style={{ fontSize: 14, color: C.text }}>포트폴리오 사진 <span style={{ color: C.muted, fontWeight: 500 }}>{photos.length}/{MAX_PHOTOS}</span></strong>
+                  <strong style={{ fontSize: 14, color: C.text }}>포트폴리오 사진 <span style={{ color: C.muted, fontWeight: 500 }}>{photos.length}/{MAX_PHOTOS}</span>{liked.length > 0 && <span style={{ color: "#ff4d6d", fontWeight: 600, fontSize: 12, marginLeft: 8 }}>♥ {liked.length}</span>}</strong>
                   {saving && <span style={{ fontSize: 12, color: C.muted }}>저장 중…</span>}
                 </div>
                 <div
@@ -284,13 +299,14 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   style={{ border: `2px dashed ${drag ? C.blue : C.border}`, borderRadius: 12, padding: 14, background: drag ? C.blue + "11" : "transparent" }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
-                    {photos.map((p, i) => (
-                      <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-                        <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {photos.map((p, i) => { const isLiked = liked.includes(p); return (
+                      <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${isLiked ? "#ff4d6d" : C.border}` }}>
+                        <img src={p} alt="" onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
+                        <span onClick={() => toggleLike(p)} title={isLiked ? "좋아요 취소" : "좋아요"} style={{ position: "absolute", top: 4, left: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: isLiked ? "#ff4d6d" : "#fff", fontSize: 14, lineHeight: "24px", textAlign: "center", cursor: "pointer" }}>{isLiked ? "♥" : "♡"}</span>
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         {i !== 0 && <button onClick={() => makePrimary(i)} style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>대표로</button>}
                       </div>
-                    ))}
+                    ); })}
                     {photos.length < MAX_PHOTOS && (
                       <label style={{ aspectRatio: "3/4", border: `1px dashed ${C.border}`, borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.muted, fontSize: 12, gap: 4 }}>
                         <span style={{ fontSize: 26 }}>＋</span>사진 추가
@@ -305,6 +321,21 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
           )}
         </div>
       </div>
+
+      {viewer !== null && photos[viewer] && (() => { const total = photos.length; const cur = photos[viewer]; const isLiked = liked.includes(cur); const go = (d: number) => setViewer(v => v === null ? v : (v + d + total) % total); return (
+        <div onClick={() => setViewer(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.9)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <span onClick={() => setViewer(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          {total > 1 && <span onClick={e => { e.stopPropagation(); go(-1); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>‹</span>}
+          {total > 1 && <span onClick={e => { e.stopPropagation(); go(1); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>›</span>}
+          <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "92%" }}>
+            <img src={cur} alt="" style={{ maxWidth: "100%", maxHeight: "78vh", objectFit: "contain", borderRadius: 8 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button onClick={() => toggleLike(cur)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 22px", borderRadius: 24, border: "none", cursor: "pointer", background: isLiked ? "#ff4d6d" : "rgba(255,255,255,.16)", color: "#fff", fontSize: 15, fontWeight: 700 }}>{isLiked ? "♥ 좋아요" : "♡ 좋아요"}</button>
+              <span style={{ color: "rgba(255,255,255,.7)", fontSize: 13 }}>{viewer + 1} / {total}</span>
+            </div>
+          </div>
+        </div>
+      ); })()}
 
       {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)}
         onSave={async (compcard) => {
