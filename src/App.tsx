@@ -20,6 +20,7 @@ import {
 } from "./lib/utils";
 import Badge from "./components/Badge";
 import BizLicenseUpload from "./components/BizLicenseUpload";
+import CategorySelect from "./components/CategorySelect";
 import type { BizLicenseInfo } from "./lib/ocr";
 import TypeIcon from "./components/TypeIcon";
 import Modal from "./components/Modal";
@@ -335,6 +336,11 @@ export default function App() {
   const [cBizNo,      setCBizNo]      = useState("");   // 사업자등록번호
   const [cTaxEmail,   setCTaxEmail]   = useState("");   // 계산서 발송 이메일
   const [cMemo,       setCMemo]       = useState("");
+  const [cRepName,    setCRepName]    = useState("");   // 대표자(성명)
+  const [cAddress,    setCAddress]    = useState("");   // 사업장 주소
+  const [cBizType,    setCBizType]    = useState("");   // 업태
+  const [cBizItem,    setCBizItem]    = useState("");   // 종목
+  const [cCategory,   setCCategory]   = useState("");   // 분야
 
   // ── 섭외 폼 ──
   const [bModel,        setBModel]        = useState("");
@@ -581,20 +587,18 @@ export default function App() {
   const applyBizInfo = (info: BizLicenseInfo) => {
     if (info.companyName) setCName(info.companyName);
     if (info.businessNumber) setCBizNo(info.businessNumber);
-    const extra = [
-      info.representativeName && `대표: ${info.representativeName}`,
-      info.address && `주소: ${info.address}`,
-      (info.businessType || info.businessItem) && `업태/종목: ${[info.businessType, info.businessItem].filter(Boolean).join(" / ")}`,
-      info.corporateNumber && `법인등록번호: ${info.corporateNumber}`,
-    ].filter(Boolean).join("\n");
-    if (extra) setCMemo(prev => prev ? prev : extra);
+    if (info.representativeName) setCRepName(info.representativeName);
+    if (info.address) setCAddress(info.address);
+    if (info.businessType) setCBizType(info.businessType);
+    if (info.businessItem) setCBizItem(info.businessItem);
+    if (info.corporateNumber) setCMemo(prev => prev ? prev : `법인등록번호: ${info.corporateNumber}`);
   };
-  const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); };
+  const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); setCRepName(""); setCAddress(""); setCBizType(""); setCBizItem(""); setCCategory(""); };
   const handleAddCustomer = async () => {
     if (!cName||!cPhone) return alert("고객사명과 전화번호 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const nc = { id:randomId("CL"), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, agency_id:agency.id };
+    const nc = { id:randomId("CL"), name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory, agency_id:agency.id };
     try {
       await sb("customers","POST",nc);
       setCustomers([nc,...customers]);
@@ -607,6 +611,7 @@ export default function App() {
     setCName(c.name||""); setCBrand(c.brand||""); setCManager(c.manager_name||"");
     setCPhone(c.phone||""); setCEmail(c.email||""); setCIndustry(c.industry||"");
     setCBizNo(c.biz_no||""); setCTaxEmail(c.tax_email||""); setCMemo(c.memo||"");
+    setCRepName(c.rep_name||""); setCAddress(c.address||""); setCBizType(c.biz_type||""); setCBizItem(c.biz_item||""); setCCategory(c.category||"");
     setCEditMode(true);
   };
 
@@ -614,7 +619,7 @@ export default function App() {
     if (!cName) return alert("고객사명 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, industry:cIndustry, biz_no:bn, tax_email:cTaxEmail, memo:cMemo };
+    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory };
     try {
       await sb("customers","PATCH",updated,`?id=eq.${selectedCustomer.id}`);
       setCustomers(customers.map(c => c.id===selectedCustomer.id ? {...c,...updated} : c));
@@ -1329,10 +1334,11 @@ async function sharePdf(){
       return !!c&&(c.name?.toLowerCase().includes(q)||c.brand?.toLowerCase().includes(q));
     });
   });
+  const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
   const filteredCustomers = customers.filter(c=>{
     if (!customerQ.trim()) return true;
     const q = customerQ.trim().toLowerCase();
-    return c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q);
+    return c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||c.category?.toLowerCase().includes(q)||c.rep_name?.toLowerCase().includes(q);
   });
   const filteredBookings  = bookings.filter(b=>{
     const mn=models.find(m=>m.id===b.model_id)?.name||"";
@@ -2505,7 +2511,7 @@ async function sharePdf(){
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
                 {selectedCustomer.brand&&<span style={{ fontSize:13, color:C.blue, fontWeight:600 }}>· {selectedCustomer.brand}</span>}
-                {selectedCustomer.industry&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 10px", borderRadius:10 }}>{selectedCustomer.industry}</span>}
+                {selectedCustomer.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 10px", borderRadius:10 }}>{selectedCustomer.category}</span>}
               </div>
               <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedCustomer.id}</p>
             </div>
@@ -2513,11 +2519,14 @@ async function sharePdf(){
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
+              ["대표자 (성명)", selectedCustomer.rep_name],
               ["담당자명", selectedCustomer.manager_name],
               ["전화번호", selectedCustomer.phone?<a href={`tel:${selectedCustomer.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedCustomer.phone}</a>:null],
               ["이메일",   selectedCustomer.email],
-              ["업종",     selectedCustomer.industry],
               ["사업자등록번호", selectedCustomer.biz_no?(()=>{ const n=String(selectedCustomer.biz_no).replace(/[^0-9]/g,""); return n.length===10?`${n.slice(0,3)}-${n.slice(3,5)}-${n.slice(5)}`:selectedCustomer.biz_no; })():null],
+              ["사업장 주소", selectedCustomer.address],
+              ["업태", selectedCustomer.biz_type],
+              ["종목", selectedCustomer.biz_item],
               ["계산서 이메일", selectedCustomer.tax_email],
             ].map(([k,v])=>(
               <div key={String(k)}>
@@ -2569,29 +2578,31 @@ async function sharePdf(){
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
           <BizLicenseUpload onExtracted={applyBizInfo} />
+          {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={customerCategories} /></div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>대표자 (성명)</label><input style={inp} value={cRepName} onChange={e=>setCRepName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
+          </div>
+          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업장 주소</label><input style={{ ...inp, marginBottom:0 }} value={cAddress} onChange={e=>setCAddress(e.target.value)} /></div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업태</label><input style={inp} value={cBizType} onChange={e=>setCBizType(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>종목</label><input style={inp} value={cBizItem} onChange={e=>setCBizItem(e.target.value)} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label><input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} /></div>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호</label><input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호 *</label><input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업종</label>
-              <select style={inp} value={cIndustry} onChange={e=>setCIndustry(e.target.value)}>
-                <option value="">선택</option>
-                {CLIENT_INDUSTRIES.map(i=><option key={i} value={i}>{i}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
+          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={{ ...inp, marginBottom:0 }} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
-          <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} />
+          <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
             <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
@@ -2963,51 +2974,31 @@ async function sharePdf(){
         <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
           <BizLicenseUpload onExtracted={applyBizInfo} />
+          {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label>
-              <input style={inp} value={cName} onChange={e=>setCName(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label>
-              <input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} />
-            </div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={customerCategories} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label>
-              <input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호 *</label>
-              <input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
-            </div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>대표자 (성명)</label><input style={inp} value={cRepName} onChange={e=>setCRepName(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label><input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" /></div>
+          </div>
+          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업장 주소</label><input style={{ ...inp, marginBottom:0 }} value={cAddress} onChange={e=>setCAddress(e.target.value)} /></div>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업태</label><input style={inp} value={cBizType} onChange={e=>setCBizType(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>종목</label><input style={inp} value={cBizItem} onChange={e=>setCBizItem(e.target.value)} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label>
-              <input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>업종</label>
-              <select style={inp} value={cIndustry} onChange={e=>setCIndustry(e.target.value)}>
-                <option value="">선택</option>
-                {CLIENT_INDUSTRIES.map(i=><option key={i} value={i}>{i}</option>)}
-              </select>
-            </div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>담당자명</label><input style={inp} value={cManager} onChange={e=>setCManager(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>전화번호 *</label><input style={inp} type="tel" value={cPhone} onChange={e=>setCPhone(e.target.value)} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>사업자등록번호</label>
-              <input style={inp} value={cBizNo} onChange={e=>setCBizNo(e.target.value)} placeholder="000-00-00000" />
-            </div>
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label>
-              <input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" />
-            </div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>이메일</label><input style={inp} type="email" value={cEmail} onChange={e=>setCEmail(e.target.value)} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계산서 발송 이메일</label><input style={inp} type="email" value={cTaxEmail} onChange={e=>setCTaxEmail(e.target.value)} placeholder="tax@company.com" /></div>
           </div>
+          <div style={{ marginBottom:10 }}><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={{ ...inp, marginBottom:0 }} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
-          <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={cMemo} onChange={e=>setCMemo(e.target.value)} />
+          <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleAddCustomer} style={{ ...btnS(C.green), flex:1 }}>추가</button>
             <button onClick={()=>{setShowCustomerForm(false);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
@@ -3443,7 +3434,7 @@ async function sharePdf(){
                     >
                       <span style={{ fontWeight:700, color:C.text }}>{c.name}</span>
                       {c.brand&&<span style={{ fontSize:11, color:C.muted }}>{c.brand}</span>}
-                      {c.industry&&<span style={{ fontSize:11, color:C.muted }}>{c.industry}</span>}
+                      {c.category&&<span style={{ fontSize:11, color:C.muted }}>{c.category}</span>}
                     </div>
                   ))
                 }

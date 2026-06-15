@@ -53,7 +53,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
             <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
                 <strong style={{ flex:1, fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</strong>
-                {c.industry&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.industry}</span>}
+                {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.category}</span>}
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub }}>
                 {c.manager_name&&<span><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
@@ -67,7 +67,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
             >
               <span style={{ fontWeight:800, fontSize:15, color:C.text, minWidth:80 }}>{c.name}</span>
               {c.brand&&<span style={{ fontSize:13, color:C.blue }}>· {c.brand}</span>}
-              {c.industry&&<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.industry}</span>}
+              {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.category}</span>}
               {c.manager_name&&<span style={{ fontSize:12, color:C.muted }}><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
               {c.phone&&<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ fontSize:12, color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>}
               {c.email&&<span style={{ fontSize:12, color:C.muted }}><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</span>}
