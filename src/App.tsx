@@ -1953,7 +1953,7 @@ async function sharePdf(){
                       {selectedBooking.model_pay_type&&(
                         <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                           <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
-                            placeholder={selectedBooking.model_pay_type==="rate"?"모델 몫":"정액"}
+                            placeholder={selectedBooking.model_pay_type==="rate"?"수수료율":"정액"}
                             value={selectedBooking.model_pay_value!=null&&selectedBooking.model_pay_value!==""?(selectedBooking.model_pay_type==="fixed"?Number(selectedBooking.model_pay_value).toLocaleString("ko-KR"):String(selectedBooking.model_pay_value)):""}
                             onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setSelectedBooking((p:any)=>({...p, model_pay_value:v===""?null:Number(v)})); }} />
                           <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{selectedBooking.model_pay_type==="rate"?"%":"원"}</span>
@@ -2287,7 +2287,7 @@ async function sharePdf(){
               {editPayType!==""&&(
                 <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                   <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
-                    placeholder={editPayType==="rate"?"모델 몫":"정액"}
+                    placeholder={editPayType==="rate"?"수수료율":"정액"}
                     value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
                     onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
                   <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{editPayType==="rate"?"%":"원"}</span>
@@ -2716,7 +2716,7 @@ async function sharePdf(){
           {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
           <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
+              <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
               {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
             </div>
             {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
@@ -2745,9 +2745,16 @@ async function sharePdf(){
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무</p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {([["foreigner", mIsForeign&&mVisaType==="E6"?"외국인 (E6/3.3%)":mIsForeign&&mVisaType==="C4"?"외국인 (C4/20%)":mIsForeign&&mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"],["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
-                <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
-              ))}
+              {mIsForeign ? (
+                <>
+                  <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
+                  <span style={{ fontSize:11, color:C.muted }}>🔒 비자·정산 정보에서 설정됨</span>
+                </>
+              ) : (
+                ([["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
+                ))
+              )}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
@@ -3097,7 +3104,7 @@ async function sharePdf(){
                         </div>
                       </div>
                       {bt.hasContract ? (
-                        <MoneyInput label="계약 총액 (이 모델 몫)" value={line.fee} onChange={v=>updateProjectModelLine(line.modelId,"fee",v)} />
+                        <MoneyInput label="계약 총액 (이 모델)" value={line.fee} onChange={v=>updateProjectModelLine(line.modelId,"fee",v)} />
                       ) : null}
                     </div>
                   );
