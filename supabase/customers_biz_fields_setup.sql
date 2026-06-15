@@ -5,3 +5,6 @@ alter table public.customers add column if not exists address   text;  -- 사업
 alter table public.customers add column if not exists biz_type  text;  -- 업태
 alter table public.customers add column if not exists biz_item  text;  -- 종목
 alter table public.customers add column if not exists category  text;  -- 분야(패션브랜드/뷰티/...)
+
+-- 분야(category) 영구 목록 — 에이전시 단위 저장
+alter table public.agencies add column if not exists client_categories jsonb default '[]'::jsonb;

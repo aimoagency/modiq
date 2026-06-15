@@ -1335,6 +1335,18 @@ async function sharePdf(){
     });
   });
   const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
+  // 분야 직접입력값을 에이전시 영구 목록(client_categories)에 등록
+  const addClientCategory = async (name: string) => {
+    const v = (name||"").trim(); if (!v || !agency) return;
+    const list: string[] = Array.isArray(agency.client_categories) ? agency.client_categories : [];
+    if (list.includes(v)) return;
+    const next = [...list, v];
+    try {
+      await sb("agencies","PATCH",{ client_categories: next },`?id=eq.${agency.id}`);
+      const updated = { ...agency, client_categories: next };
+      setAgency(updated); saveSession(session, updated, myRole);
+    } catch (e) { alert("분야 추가 실패: "+String(e)); }
+  };
   const filteredCustomers = customers.filter(c=>{
     if (!customerQ.trim()) return true;
     const q = customerQ.trim().toLowerCase();
@@ -2581,7 +2593,7 @@ async function sharePdf(){
           {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={customerCategories} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={[...(agency?.client_categories||[]), ...customerCategories]} onAdd={addClientCategory} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>대표자 (성명)</label><input style={inp} value={cRepName} onChange={e=>setCRepName(e.target.value)} /></div>
@@ -2977,7 +2989,7 @@ async function sharePdf(){
           {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>상호 (고객사명) *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
-            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={customerCategories} /></div>
+            <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>분야</label><CategorySelect value={cCategory} onChange={setCCategory} extra={[...(agency?.client_categories||[]), ...customerCategories]} onAdd={addClientCategory} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>대표자 (성명)</label><input style={inp} value={cRepName} onChange={e=>setCRepName(e.target.value)} /></div>
