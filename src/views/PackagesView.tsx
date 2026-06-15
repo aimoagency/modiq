@@ -45,6 +45,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
 }) {
   const [draft, setDraft] = useState<Pkg | null>(null);   // null = 목록 화면
   const [preview, setPreview] = useState<Pkg | null>(null); // 패키지 미리보기(고객 화면)
+  const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 빌더 사진 확대
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
@@ -83,7 +84,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
       followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
-      photos: (() => { const lk = Array.isArray(m.liked_photos) ? m.liked_photos : []; const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []); return lk.length ? all.filter((p: string) => lk.includes(p)) : all; })(),
+      photos: (() => { const lk = Array.isArray(m.liked_photos) ? m.liked_photos : []; const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []); return (lk.length ? [...all.filter((p: string) => lk.includes(p)), ...all.filter((p: string) => !lk.includes(p))] : all).slice(0, 30); })(),
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
@@ -92,7 +93,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
     Array.from(files).forEach(f => resizeImage(f, data =>
       setDraft(d => {
         if (!d) return d;
-        const items = d.items.map((it, i) => i === idx && it.photos.length < 9 ? { ...it, photos: [...it.photos, data] } : it);
+        const items = d.items.map((it, i) => i === idx && it.photos.length < 30 ? { ...it, photos: [...it.photos, data] } : it);
         return { ...d, items };
       })
     ));
@@ -299,21 +300,21 @@ export default function PackagesView({ packages, setPackages, models, customers,
               onDrop={e => { e.preventDefault(); addPhotos(idx, e.dataTransfer.files); }}
               style={{ border: `1px dashed ${C.border}`, borderRadius: 8, padding: 10, marginBottom: 10 }}
             >
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8 }}>
                 {it.photos.map((p, pi) => (
-                  <div key={pi} style={{ position: "relative", width: 72, height: 96 }}>
-                    <img src={p} alt="" style={{ width: 72, height: 96, objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}` }} />
+                  <div key={pi} style={{ position: "relative", aspectRatio: "3/4" }}>
+                    <img src={p} alt="" onClick={() => setZoom({ photos: it.photos, idx: pi })} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}`, cursor: "zoom-in", display: "block" }} />
                     <span onClick={() => removePhoto(idx, pi)} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
                   </div>
                 ))}
-                {it.photos.length < 9 && (
-                  <label style={{ width: 72, height: 96, border: `1px dashed ${C.border}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.muted, fontSize: 11, gap: 3 }}>
+                {it.photos.length < 30 && (
+                  <label style={{ aspectRatio: "3/4", border: `1px dashed ${C.border}`, borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.muted, fontSize: 11, gap: 3 }}>
                     <span style={{ fontSize: 20 }}>＋</span>사진
                     <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => addPhotos(idx, e.target.files)} />
                   </label>
                 )}
               </div>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 사진을 눌러 추가 (최대 9장)</p>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 사진을 눌러 추가 (최대 30장) · 사진을 누르면 크게 보기</p>
             </div>
 
             {/* 모델 정보 — DB 연결 모델은 등록 정보를 그대로 표시(재입력 불필요), 직접추가 항목만 입력칸 노출 */}
@@ -345,6 +346,17 @@ export default function PackagesView({ packages, setPackages, models, customers,
       </div>
 
       {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)} />}
+
+      {/* 빌더 사진 확대 뷰어 */}
+      {zoom && zoom.photos[zoom.idx] && (() => { const total = zoom.photos.length; const go = (d: number) => setZoom(s => s ? { ...s, idx: (s.idx + d + total) % total } : s); return (
+        <div onClick={() => setZoom(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <span onClick={() => setZoom(null)} style={{ position: "absolute", top: 14, right: 18, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          {total > 1 && <span onClick={e => { e.stopPropagation(); go(-1); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>‹</span>}
+          {total > 1 && <span onClick={e => { e.stopPropagation(); go(1); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>›</span>}
+          <img onClick={e => e.stopPropagation()} src={zoom.photos[zoom.idx]} alt="" style={{ maxWidth: "92%", maxHeight: "86vh", objectFit: "contain", borderRadius: 8 }} />
+          <span style={{ position: "absolute", bottom: 16, left: 0, right: 0, textAlign: "center", color: "#9aa2af", fontSize: 12 }}>{zoom.idx + 1} / {total}</span>
+        </div>
+      ); })()}
 
       {/* 모델 선택 모달 */}
       {modelPick && (

@@ -11,8 +11,9 @@ import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck } from "../components/icons";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
 import CompCardModal from "../components/CompCardModal";
+import ModelSearchView from "./ModelSearchView";
 
-const MAX_PHOTOS = 15;
+const MAX_PHOTOS = 30;
 
 // 포트폴리오용 리사이즈(최대 1200px) → base64
 const resizeImage = (file: File, cb: (data: string) => void) => {
@@ -62,7 +63,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   isMobile?: boolean;
   initModelId?: string;
 }) {
-  const [mode, setMode] = useState<"photos" | "package">("photos");
+  const [mode, setMode] = useState<"photos" | "package" | "search">("photos");
   const [q, setQ] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
   // 모델 수정 화면 → "스튜디오" 버튼으로 들어오면 해당 모델 포트폴리오 자동 선택
@@ -137,11 +138,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
 
   const modelToItem = (m: any): PackageItem => {
     const age = ageFromSSN6(m.ssn6);
-    // 좋아요 찍은 컷이 있으면 그것만 패키지에 포함(없으면 전체). 패키지 편집에서 직접 추가 가능.
+    // 스튜디오 사진 전부 패키지에 반영(좋아요 컷을 앞순서로). 패키지 편집에서 필요시 삭제.
     const likedSet: string[] = Array.isArray(m.liked_photos) ? m.liked_photos : [];
     const all: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
-    const chosenPhotos = likedSet.length ? all.filter(p => likedSet.includes(p)) : all;
-    const photos: string[] = chosenPhotos.slice(0, MAX_PHOTOS);
+    const ordered = likedSet.length ? [...all.filter(p => likedSet.includes(p)), ...all.filter(p => !likedSet.includes(p))] : all;
+    const photos: string[] = ordered.slice(0, MAX_PHOTOS);
     return {
       model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
@@ -255,6 +256,15 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
       </div>
 
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {([["photos", "사진 관리"], ["search", "모델 검색"]] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)} style={{ padding: "8px 16px", borderRadius: 8, border: `2px solid ${mode === k ? C.blue : C.border}`, background: mode === k ? C.blue + "22" : C.card, color: mode === k ? C.blue : C.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{l}</button>
+        ))}
+      </div>
+
+      {mode === "search" && <ModelSearchView models={models} isMobile={isMobile} onPick={(m: any) => { setSelId(m.id); setMode("photos"); }} />}
+
+      {mode !== "search" && (
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16 }}>
         {listPanel}
 
@@ -320,13 +330,14 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                       </label>
                     )}
                   </div>
-                  <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 를 눌러 추가 (최대 15장)</p>
+                  <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 를 눌러 추가 (최대 30장)</p>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+      )}
 
       {viewer !== null && photos[viewer] && (() => { const total = photos.length; const cur = photos[viewer]; const isLiked = liked.includes(cur); const go = (d: number) => setViewer(v => v === null ? v : (v + d + total) % total); return (
         <div onClick={() => setViewer(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.9)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
