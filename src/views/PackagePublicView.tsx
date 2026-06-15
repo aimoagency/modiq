@@ -6,15 +6,17 @@ import { useEffect, useState } from "react";
 import { sb } from "../lib/supabase";
 import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf, compCardInnerHtml } from "../lib/packages";
 
-export default function PackagePublicView({ token }: { token: string }) {
-  const [pkg, setPkg] = useState<Pkg | null>(null);
-  const [state, setState] = useState<"loading" | "ok" | "notfound">("loading");
+export default function PackagePublicView({ token, pkg: pkgProp }: { token?: string; pkg?: Pkg }) {
+  const [pkg, setPkg] = useState<Pkg | null>(pkgProp || null);
+  const [state, setState] = useState<"loading" | "ok" | "notfound">(pkgProp ? "ok" : "loading");
   const [gallery, setGallery] = useState<PackageItem | null>(null);          // 모델 전체 사진 화면
   const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 가운데 플로팅 확대
   const [downloading, setDownloading] = useState<string | null>(null);              // 컴카드 PDF 생성 중인 항목
   const [compItem, setCompItem] = useState<PackageItem | null>(null);                // 컴카드 미리보기 대상
 
   useEffect(() => {
+    if (pkgProp) { setPkg(pkgProp); setState("ok"); return; }
+    if (!token) { setState("notfound"); return; }
     (async () => {
       try {
         const rows = await sb("packages", "GET", null, `?share_token=eq.${encodeURIComponent(token)}&is_public=eq.true&limit=1`);
@@ -22,7 +24,7 @@ export default function PackagePublicView({ token }: { token: string }) {
         else setState("notfound");
       } catch { setState("notfound"); }
     })();
-  }, [token]);
+  }, [token, pkgProp]);
 
   const wrap: React.CSSProperties = {
     minHeight: "100vh", background: "#eceff3", color: "#1a1d27",

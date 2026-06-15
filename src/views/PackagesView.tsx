@@ -13,6 +13,7 @@ import {
 import { ageFromSSN6 } from "../lib/utils";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
+import PackagePublicView from "./PackagePublicView";
 
 // 사진 리사이즈 → base64 (기존 reference_images 패턴과 동일)
 const resizeImage = (file: File, cb: (data: string) => void) => {
@@ -43,6 +44,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   isMobile?: boolean;
 }) {
   const [draft, setDraft] = useState<Pkg | null>(null);   // null = 목록 화면
+  const [preview, setPreview] = useState<Pkg | null>(null); // 패키지 미리보기(고객 화면)
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
@@ -170,7 +172,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
           <div style={{ display: "grid", gap: 8 }}>
             {packages.map(p => (
               <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-                <div onClick={() => openPackageWindow({ ...p }, agency.name)} title="클릭하면 생성된 화면이 열립니다" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer" }}>
+                <div onClick={() => setPreview(p)} title="클릭하면 고객이 보는 화면으로 미리보기" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer" }}>
                   <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
                   <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
                     {p.layout === "compcard" ? "컴카드" : "제안 패키지"}
@@ -190,6 +192,12 @@ export default function PackagesView({ packages, setPackages, models, customers,
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {preview && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 1500, background: "#eceff3", overflowY: "auto" }}>
+            <button onClick={() => setPreview(null)} style={{ position: "fixed", top: 14, left: 14, zIndex: 1600, padding: "8px 16px", background: "#1a1d27", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>← 목록으로</button>
+            <PackagePublicView pkg={preview} />
           </div>
         )}
       </div>
