@@ -75,6 +75,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [packaging, setPackaging] = useState(false);
   const [compModel, setCompModel] = useState<any | null>(null); // 컴카드 모달 대상
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
+  const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -136,11 +137,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
 
   const modelToItem = (m: any): PackageItem => {
     const age = ageFromSSN6(m.ssn6);
-    // 좋아요 찍은 컷을 앞쪽으로 → 패키지·컴카드에 우선 노출. 전체 사진도 갤러리에 포함(최대 15).
+    // 좋아요 찍은 컷이 있으면 그것만 패키지에 포함(없으면 전체). 패키지 편집에서 직접 추가 가능.
     const likedSet: string[] = Array.isArray(m.liked_photos) ? m.liked_photos : [];
     const all: string[] = Array.isArray(m.photos) && m.photos.length ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
-    const ordered = likedSet.length ? [...all.filter(p => likedSet.includes(p)), ...all.filter(p => !likedSet.includes(p))] : all;
-    const photos: string[] = ordered.slice(0, MAX_PHOTOS);
+    const chosenPhotos = likedSet.length ? all.filter(p => likedSet.includes(p)) : all;
+    const photos: string[] = chosenPhotos.slice(0, MAX_PHOTOS);
     return {
       model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
@@ -300,11 +301,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
                     {photos.map((p, i) => { const isLiked = liked.includes(p); return (
-                      <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${isLiked ? "#ff4d6d" : C.border}` }}>
-                        <img src={p} alt="" onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
+                      <div key={i}
+                        draggable
+                        onDragStart={() => setDragIdx(i)}
+                        onDragOver={e => { if (dragIdx !== null) e.preventDefault(); }}
+                        onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); if (dragIdx !== i) { const next = [...photos]; const [mv] = next.splice(dragIdx, 1); next.splice(i, 0, mv); savePhotos(next); } setDragIdx(null); } }}
+                        onDragEnd={() => setDragIdx(null)}
+                        style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${isLiked ? "#ff4d6d" : C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
+                        <img src={p} alt="" draggable={false} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => toggleLike(p)} title={isLiked ? "좋아요 취소" : "좋아요"} style={{ position: "absolute", top: 4, left: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: isLiked ? "#ff4d6d" : "#fff", fontSize: 14, lineHeight: "24px", textAlign: "center", cursor: "pointer" }}>{isLiked ? "♥" : "♡"}</span>
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
-                        {i !== 0 && <button onClick={() => makePrimary(i)} style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>대표로</button>}
                       </div>
                     ); })}
                     {photos.length < MAX_PHOTOS && (
@@ -327,12 +333,12 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
           <span onClick={() => setViewer(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
           {total > 1 && <span onClick={e => { e.stopPropagation(); go(-1); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>‹</span>}
           {total > 1 && <span onClick={e => { e.stopPropagation(); go(1); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>›</span>}
-          <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, maxWidth: "92%" }}>
-            <img src={cur} alt="" style={{ maxWidth: "100%", maxHeight: "78vh", objectFit: "contain", borderRadius: 8 }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button onClick={() => toggleLike(cur)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 22px", borderRadius: 24, border: "none", cursor: "pointer", background: isLiked ? "#ff4d6d" : "rgba(255,255,255,.16)", color: "#fff", fontSize: 15, fontWeight: 700 }}>{isLiked ? "♥ 좋아요" : "♡ 좋아요"}</button>
-              <span style={{ color: "rgba(255,255,255,.7)", fontSize: 13 }}>{viewer + 1} / {total}</span>
+          <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, maxWidth: "92%" }}>
+            <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
+              <img src={cur} alt="" style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8, display: "block" }} />
+              <span onClick={() => toggleLike(cur)} title={isLiked ? "좋아요 취소" : "좋아요"} style={{ position: "absolute", top: 10, right: 10, width: 40, height: 40, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: isLiked ? "#ff4d6d" : "#fff", fontSize: 22, lineHeight: "40px", textAlign: "center", cursor: "pointer" }}>{isLiked ? "♥" : "♡"}</span>
             </div>
+            <span style={{ color: "rgba(255,255,255,.7)", fontSize: 13 }}>{viewer + 1} / {total}</span>
           </div>
         </div>
       ); })()}

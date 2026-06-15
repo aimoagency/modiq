@@ -81,7 +81,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
       followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
-      photos: Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []),
+      photos: (() => { const lk = Array.isArray(m.liked_photos) ? m.liked_photos : []; const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []); return lk.length ? all.filter((p: string) => lk.includes(p)) : all; })(),
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
