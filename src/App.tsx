@@ -2046,6 +2046,8 @@ async function sharePdf(){
         <Modal onClose={()=>setShowMoreMenu(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>메뉴</h3>
           {([
+            { t:"studio" as Page, l:"스튜디오", I:Camera },
+            { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
             ...(myRole==="owner"?[{ t:"members" as Page, l:"담당자", I:Users }]:[]),
