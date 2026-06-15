@@ -107,6 +107,21 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   };
   const toggleLike = (url: string) => saveLikes(liked.includes(url) ? liked.filter(l => l !== url) : [...liked, url]);
 
+  // 대표 썸네일 = 작게 압축한 복사본(목록·카드용). 큰 사진도 자동 축소 → 용량 제한 걱정 없음.
+  const makeThumb = (src: string, cb: (small: string) => void) => {
+    const img = new Image();
+    img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.62)); };
+    img.src = src;
+  };
+  const saveThumb = async (url: string) => {
+    if (!sel) return;
+    try { await sb("models", "PATCH", { thumb_url: url }, `?id=eq.${sel.id}`); setModels(prev => prev.map(m => m.id === sel.id ? { ...m, thumb_url: url } : m)); }
+    catch (e) { alert("대표 사진 저장 실패: " + String(e)); }
+  };
+  const uploadThumb = (files: FileList | null) => { const f = files?.[0]; if (!f || !f.type.startsWith("image/")) return; const r = new FileReader(); r.onload = () => makeThumb(String(r.result), saveThumb); r.readAsDataURL(f); };
+  // 갤러리 사진을 대표로 지정 → 맨 앞으로 + 작은 복사본을 thumb_url에 저장
+  const setAsCover = (i: number) => { const url = photos[i]; if (i !== 0) { const next = [...photos]; const [p] = next.splice(i, 1); next.unshift(p); savePhotos(next); } makeThumb(url, saveThumb); };
+
   const addPhotos = (files: FileList | null) => {
     if (!files || !sel) return;
     const room = MAX_PHOTOS - photos.length;
@@ -281,6 +296,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                     ? <img src={sel.thumb_url} alt="" style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, objectFit: "cover", border: `1px solid ${C.border}`, display: "block" }} />
                     : <div style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 40 }}>{(sel.name || "?")[0]}</div>}
                 </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <label style={{ flex: 1, textAlign: "center", padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{sel.thumb_url ? "대표 변경" : "＋ 대표 사진"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => uploadThumb(e.target.files)} /></label>
+                  {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.red}44`, background: "transparent", color: C.red, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>삭제</button>}
+                </div>
+                <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>아래 갤러리 사진의 "대표 지정"으로도 설정돼요.</p>
                 <button onClick={() => setCompModel(sel)} disabled={photos.length === 0} title={photos.length === 0 ? "사진을 먼저 등록하세요" : "컴카드 만들기"}
                   style={{ width: isMobile ? "100%" : "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
                   <CardCheck size={16} /> 컴카드 만들기
@@ -320,6 +340,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
                         <img src={p} alt="" draggable={false} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
+                        <button onClick={(e) => { e.stopPropagation(); setAsCover(i); }} title="이 사진을 대표로 지정" style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: i === 0 ? C.blue : "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>{i === 0 ? "대표" : "대표 지정"}</button>
                       </div>
                     ); })}
                     {photos.length < MAX_PHOTOS && (
