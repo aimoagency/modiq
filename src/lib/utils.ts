@@ -223,13 +223,14 @@ export const modelSessionFee = (b: any, model: any): number => {
 
 // 모델 정산 기준액(세전)
 //  - 정액(fixed): 입력한 정액 금액 그대로
-//  - 비율(rate) : 모델료(세션) × % — 모델료 미입력 시 공급가(촬영비) 기준으로 폴백(구버전 호환)
+//  - 수수료율(rate): 모델 몫 = 모델료(세션) × (100 − 수수료율)%. 에이전시가 수수료율%를 가져감(모델료 미입력 시 공급가 폴백)
 export const modelGross = (b: any, model: any): number => {
   const { type, value } = payCfg(b, model);
   if (type === "fixed") return Math.round(value || 0);
   const fee = modelSessionFee(b, model);
   const base = fee > 0 ? fee : supplyTotal(b);
-  return Math.round(base * (value || 0) / 100);
+  const commission = Math.min(100, Math.max(0, value || 0)); // value = 에이전시 수수료율(%)
+  return Math.round(base * (100 - commission) / 100); // 모델 몫 = 모델료 × (100 − 수수료율)%
 };
 
 // 모델 세무 유형: 'foreigner'=외국인(전액 지급) / 'freelancer'=프리랜서(3.3% 원천징수) / 'company'=소속사(세금계산서 10% 가산)

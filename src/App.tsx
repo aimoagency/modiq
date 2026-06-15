@@ -1947,7 +1947,7 @@ async function sharePdf(){
                   <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                       <span style={{ fontSize:11, color:C.muted, minWidth:54 }}>지급 방식</span>
-                      {([["","모델 기본"],["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+                      {([["","모델 기본"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                         <button key={k||"def"} type="button" onClick={()=>setSelectedBooking((p:any)=>({...p, model_pay_type:k||null, ...(k===""?{model_pay_value:null}:{})}))} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${(selectedBooking.model_pay_type||"")===k?C.green:C.border}`, background:(selectedBooking.model_pay_type||"")===k?C.green+"22":"transparent", color:(selectedBooking.model_pay_type||"")===k?C.green:C.muted, fontSize:12, fontWeight:(selectedBooking.model_pay_type||"")===k?700:500, cursor:"pointer" }}>{l}</button>
                       ))}
                       {selectedBooking.model_pay_type&&(
@@ -1960,7 +1960,7 @@ async function sharePdf(){
                         </span>
                       )}
                     </div>
-                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 비율/정액을 선택해 입력하세요.`}</p>
+                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 수수료율/정액을 선택해 입력하세요.`}</p>
                   </div>
                 )}
               </div>
@@ -2281,7 +2281,7 @@ async function sharePdf(){
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:78 }}>정산 방식</span>
-              {([["","모델 기본값"],["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["","모델 기본값"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setEditPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${editPayType===k?C.green:C.border}`, background:editPayType===k?C.green+"22":"transparent", color:editPayType===k?C.green:C.muted, fontSize:12, fontWeight:editPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
               {editPayType!==""&&(
@@ -2388,7 +2388,7 @@ async function sharePdf(){
               ["이메일",   selectedModel.email],
               ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
-              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`비율 ${selectedModel.payout_pay_value}%`) : "-"],
+              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료율 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
             ].map(([k,v])=>(
               <div key={String(k)}>
@@ -2751,10 +2751,10 @@ async function sharePdf(){
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
-              {([["rate","비율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mPayType===k?C.green:C.border}`, background:mPayType===k?C.green+"22":"transparent", color:mPayType===k?C.green:C.muted, fontSize:12, fontWeight:mPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"모델료 × 비율%":"정액 그대로(모델료 무관)"}</span>
+              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"에이전시 수수료율 — 모델은 나머지 수령":"정액 그대로(모델료 무관)"}</span>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day","Day(9h)",mPayDayValue,setMPayDayValue],["Half","Half day(5h)",mPayHalfValue,setMPayHalfValue],["Hour","Hours(1h)",mPayHourValue,setMPayHourValue]] as [string,string,number,(v:number)=>void][]).map(([key,lab,val,set])=>(
@@ -2762,7 +2762,7 @@ async function sharePdf(){
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}>
                     <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric"
-                      placeholder={mPayType==="rate"?"비율":"정액"}
+                      placeholder={mPayType==="rate"?"수수료율":"정액"}
                       value={val ? (mPayType==="fixed"? Number(val).toLocaleString("ko-KR") : String(val)) : ""}
                       onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) set(Number(v)||0); }} />
                     <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
@@ -2770,12 +2770,6 @@ async function sharePdf(){
                 </div>
               ))}
             </div>
-            <p style={{ margin:"8px 0 0", fontSize:11, color:C.muted }}>
-              {mPayType==="rate" ? "비율: 모델료(세션) × 해당 세션 비율% = 모델 정산 기준액. (섭외 5h까지 Half, 6h~ Day 자동)" : "정액: 해당 세션 정액이 그대로 모델 정산 기준액 (모델료·수식 미적용)."}<br/>
-              {mTaxType==="foreigner" ? "지급: 기준액 − 비자율(E-6 3.3% / C-4·기타 20% 원천징수)"
-                : mTaxType==="company" ? "지급: 기준액 + 10% (세금계산서 수취)"
-                : "지급: 기준액 − 3.3% (소득세 3% + 지방세 0.3% 원천징수)"}
-            </p>
           </div>
 
           {/* 링크 — 브랜드 아이콘 */}
