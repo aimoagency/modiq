@@ -19,6 +19,8 @@ import {
   bookingSession, sessionLabel, foreignerRate, payCfg,
 } from "./lib/utils";
 import Badge from "./components/Badge";
+import BizLicenseUpload from "./components/BizLicenseUpload";
+import type { BizLicenseInfo } from "./lib/ocr";
 import TypeIcon from "./components/TypeIcon";
 import Modal from "./components/Modal";
 import TimePicker from "./components/TimePicker";
@@ -575,6 +577,18 @@ export default function App() {
   };
 
   // ── 고객사 추가 ──
+  // 사업자등록증 OCR 결과 → 고객사 폼 자동 입력 (스키마에 없는 항목은 메모에 보존)
+  const applyBizInfo = (info: BizLicenseInfo) => {
+    if (info.companyName) setCName(info.companyName);
+    if (info.businessNumber) setCBizNo(info.businessNumber);
+    const extra = [
+      info.representativeName && `대표: ${info.representativeName}`,
+      info.address && `주소: ${info.address}`,
+      (info.businessType || info.businessItem) && `업태/종목: ${[info.businessType, info.businessItem].filter(Boolean).join(" / ")}`,
+      info.corporateNumber && `법인등록번호: ${info.corporateNumber}`,
+    ].filter(Boolean).join("\n");
+    if (extra) setCMemo(prev => prev ? prev : extra);
+  };
   const resetCustomerForm = () => { setCName(""); setCBrand(""); setCManager(""); setCPhone(""); setCEmail(""); setCIndustry(""); setCBizNo(""); setCTaxEmail(""); setCMemo(""); };
   const handleAddCustomer = async () => {
     if (!cName||!cPhone) return alert("고객사명과 전화번호 필수");
@@ -2554,6 +2568,7 @@ async function sharePdf(){
         <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}}>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
           <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
+          <BizLicenseUpload onExtracted={applyBizInfo} />
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label><input style={inp} value={cName} onChange={e=>setCName(e.target.value)} /></div>
             <div><label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>브랜드명</label><input style={inp} value={cBrand} onChange={e=>setCBrand(e.target.value)} /></div>
@@ -2947,6 +2962,7 @@ async function sharePdf(){
       {showCustomerForm&&(
         <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
+          <BizLicenseUpload onExtracted={applyBizInfo} />
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>고객사명 *</label>
