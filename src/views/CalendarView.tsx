@@ -36,6 +36,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const [offStart,  setOffStart]  = useState("");
   const [offEnd,    setOffEnd]    = useState("");
   const [offReason, setOffReason] = useState("");
+  const [offModelQ, setOffModelQ] = useState(""); // 휴무 모델 검색어
 
   // 화면 폭에 따라 월간 셀 최대 표시 개수 (넓으면 5, 좁으면 4)
   const [winW, setWinW] = useState(typeof window!=="undefined"?window.innerWidth:1440);
@@ -112,7 +113,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><CalendarDays size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더</h1>
         <div style={{ display:"flex", gap:8 }}>
           <button onClick={()=>{ setHDate(selDate||todayStr); setHLabel("휴무일"); setShowHolidayForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.border}`, color:C.textSub }}><CalendarOff size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 지정</button>
-          <button onClick={()=>{ setOffModel(modelFilter||""); setOffStart(selDate||todayStr); setOffEnd(selDate||todayStr); setOffReason(""); setShowOffForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.orange}55`, color:C.orange }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무</button>
+          <button onClick={()=>{ setOffModel(modelFilter||""); setOffModelQ(modelFilter ? (models.find(m=>m.id===modelFilter)?.name||"") : ""); setOffStart(selDate||todayStr); setOffEnd(selDate||todayStr); setOffReason(""); setShowOffForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.orange}55`, color:C.orange }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무</button>
           <button onClick={()=>onAddBooking(modelFilter||undefined, selDate||undefined)} style={btnS(C.green)}>+ 섭외 추가</button>
         </div>
       </div>
@@ -537,11 +538,16 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       {showOffForm&&(
         <Modal onClose={()=>setShowOffForm(false)}>
           <h3 style={{ marginTop:0, color:C.text }}><CalendarOff size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무 등록</h3>
-          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 *</label>
-          <select style={inp} value={offModel} onChange={e=>setOffModel(e.target.value)}>
-            <option value="">모델 선택</option>
-            {models.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
+          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 * <span style={{ color:C.muted, fontWeight:400 }}>(이름 검색 후 선택)</span></label>
+          <input style={inp} type="text" placeholder="모델 이름 검색" value={offModelQ} onChange={e=>{ setOffModelQ(e.target.value); setOffModel(""); }} />
+          {offModelQ.trim() && !offModel && (() => { const r = models.filter(m=>(m.name||"").toLowerCase().includes(offModelQ.trim().toLowerCase())); return (
+            <div style={{ border:`1px solid ${C.border}`, borderRadius:8, marginTop:-6, marginBottom:10, maxHeight:200, overflowY:"auto" }}>
+              {r.length ? r.slice(0,50).map(m=>(
+                <div key={m.id} onClick={()=>{ setOffModel(m.id); setOffModelQ(m.name||""); }} style={{ padding:"9px 12px", fontSize:13, color:C.text, cursor:"pointer", borderBottom:`1px solid ${C.border}` }}>{m.name}{m.category?` · ${m.category}`:""}</div>
+              )) : <div style={{ padding:"9px 12px", fontSize:12, color:C.muted }}>일치하는 모델이 없습니다</div>}
+            </div>
+          ); })()}
+          {offModel && <p style={{ margin:"-4px 0 10px", fontSize:12, color:C.green, fontWeight:700 }}>✓ 선택: {models.find(m=>m.id===offModel)?.name}</p>}
           <div style={{ display:"flex", gap:10 }}>
             <div style={{ flex:1 }}>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>시작일 *</label>
