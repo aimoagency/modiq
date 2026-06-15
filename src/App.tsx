@@ -1612,7 +1612,7 @@ async function sharePdf(){
             <div onClick={()=>setShowSendMenu(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
               <div onClick={e=>e.stopPropagation()} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
                 <h3 style={{ margin:"0 0 4px", color:C.text, fontSize:16 }}><Calendar size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델에게 일정 보내기</h3>
-                <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>방법을 골라주세요. 모델 캘린더에 일정을 넣는 방식이 달라요.</p>
+                <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
 
                 <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
                   <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
@@ -1628,6 +1628,14 @@ async function sharePdf(){
                   <div style={{ fontSize:14, fontWeight:700, color:C.text }}>🔗 캘린더 링크 복사</div>
                   <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>카톡·메시지에 붙여 보낼 "캘린더에 추가" 링크를 복사. (일회성, 자동 동기화 아님)</div>
                 </div>
+
+                {m && <>
+                <p style={{ margin:"14px 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>② 앞으로 자동 동기화 (구독)</p>
+                <div onClick={async()=>{ setShowSendMenu(false); const token=await ensureCalToken(m); if(!token){ alert("구독 토큰 저장에 실패했어요.\nSupabase models 테이블에 cal_token 컬럼이 필요합니다:\nalter table models add column if not exists cal_token text;"); return; } const url=calSubscribePageUrl(token); try{ await navigator.clipboard.writeText(url); alert("구독 링크가 복사되었습니다.\n\n이 링크를 모델에게 보내면, 폰 기종(아이폰/안드로이드)에 맞는 설치·구독 방법이 자동 안내돼요. 모델이 한 번 구독하면 이후 모든 확정 일정이 자동 동기화됩니다.\n\n"+url); }catch{ prompt("구독 링크(모델에게 보내세요):", url); } }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>🔗 구독 링크 복사 <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>한 번 구독하면 이 모델의 모든 확정 일정이 자동으로 들어와요. (모델당 한 번만 설정)</div>
+                </div>
+                </>}
 
                 <button onClick={()=>setShowSendMenu(false)} style={{ ...btnS("#555"), width:"100%", marginTop:4 }}>닫기</button>
               </div>
@@ -2374,13 +2382,6 @@ async function sharePdf(){
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
               <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
-              <button onClick={async()=>{
-                const token=await ensureCalToken(selectedModel);
-                if(!token){ alert("구독 토큰 저장에 실패했어요.\nSupabase models 테이블에 cal_token 컬럼이 필요합니다:\nalter table models add column if not exists cal_token text;"); return; }
-                const url=calSubscribePageUrl(token);
-                try { await navigator.clipboard.writeText(url); alert("캘린더 구독 안내 링크가 복사되었습니다.\n\n이 링크를 모델에게 보내면, 폰 기종(아이폰/안드로이드)에 맞는 설치·구독 방법이 자동으로 안내됩니다. 모델이 한 번 구독하면 이후 모든 확정 일정이 자동 동기화돼요.\n\n"+url); }
-                catch { prompt("구독 안내 링크(모델에게 보내세요):", url); }
-              }} title="모델이 한 번 등록하면 자동 동기화되는 구독 링크" style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 구독 링크</button>
               <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
               <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
             </div>
@@ -2584,7 +2585,7 @@ async function sharePdf(){
         </Modal>
       )}
       {(showModelForm||mEditMode)&&(
-        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}}>
+        <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
             {mEditMode&&selectedModel&&(
@@ -2944,7 +2945,7 @@ async function sharePdf(){
       )}
       {/* ════ 모달: 고객사 추가 ════ */}
       {showCustomerForm&&(
-        <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}}>
+        <Modal onClose={()=>{setShowCustomerForm(false);resetCustomerForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 추가</h3>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
@@ -3346,7 +3347,7 @@ async function sharePdf(){
 
       {/* ════ 모달: 단일 섭외 추가 ════ */}
       {showBookingForm&&(
-        <Modal onClose={()=>{setShowBookingForm(false);resetBookingForm();}} wide maxW={780}>
+        <Modal onClose={()=>{setShowBookingForm(false);resetBookingForm();}} wide>
           <h3 style={{ marginTop:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 단일 섭외 추가</h3>
 
           {/* 모델 (첫 항목) */}
