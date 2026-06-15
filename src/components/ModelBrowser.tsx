@@ -5,10 +5,10 @@
 // ════════════════════════════════════════════════════════════════
 import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
-import { GENDERS, MODEL_FIELDS } from "../constants";
+import { GENDERS, MODEL_FIELDS, HAIR_LENGTHS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
 
-export default function ModelBrowser({ models, isMobile = false, onSelect, selectedId, multi = false, pickedIds, addedIds, onAddPicked }: {
+export default function ModelBrowser({ models, isMobile = false, onSelect, selectedId, multi = false, pickedIds, addedIds, onAddPicked, onSelectAll }: {
   models: any[];
   isMobile?: boolean;
   onSelect: (m: any) => void;
@@ -17,18 +17,21 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
   pickedIds?: Set<string>;
   addedIds?: Set<string>;
   onAddPicked?: () => void;
+  onSelectAll?: (ids: string[]) => void;
 }) {
   const [open, setOpen] = useState(!isMobile);
   const [q, setQ] = useState("");
   const [genderF, setGenderF] = useState<string[]>([]);
   const [natF, setNatF] = useState<string[]>([]);
   const [fieldF, setFieldF] = useState<string[]>([]);
+  const [hairF, setHairF] = useState<string[]>([]);
   const [ageMin, setAgeMin] = useState(""); const [ageMax, setAgeMax] = useState("");
   const [hMin, setHMin] = useState("");     const [hMax, setHMax] = useState("");
   const [shMin, setShMin] = useState("");   const [shMax, setShMax] = useState("");
   const [feeMin, setFeeMin] = useState(""); const [feeMax, setFeeMax] = useState("");
 
-  const isForeign = (m: any) => m.nationality_type === "외국인";
+  // 외국인 = is_foreigner 플래그 또는 국적이 대한민국이 아닌 모든 국가
+  const isForeign = (m: any) => !!m.is_foreigner || (!!m.country && m.country !== "대한민국");
   const feeOf = (m: any) => Number(m.fee_day || m.rate || 0);
   const toggle = (arr: string[], set: (v: string[]) => void, v: string) => set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
@@ -43,6 +46,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       if (genderF.length && !genderF.includes(m.gender)) return false;
       if (natF.length) { const f = isForeign(m) ? "외국인" : "국내"; if (!natF.includes(f)) return false; }
       if (fieldF.length && !(Array.isArray(m.fields) && fieldF.some(f => m.fields.includes(f)))) return false;
+      if (hairF.length && !hairF.includes(m.hair_length)) return false;
       const age = ageFromSSN6(m.ssn6);
       if (aMin != null && (age == null || age < aMin)) return false;
       if (aMax != null && (age == null || age > aMax)) return false;
@@ -57,22 +61,24 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       if (fmax != null && (fee === 0 || fee > fmax)) return false;
       return true;
     });
-  }, [models, q, genderF, natF, fieldF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax]);
+  }, [models, q, genderF, natF, fieldF, hairF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax]);
 
-  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setFieldF([]); setAgeMin(""); setAgeMax(""); setHMin(""); setHMax(""); setShMin(""); setShMax(""); setFeeMin(""); setFeeMax(""); };
-  const active = genderF.length + natF.length + fieldF.length + [q, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax].filter(Boolean).length;
+  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setFieldF([]); setHairF([]); setAgeMin(""); setAgeMax(""); setHMin(""); setHMax(""); setShMin(""); setShMax(""); setFeeMin(""); setFeeMax(""); };
+  const active = genderF.length + natF.length + fieldF.length + hairF.length + [q, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax].filter(Boolean).length;
 
   const chip = (on: boolean): CSSProperties => ({ padding: "4px 10px", borderRadius: 14, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "22" : "transparent", color: on ? C.blue : C.muted, fontSize: 11.5, fontWeight: on ? 700 : 500, cursor: "pointer" });
-  const rng: CSSProperties = { ...inp, marginBottom: 0, width: 52, padding: "5px 6px", fontSize: 12, textAlign: "center" };
   const sec: CSSProperties = { fontSize: 11, color: C.muted, fontWeight: 700, margin: "12px 0 5px" };
-  const Range = ({ a, sa, b, sb, u }: { a: string; sa: (v: string) => void; b: string; sb: (v: string) => void; u: string }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-      <input style={rng} type="number" value={a} onChange={e => sa(e.target.value)} placeholder="0" />
-      <span style={{ color: C.muted, fontSize: 11 }}>~</span>
-      <input style={rng} type="number" value={b} onChange={e => sb(e.target.value)} placeholder="∞" />
-      <span style={{ color: C.muted, fontSize: 11 }}>{u}</span>
-    </div>
-  );
+  const Range = ({ a, sa, b, sb, u, pa, pb }: { a: string; sa: (v: string) => void; b: string; sb: (v: string) => void; u: string; pa: string; pb: string }) => {
+    const f: CSSProperties = { ...inp, marginBottom: 0, flex: 1, minWidth: 0, padding: "7px 8px", fontSize: 13, textAlign: "center" };
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+        <input style={f} type="number" inputMode="numeric" value={a} onChange={e => sa(e.target.value)} placeholder={pa} />
+        <span style={{ color: C.muted, fontSize: 12 }}>~</span>
+        <input style={f} type="number" inputMode="numeric" value={b} onChange={e => sb(e.target.value)} placeholder={pb} />
+        <span style={{ color: C.muted, fontSize: 12, width: 22, textAlign: "left" }}>{u}</span>
+      </div>
+    );
+  };
 
   const filterControls = (
     <div>
@@ -83,22 +89,30 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{["국내", "외국인"].map(v => <span key={v} onClick={() => toggle(natF, setNatF, v)} style={chip(natF.includes(v))}>{v}</span>)}</div>
       <p style={sec}>활동분야</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{MODEL_FIELDS.map(f => <span key={f} onClick={() => toggle(fieldF, setFieldF, f)} style={chip(fieldF.includes(f))}>{f}</span>)}</div>
-      <p style={sec}>나이</p><Range a={ageMin} sa={setAgeMin} b={ageMax} sb={setAgeMax} u="세" />
-      <p style={sec}>신장</p><Range a={hMin} sa={setHMin} b={hMax} sb={setHMax} u="cm" />
-      <p style={sec}>신발</p><Range a={shMin} sa={setShMin} b={shMax} sb={setShMax} u="mm" />
-      <p style={sec}>모델료/일</p><Range a={feeMin} sa={setFeeMin} b={feeMax} sb={setFeeMax} u="만" />
+      <p style={sec}>머리 길이</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{HAIR_LENGTHS.map(h => <span key={h} onClick={() => toggle(hairF, setHairF, h)} style={chip(hairF.includes(h))}>{h}</span>)}</div>
+      <p style={sec}>나이</p><Range a={ageMin} sa={setAgeMin} b={ageMax} sb={setAgeMax} u="세" pa="10" pb="90" />
+      <p style={sec}>신장</p><Range a={hMin} sa={setHMin} b={hMax} sb={setHMax} u="cm" pa="100" pb="200" />
+      <p style={sec}>신발</p><Range a={shMin} sa={setShMin} b={shMax} sb={setShMax} u="mm" pa="240" pb="300" />
+      <p style={sec}>모델료/일</p><Range a={feeMin} sa={setFeeMin} b={feeMax} sb={setFeeMax} u="만" pa="10" pb="500" />
       {active > 0 && <button onClick={reset} style={{ marginTop: 12, width: "100%", padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>초기화 ({active})</button>}
     </div>
   );
 
+  const selectable = multi ? results.filter(m => !addedIds?.has(m.id)) : [];
+  const allPicked = selectable.length > 0 && selectable.every(m => pickedIds?.has(m.id));
+
   return (
-    <div style={{ width: isMobile ? "100%" : 234, flexShrink: 0, ...(isMobile ? {} : { borderRight: `1px solid ${C.border}`, paddingRight: 14 }) }}>
+    <div style={{ width: isMobile ? "100%" : 312, flexShrink: 0, ...(isMobile ? {} : { borderRight: `1px solid ${C.border}`, paddingRight: 16 }) }}>
       {isMobile
         ? <><button onClick={() => setOpen(o => !o)} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card2, color: C.text, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>필터 검색{active ? ` · ${active}` : ""}</span><span>{open ? "▲" : "▼"}</span></button>{open && <div style={{ marginTop: 10 }}>{filterControls}</div>}</>
         : filterControls}
 
-      {multi && pickedIds && pickedIds.size > 0 && (
-        <button onClick={onAddPicked} style={{ width: "100%", margin: "12px 0 4px", padding: "10px 0", borderRadius: 8, border: "none", background: C.blue, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>선택 {pickedIds.size}명 패키지에 추가</button>
+      {multi && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "12px 0 4px" }}>
+          {results.length > 0 && <button onClick={() => onSelectAll?.(allPicked ? [] : selectable.map(m => m.id))} style={{ flexShrink: 0, padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{allPicked ? "전체 해제" : "전체 선택"}</button>}
+          {pickedIds && pickedIds.size > 0 && <button onClick={onAddPicked} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: C.blue, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{pickedIds.size}명 추가</button>}
+        </div>
       )}
 
       <p style={{ fontSize: 12, color: C.muted, margin: "12px 0 8px" }}>결과 <strong style={{ color: C.text }}>{results.length}</strong>명</p>

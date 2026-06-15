@@ -317,9 +317,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         onDragOver={e => { if (dragIdx !== null) e.preventDefault(); }}
                         onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); if (dragIdx !== i) { const next = [...photos]; const [mv] = next.splice(dragIdx, 1); next.splice(i, 0, mv); savePhotos(next); } setDragIdx(null); } }}
                         onDragEnd={() => setDragIdx(null)}
-                        style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${isLiked ? "#ff4d6d" : C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
+                        style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
                         <img src={p} alt="" draggable={false} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
-                        <span onClick={() => toggleLike(p)} title={isLiked ? "좋아요 취소" : "좋아요"} style={{ position: "absolute", top: 4, left: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: isLiked ? "#ff4d6d" : "#fff", fontSize: 14, lineHeight: "24px", textAlign: "center", cursor: "pointer" }}>{isLiked ? "♥" : "♡"}</span>
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                       </div>
                     ); })}

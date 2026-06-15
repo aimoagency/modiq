@@ -535,7 +535,7 @@ export default function App() {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
     setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
-    setMCategory(["일반","시니어","키즈","플러스사이즈","기타"].includes(m.category)?m.category:""); setMRate(m.rate||0);
+    setMCategory(m.category||""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMIsForeign(!!m.is_foreigner); setMVisaType(m.visa_type||""); setMHasAlienCard(!!m.has_alien_card); setMPayMethod(m.payment_method||""); setMPayDetail(m.payment_detail&&typeof m.payment_detail==="object"?m.payment_detail:{}); setMTaxRate(Number(m.tax_rate)||0);
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
