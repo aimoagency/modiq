@@ -675,6 +675,38 @@ export default function App() {
     } catch (e) { alert("고객사 추가 실패: "+String(e)); }
   };
 
+  // ── 기존 모델 ID → 규칙 ID(MK/FK/MX/FX) 일괄 변경 ──
+  // 섭외(bookings)·휴무(model_offs)의 model_id 참조도 함께 업데이트. FK 안전 순서: 새 행 insert → 참조 갱신 → 옛 행 delete
+  const isSpecModelId = (id: string) => /^(?:MK|FK|MX|FX)\d{3}-\d{6}-\d{4}$/.test(id);
+  const legacyIdCount = useMemo(() => models.filter(m => !isSpecModelId(String(m.id || ""))).length, [models]);
+  const migrateModelIds = async () => {
+    const legacy = models.filter(m => !isSpecModelId(String(m.id || "")));
+    if (!legacy.length) { alert("규칙 ID로 변경할 모델이 없습니다. 모두 규칙 ID예요."); return; }
+    if (!confirm(`기존 모델 ${legacy.length}명의 ID를 규칙 ID(MK/FK/MX/FX)로 변경합니다.\n섭외·휴무 연결도 함께 업데이트됩니다.\n\n⚠️ 진행 전 Supabase에서 백업을 권장합니다. 진행할까요?`)) return;
+    const agNo = (agency as any).agency_no || 1;
+    let seq = nextModelSeq(models);
+    let done = 0;
+    try {
+      for (const m of legacy) {
+        const natType = (m.is_foreigner || m.nationality_type === "X" || (m.country && m.country !== "대한민국")) ? "X" : "K";
+        const gender = m.gender === "M" ? "M" : "F"; // 미지정 시 기본 F
+        const newId = generateModelId(genderNatCode(gender, natType), agNo, seq++);
+        const oldQ = `?id=eq.${encodeURIComponent(m.id)}`;
+        const oldRefQ = `?model_id=eq.${encodeURIComponent(m.id)}`;
+        const { id: _drop, ...rest } = m;                         // 1) 새 id로 모델 복제
+        await sb("models", "POST", { ...rest, id: newId });
+        await sb("bookings", "PATCH", { model_id: newId }, oldRefQ); // 2) 섭외 참조 갱신
+        try { await sb("model_offs", "PATCH", { model_id: newId }, oldRefQ); } catch {} // 휴무(테이블 없을 수 있음)
+        await sb("models", "DELETE", null, oldQ);                  // 3) 옛 모델 삭제
+        setModels(prev => prev.map(x => x.id === m.id ? { ...x, id: newId } : x));
+        setBookings(prev => prev.map(b => b.model_id === m.id ? { ...b, model_id: newId } : b));
+        setModelOffs(prev => prev.map(o => o.model_id === m.id ? { ...o, model_id: newId } : o));
+        done++;
+      }
+      alert(`완료 — 모델 ${done}명의 ID를 규칙 ID로 변경했습니다.`);
+    } catch (e) { alert("변경 중 오류: " + String(e) + "\n일부만 처리됐을 수 있어요. 새로고침 후 다시 실행하면 남은 모델만 이어서 변경합니다."); }
+  };
+
   const openEditCustomer = (c: any) => {
     setSelectedCustomer(c);
     setCName(c.name||""); setCBrand(c.brand||""); setCManager(c.manager_name||"");
@@ -717,7 +749,22 @@ export default function App() {
     items: { id:string; mode:"insert"|"update"; record:Record<string,any> }[]
   ): Promise<{ inserted:number; updated:number }> => {
     const table = entity === "model" ? "models" : "customers";
-    const inserts = items.filter(i=>i.mode==="insert").map(i=>({ ...i.record, id:i.id, agency_id:agency.id }));
+    // 신규 항목 ID 발급: 모델은 규칙 ID(MK/FK/MX/FX…), 고객사는 임의 ID
+    const _agNo = (agency as any).agency_no || 1;
+    let _seq = nextModelSeq(models);
+    const inserts = items.filter(i=>i.mode==="insert").map(i=>{
+      let id = i.id;
+      if (!id) {
+        if (entity === "model") {
+          const natType = i.record.is_foreigner ? "X" : "K";
+          const gender = i.record.gender === "M" ? "M" : "F"; // 미지정 시 기본 F
+          id = generateModelId(genderNatCode(gender, natType), _agNo, _seq++);
+        } else {
+          id = randomId("CL");
+        }
+      }
+      return { ...i.record, id, agency_id:agency.id };
+    });
     const updates = items.filter(i=>i.mode==="update");
     let insertedRows: any[] = [];
     if (inserts.length) insertedRows = await sb(table, "POST", inserts);
@@ -1666,7 +1713,7 @@ async function sharePdf(){
         {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
 
         {/* ════ 모델 ════ */}
-        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
+        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} legacyIdCount={myRole==="owner"?legacyIdCount:0} onMigrateIds={migrateModelIds} />}
 
         {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
 
@@ -3116,7 +3163,12 @@ async function sharePdf(){
         <BulkUploadModal
           entity={bulkEntity}
           isMobile={isMobile}
-          existingIds={new Set((bulkEntity==="model"?models:customers).map((x:any)=>x.id))}
+          existingKeys={new Map((bulkEntity==="model"?models:customers).map((x:any)=>[
+            bulkEntity==="model"
+              ? makeModelId(x.name||"", x.ssn6||"")
+              : makeClientId(x.name||"", String(x.phone||"").replace(/[^0-9]/g,"").slice(-4)),
+            x.id,
+          ]))}
           onClose={()=>setBulkEntity(null)}
           onCommit={(items)=>handleBulkCommit(bulkEntity, items)}
         />

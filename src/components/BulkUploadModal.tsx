@@ -34,6 +34,7 @@ type FieldDef = {
 const MODEL_FIELDS: FieldDef[] = [
   { key: "name", label: "모델명", required: true, aliases: ["모델명", "이름", "성명", "name", "모델", "닉네임"] },
   { key: "ssn6", label: "주민번호 앞6자리", required: true, type: "ssn6", aliases: ["주민번호", "주민", "주민등록번호", "생년월일", "ssn", "앞6자리", "주민앞"] },
+  { key: "gender", label: "성별", options: ["남", "여"], aliases: ["성별", "gender", "남녀", "sex", "성", "남여"] },
   { key: "phone", label: "전화번호", aliases: ["전화", "연락처", "휴대폰", "핸드폰", "phone", "번호", "모바일", "tel", "hp"] },
   { key: "email", label: "이메일", aliases: ["이메일", "email", "메일", "e-mail"] },
   { key: "category", label: "카테고리", options: MODEL_CATEGORIES, aliases: ["카테고리", "분류", "구분", "category", "성별", "타입"] },
@@ -95,13 +96,13 @@ type Row = { key: number; data: Record<string, string> };
 
 export default function BulkUploadModal({
   entity,
-  existingIds,
+  existingKeys,
   onClose,
   onCommit,
   isMobile = false,
 }: {
   entity: "model" | "customer";
-  existingIds: Set<string>;
+  existingKeys: Map<string, string>; // 자연키(이름+주민/전화) → 기존 레코드의 실제 id
   onClose: () => void;
   onCommit: (items: { id: string; mode: "insert" | "update"; record: Record<string, any> }[]) => Promise<{ inserted: number; updated: number }>;
   isMobile?: boolean;
@@ -213,7 +214,7 @@ export default function BulkUploadModal({
     for (const f of FIELDS) if (f.required && !r.data[f.key]) return { id, status: "error", msg: `${f.label} 누락` };
     if (entity === "model" && !/^\d{6}$/.test(r.data.ssn6 || "")) return { id, status: "error", msg: "주민 앞6자리 형식" };
     if (r.data.biz_no) { const bn = r.data.biz_no.replace(/[^0-9]/g, ""); if (bn && !validateBizNo(bn)) return { id, status: "error", msg: "사업자번호 오류" }; }
-    const dupExisting = existingIds.has(id);
+    const dupExisting = existingKeys.has(id);
     const dupInFile = (seenIds[id] || 0) > 1;
     if (dupExisting) return { id, status: "dup", msg: "기존 등록됨" };
     if (dupInFile) return { id, status: "dup", msg: "파일 내 중복" };
@@ -237,7 +238,7 @@ export default function BulkUploadModal({
     if (entity === "model" && !/^\d{6}$/.test(r.data.ssn6 || "")) return { id, status: "error" as RowStatus };
     if (r.data.biz_no) { const bn = r.data.biz_no.replace(/[^0-9]/g, ""); if (bn && !validateBizNo(bn)) return { id, status: "error" as RowStatus }; }
     const cnt = rs.filter((x) => idOf(x.data) === id).length;
-    if (existingIds.has(id) || cnt > 1) return { id, status: "dup" as RowStatus };
+    if (existingKeys.has(id) || cnt > 1) return { id, status: "dup" as RowStatus };
     return { id, status: "new" as RowStatus };
   };
 
@@ -278,9 +279,16 @@ export default function BulkUploadModal({
           if (!record.is_foreigner) { record.visa_entry = null; record.visa_exit = null; }
           else { record.visa_entry = record.visa_entry || null; record.visa_exit = record.visa_exit || null; }
           if (record.commission === "" || record.commission == null) record.commission = 15;
+          // 성별 표준화: 남/M → "M", 여/F → "F" (규칙 ID 발급에 사용)
+          const g = String(record.gender || "");
+          record.gender = /여|f|female/i.test(g) ? "F" : /남|m|male/i.test(g) ? "M" : "";
         }
-        const mode: "insert" | "update" = existingIds.has(x.info.id) && overwrite ? "update" : "insert";
-        return { id: x.info.id, mode, record };
+        const key = x.info.id; // idOf = 자연키(이름+주민/전화)
+        const isDup = existingKeys.has(key);
+        const mode: "insert" | "update" = isDup && overwrite ? "update" : "insert";
+        // 업데이트는 기존 레코드의 실제 id, 신규는 빈값(부모가 규칙 ID 발급)
+        const realId = mode === "update" ? (existingKeys.get(key) as string) : "";
+        return { id: realId, mode, record };
       });
     if (!items.length) { setErr("저장할 항목이 없습니다. 체크된 행을 확인하세요."); return; }
     setLoading(true);

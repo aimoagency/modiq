@@ -35,6 +35,9 @@ const resizeImage = (file: File, cb: (data: string) => void) => {
   r.readAsDataURL(file);
 };
 
+// Storage 키는 ASCII만 허용(한글 모델ID 등 거부됨) → 안전 문자로 치환
+const safeSeg = (s: string) => String(s).replace(/[^A-Za-z0-9._-]/g, "_");
+
 const infoRows = (m: any): [string, string][] => {
   const age = ageFromSSN6(m.ssn6);
   const three = [m.bust, m.waist, m.hip].filter(Boolean).join("-");
@@ -95,7 +98,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         for (const p of srcPhotos) {
           if (typeof p === "string" && p.startsWith("data:")) {
             try {
-              const url = await sbUpload(`${agency.id}/${m.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(p));
+              const url = await sbUpload(`${safeSeg(agency.id)}/${safeSeg(m.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(p));
               map.set(p, url); newPhotos.push(url); moved++;
             } catch { newPhotos.push(p); } // 실패분은 그대로 둠(재시도 가능)
           } else newPhotos.push(p);
@@ -171,7 +174,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     // 리사이즈(base64) → Storage 업로드 → URL 저장. 업로드 실패 시 base64로 폴백(하위호환)
     list.forEach(f => resizeImage(f, async data => {
       try {
-        const url = await sbUpload(`${agency.id}/${sel.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(data));
+        const url = await sbUpload(`${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(data));
         collected.push(url);
       } catch (e) {
         console.error("사진 업로드 실패 — base64로 저장(폴백)", e);
