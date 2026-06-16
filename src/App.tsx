@@ -24,6 +24,7 @@ import CategorySelect from "./components/CategorySelect";
 import type { BizLicenseInfo } from "./lib/ocr";
 import TypeIcon from "./components/TypeIcon";
 import Modal from "./components/Modal";
+import CloseButton from "./components/CloseButton";
 import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
@@ -1704,7 +1705,8 @@ async function sharePdf(){
           {/* 일정 보내기 선택창 */}
           {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
             <div onClick={()=>setShowSendMenu(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:1600, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
+              <div onClick={e=>e.stopPropagation()} style={{ position:"relative", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
+                <CloseButton onClose={()=>setShowSendMenu(false)} />
                 <h3 style={{ margin:"0 0 4px", color:C.text, fontSize:16 }}><Calendar size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델에게 일정 보내기</h3>
                 <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
 
@@ -3716,6 +3718,7 @@ async function sharePdf(){
       {/* ════ 라이트박스 (레퍼런스 확대) ════ */}
       {lightboxSrc&&(
         <div onClick={()=>setLightboxSrc(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, cursor:"zoom-out" }}>
+          <CloseButton onClose={()=>setLightboxSrc(null)} fixed />
           <img src={lightboxSrc} alt="" style={{ maxWidth:"min(900px, 92vw)", maxHeight:"min(900px, 92vh)", borderRadius:10, boxShadow:"0 20px 60px rgba(0,0,0,0.5)" }} />
         </div>
       )}
