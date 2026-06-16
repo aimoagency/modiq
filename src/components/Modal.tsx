@@ -11,7 +11,7 @@ export default function Modal({ onClose, children, wide=false, maxW }: { onClose
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex", justifyContent:"center", alignItems:isMobile?"stretch":"center", zIndex:1000 }}>
       <div onClick={e=>e.stopPropagation()} style={isMobile
-        ? { background:C.card, width:"100%", maxWidth:"100%", minHeight:"100%", padding:"16px 16px calc(16px + env(safe-area-inset-bottom))", overflowY:"auto", boxSizing:"border-box" }
+        ? { background:C.card, width:"100%", maxWidth:"100vw", minHeight:"100%", padding:"16px 16px calc(16px + env(safe-area-inset-bottom))", overflowY:"auto", overflowX:"hidden", boxSizing:"border-box" }
         : { background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"clamp(14px, 4vw, 24px)", width:"92%", maxWidth:maxW??(wide?680:480), maxHeight:"90vh", overflowY:"auto" }}>
         {children}
       </div>

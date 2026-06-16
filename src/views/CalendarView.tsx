@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C, btnS, inp } from "../theme";
 import { STATUS, BOOKING_TYPES, KR_HOLIDAYS } from "../constants";
 import { visaDday, fmtTime, findConflicts, bookingTotal } from "../lib/utils";
@@ -25,6 +25,14 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const today = new Date();
   // 대시보드 등에서 특정 날짜로 진입 시: 해당 월로 이동 + 그 날짜를 선택 상태로 → 우측 패널 자동 오픈
   const _initD = initDate ? new Date(initDate + "T00:00:00") : null;
+  const detailRef = useRef<HTMLDivElement|null>(null);
+  // 모바일에서 대시보드 날짜 클릭으로 진입하면 상세가 달력 아래에 있어 안 보이므로 자동 스크롤
+  useEffect(() => {
+    if (initDate && isMobile) {
+      const t = setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+      return () => clearTimeout(t);
+    }
+  }, []); // 최초 진입 1회
   const [calYear,    setCalYear]    = useState(_initD ? _initD.getFullYear() : today.getFullYear());
   const [calMonth,   setCalMonth]   = useState(_initD ? _initD.getMonth()    : today.getMonth());
   const [selDate,    setSelDate]    = useState<string|null>(initDate || null);
@@ -366,7 +374,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
       {/* 선택된 날짜 섭외 목록 */}
       {selDate&&(
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, ...(!isMobile?{width:380, flexShrink:0, maxHeight:"calc(100vh - 170px)", overflowY:"auto"}:{}) }}>
+        <div ref={detailRef} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, ...(!isMobile?{width:380, flexShrink:0, maxHeight:"calc(100vh - 170px)", overflowY:"auto"}:{}) }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
             <div>
               <p style={{ margin:0, fontWeight:800, fontSize:15, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> {selDate.replace(/-/g,".")}</p>

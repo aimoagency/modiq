@@ -170,7 +170,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                 >
                   {isToday&&<span style={{ background:PINK, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${PINK}` }}>NEW</span>}
                   <span style={{ background:PINK+"22", color:PINK, border:`1px solid ${PINK}44`, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0 }}>{ty}</span>
-                  <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                     <strong style={{ fontSize:14.5, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
                     <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
                     <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
@@ -261,10 +261,14 @@ export default function DashboardView({ bookings, models, customers, projects, s
           const model  = models.find(m=>m.id===b.model_id);
           const client = customers.find(c=>c.id===b.customer_id);
           return (
-            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0", borderBottom:`1px solid rgba(251,191,36,0.15)`, cursor:"pointer" }}>
+            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:`1px solid rgba(251,191,36,0.15)`, cursor:"pointer" }}>
               <Badge code="HOLD" />
-              <span style={{ color:C.text, fontWeight:700 }}>{model?.name||"?"}</span>
-              <span style={{ color:C.muted, fontSize:12 }}>{fmtDate(b.shoot_date)} · {client?.name||"?"} · {b.project_name||b.location||""}</span>
+              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
+                <span style={{ color:C.textSub, fontWeight:600 }}> · {fmtDate(b.shoot_date)}</span>
+                {client?.name?<span> · {client.name}</span>:null}
+                {(b.project_name||b.location)?<span> · {b.project_name||b.location}</span>:null}
+              </p>
             </div>
           );
         })}
@@ -340,7 +344,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
             >
               {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ background:bt.color+"22", color:bt.color, border:`1px solid ${bt.color}44`, borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, flexShrink:0 }}><TypeIcon type={b.booking_type} size={11}/> {bt.label}</span>; })()}
-              <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
                 <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"?"}</span>
                 <span> · {fmtDate(b.shoot_date)}</span>
