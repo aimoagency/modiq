@@ -2279,8 +2279,8 @@ async function sharePdf(){
 
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
-        <Modal onClose={closeDetail}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12 }}>
+        <Modal onClose={closeDetail} wide>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12, paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text, fontSize:16 }}><Coins size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
             <button onClick={()=>openDetail("booking", selectedSettlement.id)}
               style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
