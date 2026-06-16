@@ -1565,8 +1565,8 @@ async function sharePdf(){
       )}
 
       {/* ── 메인 콘텐츠 ── */}
-      <div style={{ flex:1, marginLeft:isMobile?0:64, marginTop:isMobile?0:52, padding:isMobile?"68px 14px 88px":"32px 44px", overflowY:"auto", minHeight:isMobile?"100vh":"calc(100vh - 52px)" }}>
-      <div style={{ maxWidth:1560, margin:"0 auto" }}>
+      <div style={{ flex:1, minWidth:0, maxWidth:"100%", marginLeft:isMobile?0:64, marginTop:isMobile?0:52, padding:isMobile?"68px 14px 88px":"32px 44px", overflowX:"hidden", overflowY:"auto", minHeight:isMobile?"100vh":"calc(100vh - 52px)" }}>
+      <div style={{ maxWidth:1560, margin:"0 auto", minWidth:0 }}>
 
         {/* ════ 대시보드 ════ */}
         {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} isMobile={isMobile} canViewFinance={canViewFinance} />}
