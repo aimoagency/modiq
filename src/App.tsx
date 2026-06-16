@@ -32,7 +32,7 @@ const CalendarView = lazy(() => import("./views/CalendarView"));
 import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
-const DashboardView = lazy(() => import("./views/DashboardView"));
+import DashboardView from "./views/DashboardView"; // 첫 화면 — 즉시 렌더 위해 메인 번들에 포함(지연 로딩 제외)
 const BookingsView = lazy(() => import("./views/BookingsView"));
 const ModelsView = lazy(() => import("./views/ModelsView"));
 const CustomersView = lazy(() => import("./views/CustomersView"));
