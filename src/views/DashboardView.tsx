@@ -6,11 +6,14 @@ import TypeIcon from "../components/TypeIcon";
 import { BOOKING_TYPES } from "../constants";
 import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } from "../components/icons";
 
-export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, isMobile = false, canViewFinance = false }: {
+export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, onOpenCalendarDate, isMobile = false, canViewFinance = false }: {
   bookings: any[]; models: any[]; customers: any[]; projects: any[];
   setPage: (p:any)=>void; setSelectedBooking: (b:any)=>void; onSelectProject: (pid:string)=>void;
+  onOpenCalendarDate?: (date:string)=>void;
   isMobile?: boolean; canViewFinance?: boolean;
 }) {
+  // 날짜 클릭 → 캘린더의 해당 날짜를 선택 상태로 열기(우측 패널 오픈). 미전달 시 일반 이동.
+  const openCal = (date?:string) => (date && onOpenCalendarDate) ? onOpenCalendarDate(date) : setPage("calendar");
   const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
   const holdBookings     = bookings.filter(b=>b.status==="HOLD");
   const unpaidDeposit    = bookings.filter(b=>b.status==="CONFIRMED"&&!b.deposit_amt);
@@ -218,7 +221,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               { label:"내일",  cnt:tomorrowCnt, date:tomorrowStr, color:C.purple },
               { label:"이번 주",cnt:weekTotal,  date:null,        color:C.green  },
             ].map(item=>(
-              <div key={item.label} onClick={()=>{ if(item.date) setPage("calendar"); }} style={{ flex:1, background:C.card2, borderRadius:8, padding:"10px 14px", cursor:item.date?"pointer":"default", border:`1px solid ${item.cnt>0?item.color+"50":C.border}`, transition:"border-color 0.15s" }}
+              <div key={item.label} onClick={()=>{ if(item.date) openCal(item.date); else setPage("calendar"); }} style={{ flex:1, background:C.card2, borderRadius:8, padding:"10px 14px", cursor:item.date?"pointer":"default", border:`1px solid ${item.cnt>0?item.color+"50":C.border}`, transition:"border-color 0.15s" }}
                 onMouseEnter={e=>{ if(item.date) e.currentTarget.style.borderColor=item.color; }}
                 onMouseLeave={e=>{ e.currentTarget.style.borderColor=item.cnt>0?item.color+"50":C.border; }}
               >
@@ -235,7 +238,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const isToday = wd.date===todayStr;
               const maxCnt = Math.max(...weekDays.map(w=>live.filter(b=>b.shoot_date===w.date).length), 1);
               return (
-                <div key={wd.date} onClick={()=>setPage("calendar")} style={{ cursor:"pointer", textAlign:"center" }}>
+                <div key={wd.date} onClick={()=>openCal(wd.date)} style={{ cursor:"pointer", textAlign:"center" }}>
                   <div style={{ fontSize:10, color:isToday?C.blue:C.muted, fontWeight:isToday?700:400, marginBottom:4 }}>{wd.label}</div>
                   {/* 바 */}
                   <div style={{ height:32, background:C.border, borderRadius:4, overflow:"hidden", position:"relative" }}>

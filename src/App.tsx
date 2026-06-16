@@ -100,7 +100,10 @@ export default function App() {
   const [members,   setMembers]   = useState<any[]>([]);
 
   const [page, setPage] = useState<Page>("dashboard");
+  // 캘린더를 벗어나면 pre-선택(모델/날짜)을 비워, 메뉴로 재진입 시 항상 "전체"로 복귀
+  useEffect(() => { if (page !== "calendar") { setCalInitModel(""); setCalInitDate(null); } }, [page]);
   const [calInitModel, setCalInitModel] = useState("");  // 모델 상세 → 캘린더 이동 시 pre-선택
+  const [calInitDate,  setCalInitDate]  = useState<string|null>(null); // 대시보드 → 캘린더 특정 날짜 패널 자동 오픈(1회성)
   const [studioInitModel, setStudioInitModel] = useState("");  // 모델 수정 → 스튜디오 이동 시 pre-선택
   const [planBilling, setPlanBilling] = useState<"monthly"|"yearly">("monthly");
 
@@ -1569,7 +1572,7 @@ async function sharePdf(){
       <div style={{ maxWidth:1560, margin:"0 auto", minWidth:0 }}>
 
         {/* ════ 대시보드 ════ */}
-        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} isMobile={isMobile} canViewFinance={canViewFinance} />}
+        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} onOpenCalendarDate={(d:string)=>{ setCalInitDate(d); setPage("calendar"); }} isMobile={isMobile} canViewFinance={canViewFinance} />}
 
         {/* ════ 캘린더 ════ */}
         {page==="calendar" && (
@@ -1586,6 +1589,7 @@ async function sharePdf(){
             customers={customers}
             onSelectBooking={openBookingFresh}
             initModelId={calInitModel}
+            initDate={calInitDate||undefined}
             onAddBooking={(preModel, preDate)=>{ setAddPrefill({ date:preDate, model:preModel }); setShowAddPicker(true); }}
           />
         )}
@@ -3462,6 +3466,11 @@ async function sharePdf(){
           <div style={{ background:C.card2, borderRadius:8, padding:"10px 12px", marginBottom:10 }}>
             <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영 일정</label>
             <input style={{ ...inp, marginBottom:8, padding:"6px 10px", fontSize:12 }} type="date" value={bDate} onChange={e=>setBDate(e.target.value)} />
+            {(()=>{ const _vi = (bModel && bDate) ? visaViolation(models.find(m=>m.id===bModel), bDate) : null; return _vi ? (
+              <div style={{ background:C.red+"14", border:`1px solid ${C.red}55`, borderRadius:8, padding:"8px 10px", marginBottom:8, fontSize:12, color:C.red, lineHeight:1.45 }}>
+                <strong style={{ fontWeight:800 }}>🚫 비자 만료 — 이 날짜에는 섭외할 수 없습니다</strong><br/>{_vi}
+              </div>
+            ) : null; })()}
             <div style={{ display:"flex", alignItems:"flex-end", gap:16, flexWrap:"wrap" }}>
               <TimePicker label="시작" value={bStart} onChange={setBStart} />
               <span style={{ color:C.muted, fontSize:13, paddingBottom:6 }}>~</span>
@@ -3621,7 +3630,9 @@ async function sharePdf(){
 
 
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={handleAddBooking} style={{ ...btnS(C.green), flex:1 }}>추가</button>
+            {(()=>{ const _vi = (bModel && bDate) ? visaViolation(models.find(m=>m.id===bModel), bDate) : null; return (
+              <button onClick={handleAddBooking} disabled={!!_vi} title={_vi||""} style={{ ...btnS(C.green, !!_vi), flex:1 }}>{_vi ? "비자 만료 — 섭외 불가" : "추가"}</button>
+            ); })()}
             <button onClick={()=>{setShowBookingForm(false);resetBookingForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
