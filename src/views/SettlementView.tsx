@@ -73,37 +73,37 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
             const client = customers.find((c:any)=>c.id===b.customer_id);
             const fee=bookingTotal(b), pay=bookingModelPay(b,models);
             return (
-              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", transition:"border-color 0.2s" }}
+              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
                 onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
               >
                 {/* 아바타 */}
                 {model?.thumb_url
-                  ? <img src={model.thumb_url} alt="" style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                  : <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:15, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
+                  ? <img src={model.thumb_url} alt="" style={{ width:40, height:40, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+                  : <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:15, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
                 }
-                {/* 정보 */}
+                {/* 정보 (좌측) — 매출 리스트와 동일 구조 */}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3, flexWrap:"wrap" }}>
-                    <span style={{ color:C.text, fontWeight:700, fontSize:14 }}>{model?.name||"?"}</span>
-                    <span style={{ color:C.muted, fontSize:12 }}>· {client?.name||"?"}</span>
-                    {b.project_name&&<span style={{ color:C.blue, fontSize:12 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
+                    <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
+                      {model?.name||"?"} <span style={{ color:C.muted }}>→ {client?.name||"?"}</span>
+                      {b.project_name&&<span style={{ color:C.blue }}> · <Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    </span>
                   </div>
-                  <span style={{ color:C.muted, fontSize:12 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}  <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager||"-"}</span>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                    <Badge code={b.status} type={b.booking_type} />
+                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급</>:"모델 미지급"}</span>
+                  </div>
                 </div>
-                {/* 금액 */}
+                {/* 금액 (우측 고정) */}
                 {fee>0&&(
-                  <div style={{ textAlign:"right", flexShrink:0, whiteSpace:"nowrap" }}>
-                    <p style={{ margin:0, color:"#e8d5b7", fontWeight:800, fontSize:16 }}>{fee.toLocaleString()}원</p>
-                    <p style={{ margin:"2px 0 0", color:C.green, fontSize:12 }}>모델 실지급 {pay.toLocaleString()}원</p>
+                  <div style={{ flexShrink:0, textAlign:"right", whiteSpace:"nowrap" }}>
+                    <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{fee.toLocaleString()}원</div>
+                    <div style={{ fontSize:11, color:C.green, marginTop:3 }}>모델 실지급 {pay.toLocaleString()}원</div>
                   </div>
                 )}
-                <Badge code={b.status} type={b.booking_type} />
-                {/* 두 흐름 상태 칩 */}
-                <div style={{ display:"flex", flexDirection:"column", gap:4, flexShrink:0, alignItems:"flex-end" }}>
-                  <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
-                  <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap", color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급</>:"모델 미지급"}</span>
-                </div>
               </div>
             );
           })}

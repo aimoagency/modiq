@@ -1740,10 +1740,9 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10, paddingRight:48 }}>
             <div style={{ minWidth:0 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            {(()=>{ const _m=models.find((m:any)=>m.id===selectedBooking.model_id); const _c=customers.find((c:any)=>c.id===selectedBooking.customer_id); return (_m||_c)?(<p style={{ margin:"4px 0 0 25px", fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{_m?.name||"?"}{_c?<span style={{ color:C.muted, fontWeight:500 }}> · {_c.name}</span>:null}</p>):null; })()}
             </div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!editingBooking
@@ -1792,7 +1791,6 @@ async function sharePdf(){
                 </div>
                 </>}
 
-                <button onClick={()=>setShowSendMenu(false)} style={{ ...btnS("#555"), width:"100%", marginTop:4 }}>닫기</button>
               </div>
             </div>
           ); })()}
@@ -2184,7 +2182,6 @@ async function sharePdf(){
               </a>
             </div>
           )}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%" }}>닫기</button>
         </Modal>
       )}
 
@@ -2276,7 +2273,6 @@ async function sharePdf(){
                 );
               })}
             </div>
-            <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
           </Modal>
         );
       })()}
@@ -2513,7 +2509,6 @@ async function sharePdf(){
           </label>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={closeDetail} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -2521,7 +2516,7 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:48 }}>
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
@@ -2636,14 +2631,13 @@ async function sharePdf(){
             </div>
             );
           })()}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:48 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
@@ -2705,7 +2699,6 @@ async function sharePdf(){
             </div>
             );
           })()}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
@@ -2743,7 +2736,6 @@ async function sharePdf(){
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
             <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -2997,7 +2989,6 @@ async function sharePdf(){
           <div style={{ display:"flex", gap:10 }}>
             {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
             <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
-            <button onClick={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -3102,7 +3093,6 @@ async function sharePdf(){
 
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={()=>setShowForeignModal(false)} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>{ setShowForeignModal(false); }} style={{ ...btnS("#333"), flex:1 }}>닫기</button>
           </div>
         </Modal>
       )}
@@ -3138,7 +3128,6 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleAddCustomer} style={{ ...btnS(C.green), flex:1 }}>추가</button>
-            <button onClick={()=>{setShowCustomerForm(false);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -3454,7 +3443,6 @@ async function sharePdf(){
 
 
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={()=>{ setShowProjectForm(false); resetProjectForm(); }} style={{ ...btnS("#333"), flex:1 }}>취소</button>
             <button onClick={handleAddProject} style={{ ...btnS(C.green), flex:2, fontWeight:800 }}>
               <FolderOpen size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 프로젝트 등록 {pModelLines.length>0 ? `(모델 ${pModelLines.length}명)` : ""}
             </button>
@@ -3756,7 +3744,6 @@ async function sharePdf(){
             {(()=>{ const _vi = (bModel && bDate) ? visaViolation(models.find(m=>m.id===bModel), bDate) : null; return (
               <button onClick={handleAddBooking} disabled={!!_vi} title={_vi||""} style={{ ...btnS(C.green, !!_vi), flex:1 }}>{_vi ? "비자 만료 — 섭외 불가" : "추가"}</button>
             ); })()}
-            <button onClick={()=>{setShowBookingForm(false);resetBookingForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
