@@ -8,11 +8,12 @@ import TypeIcon from "../components/TypeIcon";
 import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, Plane, AlertTriangle, Flag, Coins } from "../components/icons";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
-export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", holidays = [], onAddHoliday, onDeleteHoliday, modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
+export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", holidays = [], onAddHoliday, onDeleteHoliday, modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
   bookings: any[]; models: any[]; customers: any[];
   onSelectBooking: (b: any) => void;
   onAddBooking: (preModel?: string, preDate?: string) => void;
   initModelId?: string;
+  initDate?: string;
   holidays?: any[];
   onAddHoliday?: (date: string, label?: string) => void;
   onDeleteHoliday?: (id: string) => void;
@@ -22,9 +23,11 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   isMobile?: boolean;
 }) {
   const today = new Date();
-  const [calYear,    setCalYear]    = useState(today.getFullYear());
-  const [calMonth,   setCalMonth]   = useState(today.getMonth());
-  const [selDate,    setSelDate]    = useState<string|null>(null);
+  // 대시보드 등에서 특정 날짜로 진입 시: 해당 월로 이동 + 그 날짜를 선택 상태로 → 우측 패널 자동 오픈
+  const _initD = initDate ? new Date(initDate + "T00:00:00") : null;
+  const [calYear,    setCalYear]    = useState(_initD ? _initD.getFullYear() : today.getFullYear());
+  const [calMonth,   setCalMonth]   = useState(_initD ? _initD.getMonth()    : today.getMonth());
+  const [selDate,    setSelDate]    = useState<string|null>(initDate || null);
   const [modelFilter,setModelFilter]= useState(initModelId); // 모델 필터
   const [showHolidayForm, setShowHolidayForm] = useState(false);
   const [hDate,  setHDate]  = useState("");
