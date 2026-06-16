@@ -2,7 +2,7 @@ import React from "react";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { C, inp, btnS } from "./theme";
 import {
-  APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
+  APP_VERSION, SESSION_KEY, DATA_CACHE_KEY, STATUS, BOOKING_TYPES,
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
   MODEL_CATEGORIES, GENDERS, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
@@ -93,6 +93,7 @@ export default function App() {
   const [bizNo,       setBizNo]       = useState("");
   const [authError,   setAuthError]   = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false); // 서버 데이터 동기화 중 (스켈레톤 표시용)
 
   const [models,    setModels]    = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -431,11 +432,16 @@ export default function App() {
         const { user, agencyData, role, tokens } = JSON.parse(saved);
         if (!tokens?.refresh_token) { localStorage.removeItem(SESSION_KEY); return; } // 구버전 세션 → 재로그인
         setAuthTokens(tokens.access_token||null, tokens.refresh_token);
-        const fresh = await refreshSession(); // 서버 검증 + 토큰 갱신
-        if (!fresh) { localStorage.removeItem(SESSION_KEY); return; }
+        // 1) 세션·캐시를 즉시 적용해 화면과 숫자를 바로 표시 (네트워크 응답 대기 없음)
         setSession(user); setAgency(agencyData); setMyRole(role);
+        restoreDataCache(agencyData.id);
+        // 2) 토큰 검증과 최신 데이터 조회를 병렬 실행 (왕복 1회 단축)
+        const [fresh] = await Promise.all([
+          refreshSession(),       // 서버 검증 + 토큰 갱신
+          loadData(agencyData.id), // 최신 데이터 (기존 access token 사용)
+        ]);
+        if (!fresh) { localStorage.removeItem(SESSION_KEY); window.location.reload(); return; }
         localStorage.setItem(SESSION_KEY, JSON.stringify({ user, agencyData, role, tokens:getAuthTokens() }));
-        loadData(agencyData.id);
       } catch { localStorage.removeItem(SESSION_KEY); }
     })();
   }, []);
@@ -443,7 +449,39 @@ export default function App() {
   const saveSession = (u: any, ag: any, role: "owner"|"member") =>
     localStorage.setItem(SESSION_KEY, JSON.stringify({ user:u, agencyData:ag, role, tokens:getAuthTokens() }));
 
+  // ── 데이터 캐시 (재방문 시 숫자 즉시 표시) ──
+  // 이미지 등 큰 문자열은 제외해 localStorage 용량 초과 방지 (숫자/카운트 계산엔 불필요)
+  const slimForCache = (rows:any[]) => {
+    if (!Array.isArray(rows)) return [];
+    return rows.map(r => {
+      const o:any = {};
+      for (const k in r) {
+        const v = (r as any)[k];
+        if (typeof v === "string" && v.length > 300) continue;
+        if (Array.isArray(v) && v.some(x => typeof x === "string" && x.length > 300)) continue;
+        o[k] = v;
+      }
+      return o;
+    });
+  };
+  const saveDataCache = (agencyId:string, d:any) => {
+    try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({ agencyId, t:Date.now(), ...d })); } catch {}
+  };
+  const restoreDataCache = (agencyId:string):boolean => {
+    try {
+      const raw = localStorage.getItem(DATA_CACHE_KEY); if (!raw) return false;
+      const c = JSON.parse(raw); if (c.agencyId !== agencyId) return false;
+      if (c.models)    setModels(c.models);
+      if (c.customers) setCustomers(c.customers);
+      if (c.bookings)  setBookings(c.bookings);
+      if (c.projects)  setProjects(c.projects);
+      if (c.members)   setMembers(c.members);
+      return true;
+    } catch { return false; }
+  };
+
   const loadData = async (agencyId: string) => {
+    setSyncing(true);
     try {
       const [m, c, b, p, mb] = await Promise.all([
         sb("models",        "GET", null, `?agency_id=eq.${agencyId}&order=created_at.desc`),
@@ -453,7 +491,12 @@ export default function App() {
         sb("agency_members","GET", null, `?agency_id=eq.${agencyId}`),
       ]);
       setModels(m||[]); setCustomers(c||[]); setBookings(b||[]); setProjects(p||[]); setMembers(mb||[]);
+      saveDataCache(agencyId, {
+        models:slimForCache(m||[]), customers:slimForCache(c||[]), bookings:slimForCache(b||[]),
+        projects:slimForCache(p||[]), members:slimForCache(mb||[]),
+      });
     } catch (e) { console.error("로드 실패", e); }
+    finally { setSyncing(false); }
     try {
       const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
       setHolidays(h||[]);
@@ -523,6 +566,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(DATA_CACHE_KEY);
     setAuthTokens(null, null);
     setSession(null); setAgency(null); setMyRole("member");
     setEmail(""); setPassword(""); setAgencyName("");
@@ -1582,7 +1626,7 @@ async function sharePdf(){
 
         <Suspense fallback={<PageLoading/>}>
         {/* ════ 대시보드 ════ */}
-        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} onOpenCalendarDate={(d:string)=>{ setCalInitDate(d); setPage("calendar"); }} isMobile={isMobile} canViewFinance={canViewFinance} />}
+        {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} onOpenCalendarDate={(d:string)=>{ setCalInitDate(d); setPage("calendar"); }} isMobile={isMobile} canViewFinance={canViewFinance} loading={syncing} />}
 
         {/* ════ 캘린더 ════ */}
         {page==="calendar" && (

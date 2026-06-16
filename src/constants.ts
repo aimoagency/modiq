@@ -1,5 +1,6 @@
 export const APP_VERSION = "0.9.0";
 export const SESSION_KEY = "modiq_session_v6";
+export const DATA_CACHE_KEY = "modiq_data_cache_v1";
 export type AuthMode = "login"|"signup";
 export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages"|"studio";
 
