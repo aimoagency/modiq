@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
-import { sb } from "../lib/supabase";
+import { sb, sbUpload, dataURLtoBlob } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck } from "../components/icons";
@@ -77,6 +77,43 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [compModel, setCompModel] = useState<any | null>(null); // 컴카드 모달 대상
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
+  const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
+
+  // ── 기존 base64 사진 → Storage 이전 (1회용, 멱등) ──
+  // photos를 먼저 업로드해 base64→URL 매핑을 만들고, liked_photos는 같은 URL로 치환(순서/좋아요 유지)
+  const base64Count = useMemo(() => models.reduce((n, m) => n + (Array.isArray(m.photos) ? m.photos.filter((p: string) => typeof p === "string" && p.startsWith("data:")).length : 0), 0), [models]);
+  const migrateToStorage = async () => {
+    if (base64Count === 0) { alert("이전할 base64 사진이 없습니다. 이미 모두 저장소에 있어요."); return; }
+    if (!confirm(`기존 사진 ${base64Count}장을 Storage로 이전합니다.\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    setMigrating(true);
+    let moved = 0;
+    try {
+      for (const m of models) {
+        const map = new Map<string, string>();
+        const srcPhotos: string[] = Array.isArray(m.photos) ? m.photos : [];
+        const newPhotos: string[] = [];
+        for (const p of srcPhotos) {
+          if (typeof p === "string" && p.startsWith("data:")) {
+            try {
+              const url = await sbUpload(`${agency.id}/${m.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(p));
+              map.set(p, url); newPhotos.push(url); moved++;
+            } catch { newPhotos.push(p); } // 실패분은 그대로 둠(재시도 가능)
+          } else newPhotos.push(p);
+        }
+        const srcLiked: string[] = Array.isArray(m.liked_photos) ? m.liked_photos : [];
+        const newLiked = srcLiked.map(p => map.get(p) || p);
+        const patch: any = {};
+        if (JSON.stringify(newPhotos) !== JSON.stringify(srcPhotos)) patch.photos = newPhotos;
+        if (JSON.stringify(newLiked) !== JSON.stringify(srcLiked)) patch.liked_photos = newLiked;
+        if (Object.keys(patch).length) {
+          await sb("models", "PATCH", patch, `?id=eq.${m.id}`);
+          setModels(prev => prev.map(x => x.id === m.id ? { ...x, ...patch } : x));
+        }
+      }
+      alert(`이전 완료 — 사진 ${moved}장을 저장소로 옮겼습니다. 새로고침하면 로딩이 빨라집니다.`);
+    } catch (e) { alert("이전 중 오류: " + String(e) + "\n다시 실행하면 남은 사진만 이어서 이전합니다."); }
+    setMigrating(false);
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -110,6 +147,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   // 대표 썸네일 = 작게 압축한 복사본(목록·카드용). 큰 사진도 자동 축소 → 용량 제한 걱정 없음.
   const makeThumb = (src: string, cb: (small: string) => void) => {
     const img = new Image();
+    if (/^https?:/.test(src)) img.crossOrigin = "anonymous"; // Storage URL을 캔버스에 그리려면 CORS 필요
     img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.62)); };
     img.src = src;
   };
@@ -129,8 +167,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     const list = Array.from(files).slice(0, room);
     let collected: string[] = [];
     let done = 0;
-    list.forEach(f => resizeImage(f, data => {
-      collected.push(data);
+    setSaving(true);
+    // 리사이즈(base64) → Storage 업로드 → URL 저장. 업로드 실패 시 base64로 폴백(하위호환)
+    list.forEach(f => resizeImage(f, async data => {
+      try {
+        const url = await sbUpload(`${agency.id}/${sel.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(data));
+        collected.push(url);
+      } catch (e) {
+        console.error("사진 업로드 실패 — base64로 저장(폴백)", e);
+        collected.push(data);
+      }
       done++;
       if (done === list.length) savePhotos([...photos, ...collected]);
     }));
@@ -268,7 +314,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px", flexWrap: "wrap", gap: 10 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 모델 스튜디오</h1>
-        <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {base64Count > 0 && (
+            <button onClick={migrateToStorage} disabled={migrating}
+              title="기존에 DB에 저장된 사진을 저장소(Storage)로 옮겨 로딩 속도를 높입니다"
+              style={{ ...btnS(C.blue, migrating), fontSize: 12, whiteSpace: "nowrap" }}>
+              {migrating ? "이전 중…" : `⚡ 사진 ${base64Count}장 저장소로 이전`}
+            </button>
+          )}
+          <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
