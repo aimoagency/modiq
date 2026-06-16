@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, STATUS, BOOKING_TYPES,
@@ -27,24 +27,24 @@ import Modal from "./components/Modal";
 import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
-import CalendarView from "./views/CalendarView";
+const CalendarView = lazy(() => import("./views/CalendarView"));
 import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
-import DashboardView from "./views/DashboardView";
-import BookingsView from "./views/BookingsView";
-import ModelsView from "./views/ModelsView";
-import CustomersView from "./views/CustomersView";
-import SettlementView from "./views/SettlementView";
-import MembersView from "./views/MembersView";
-import PlanView from "./views/PlanView";
-import RevenueView from "./views/RevenueView";
-import CompanyView from "./views/CompanyView";
-import PackagesView from "./views/PackagesView";
-import ModelStudioView from "./views/ModelStudioView";
-import PackagePublicView from "./views/PackagePublicView";
-import CalendarAddView from "./views/CalendarAddView";
-import CalSubscribeView from "./views/CalSubscribeView";
+const DashboardView = lazy(() => import("./views/DashboardView"));
+const BookingsView = lazy(() => import("./views/BookingsView"));
+const ModelsView = lazy(() => import("./views/ModelsView"));
+const CustomersView = lazy(() => import("./views/CustomersView"));
+const SettlementView = lazy(() => import("./views/SettlementView"));
+const MembersView = lazy(() => import("./views/MembersView"));
+const PlanView = lazy(() => import("./views/PlanView"));
+const RevenueView = lazy(() => import("./views/RevenueView"));
+const CompanyView = lazy(() => import("./views/CompanyView"));
+const PackagesView = lazy(() => import("./views/PackagesView"));
+const ModelStudioView = lazy(() => import("./views/ModelStudioView"));
+const PackagePublicView = lazy(() => import("./views/PackagePublicView"));
+const CalendarAddView = lazy(() => import("./views/CalendarAddView"));
+const CalSubscribeView = lazy(() => import("./views/CalSubscribeView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
@@ -72,6 +72,15 @@ html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2
 })();
 
 // ═══════════════
+// 코드 스플리팅 로딩 표시 (lazy 뷰 fallback)
+function PageLoading() {
+  return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"60px 20px", color:C.muted, fontSize:14 }}>
+      불러오는 중…
+    </div>
+  );
+}
+
 export default function App() {
 
   const [authMode,    setAuthMode]    = useState<AuthMode>("login");
@@ -1399,11 +1408,11 @@ async function sharePdf(){
   // 공개 패키지 라우트 (?pkg=토큰) — 로그인 불필요, 고객사용
   // ══════════════════════════════════════════════
   const pkgToken = new URLSearchParams(window.location.search).get("pkg");
-  if (pkgToken) return <PackagePublicView token={pkgToken} />;
+  if (pkgToken) return <Suspense fallback={<PageLoading/>}><PackagePublicView token={pkgToken} /></Suspense>;
   const calData = new URLSearchParams(window.location.search).get("cal");
-  if (calData) return <CalendarAddView data={calData} />;
+  if (calData) return <Suspense fallback={<PageLoading/>}><CalendarAddView data={calData} /></Suspense>;
   const subToken = new URLSearchParams(window.location.search).get("sub");
-  if (subToken) return <CalSubscribeView token={subToken} />;
+  if (subToken) return <Suspense fallback={<PageLoading/>}><CalSubscribeView token={subToken} /></Suspense>;
 
   // ══════════════════════════════════════════════
   // 로그인 화면
@@ -1571,6 +1580,7 @@ async function sharePdf(){
       <div style={{ flex:1, minWidth:0, maxWidth:"100%", marginLeft:isMobile?0:64, marginTop:isMobile?0:52, padding:isMobile?"68px 14px 88px":"32px 44px", overflowX:"hidden", overflowY:"auto", minHeight:isMobile?"100vh":"calc(100vh - 52px)" }}>
       <div style={{ maxWidth:1560, margin:"0 auto", minWidth:0 }}>
 
+        <Suspense fallback={<PageLoading/>}>
         {/* ════ 대시보드 ════ */}
         {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} onOpenCalendarDate={(d:string)=>{ setCalInitDate(d); setPage("calendar"); }} isMobile={isMobile} canViewFinance={canViewFinance} />}
 
@@ -1618,6 +1628,7 @@ async function sharePdf(){
 
         {/* ════ 요금제 ════ */}
         {page==="plan"&&<PlanView agency={agency} myRole={myRole} planBilling={planBilling} setPlanBilling={setPlanBilling} handleChangePlan={handleChangePlan} />}
+        </Suspense>
       </div>
       </div>
 
