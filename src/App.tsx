@@ -2407,10 +2407,12 @@ async function sharePdf(){
         <Modal onClose={closeDetail} wide>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap" }}>
             <div style={{ minWidth:0 }}>
-              <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+              </div>
               <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
               <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
                 {selectedModel.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"4px 10px", borderRadius:10, whiteSpace:"nowrap" }}>{selectedModel.category}</span>}
                 {selectedModel.is_foreigner&&(()=>{
                   const dday=visaDday(selectedModel.visa_exit);
@@ -2773,7 +2775,7 @@ async function sharePdf(){
 
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
-            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ color:C.red, fontWeight:700 }}>*필수</span> <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day (9h)",mFeeDay,setMFeeDay],["Half day (5h)",mFeeHalf,setMFeeHalf],["Hour (1h)",mFeeHour,setMFeeHour]] as [string,number,(v:number)=>void][]).map(([lab,val,set])=>(
                 <div key={lab}>
@@ -2791,7 +2793,7 @@ async function sharePdf(){
 
           {/* ── 정산 · 세무 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"0 0 14px", background:C.card2 }}>
-            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무</p>
+            <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ color:C.red, fontWeight:700 }}>*필수</span></p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
               {mIsForeign ? (

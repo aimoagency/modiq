@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C, btnS, inp } from "../theme";
 import { STATUS, BOOKING_TYPES, KR_HOLIDAYS } from "../constants";
 import { visaDday, fmtTime, findConflicts, bookingTotal } from "../lib/utils";
@@ -25,6 +25,14 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const today = new Date();
   // 대시보드 등에서 특정 날짜로 진입 시: 해당 월로 이동 + 그 날짜를 선택 상태로 → 우측 패널 자동 오픈
   const _initD = initDate ? new Date(initDate + "T00:00:00") : null;
+  const detailRef = useRef<HTMLDivElement|null>(null);
+  // 모바일에서 대시보드 날짜 클릭으로 진입하면 상세가 달력 아래에 있어 안 보이므로 자동 스크롤
+  useEffect(() => {
+    if (initDate && isMobile) {
+      const t = setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+      return () => clearTimeout(t);
+    }
+  }, []); // 최초 진입 1회
   const [calYear,    setCalYear]    = useState(_initD ? _initD.getFullYear() : today.getFullYear());
   const [calMonth,   setCalMonth]   = useState(_initD ? _initD.getMonth()    : today.getMonth());
   const [selDate,    setSelDate]    = useState<string|null>(initDate || null);
@@ -366,7 +374,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
       {/* 선택된 날짜 섭외 목록 */}
       {selDate&&(
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, ...(!isMobile?{width:380, flexShrink:0, maxHeight:"calc(100vh - 170px)", overflowY:"auto"}:{}) }}>
+        <div ref={detailRef} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, ...(!isMobile?{width:380, flexShrink:0, maxHeight:"calc(100vh - 170px)", overflowY:"auto"}:{}) }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
             <div>
               <p style={{ margin:0, fontWeight:800, fontSize:15, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> {selDate.replace(/-/g,".")}</p>
@@ -493,7 +501,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                         <div key={pid} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33` }}>
                             <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
-                            <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find(c=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
+                            <span style={{ flex:1, minWidth:0, fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find(c=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
                             <div style={{ display:"flex", marginLeft:6 }}>
                               {ms.slice(0,3).map((m:any,i)=>(m.thumb_url
                                 ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />

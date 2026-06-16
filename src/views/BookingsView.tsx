@@ -48,11 +48,11 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
                 {(()=>{ const m=models.find((mm:any)=>mm.id===b.model_id); return m?.thumb_url
                   ? <img src={m.thumb_url} alt="" style={{ width:24, height:24, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                   : <span style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:10, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>; })()}
-                <strong style={{ flex:1, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{models.find((m:any)=>m.id===b.model_id)?.name||"?"} → {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</strong>
+                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{models.find((m:any)=>m.id===b.model_id)?.name||"?"} → {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</strong>
                 <Badge code={b.status} type={b.booking_type} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.textSub }}>
-                <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
+                <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
                 {bookingTotal(b)>0?<span style={{ marginLeft:"auto", color:C.yellow, fontWeight:700, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>:null}
               </div>
             </div>
@@ -65,7 +65,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
               {(()=>{ const m=models.find((mm:any)=>mm.id===b.model_id); return m?.thumb_url
                 ? <img src={m.thumb_url} alt="" style={{ width:26, height:26, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                 : <span style={{ width:26, height:26, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:10, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>; })()}
-              <p style={{ flex:1, margin:0, fontSize:13, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                 <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{models.find((m:any)=>m.id===b.model_id)?.name||"?"} → {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</strong>
                 <span style={{ color:C.textSub, fontWeight:700 }}> · <Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
                 {b.location?<span style={{ color:C.textSub, fontWeight:700 }}> · <MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.location}</span>:null}
@@ -83,6 +83,24 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
               const ms=bs.map(b=>models.find((m:any)=>m.id===b.model_id)).filter(Boolean);
               return (
                 <div key={"g"+oi} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>
+                  {isMobile ? (
+                    <div style={{ padding:"10px 12px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
+                        <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
+                        <span style={{ flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <div style={{ display:"flex", flexShrink:0 }}>
+                          {ms.slice(0,3).map((m:any,i:number)=>(m.thumb_url
+                            ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />
+                            : <span key={i} style={{ width:20, height:20, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", border:`2px solid ${C.card}`, marginLeft:i?-7:0, display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:9, fontWeight:800 }}>{(m.name||"?")[0]}</span>
+                          ))}
+                        </div>
+                        <span style={{ flex:1, minWidth:0, fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>모델 {bs.length}명 · {fmtDate(bs[0].shoot_date)}</span>
+                        {total>0&&<span style={{ marginLeft:"auto", fontSize:14, color:C.yellow, fontWeight:800, whiteSpace:"nowrap", flexShrink:0 }}>{total.toLocaleString()}원</span>}
+                      </div>
+                    </div>
+                  ) : (
                   <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33`, flexWrap:"wrap" }}>
                     <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
                     <span style={{ flex:"1 1 auto", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
@@ -96,7 +114,8 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
                     <span style={{ fontSize:12, color:C.muted }}>· {fmtDate(bs[0].shoot_date)}</span>
                     {total>0&&<span style={{ marginLeft:"auto", fontSize:14, color:C.yellow, fontWeight:800 }}>{total.toLocaleString()}원</span>}
                   </div>
-                  <div style={{ display:"grid", gap:8, padding:10 }}>{bs.map(Card)}</div>
+                  )}
+                  <div style={{ display:"grid", gap:8, padding:isMobile?8:10 }}>{bs.map(Card)}</div>
                 </div>
               );
             })}
