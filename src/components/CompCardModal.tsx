@@ -7,6 +7,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { C } from "../theme";
+import CloseButton from "./CloseButton";
 import { downloadNodePdf, shareNodePng } from "../lib/packages";
 import { ageFromSSN6 } from "../lib/utils";
 import { Download, Link2, Save } from "../components/icons";
@@ -125,6 +126,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1500, padding: 16, overflowY: "auto" }}>
+      <CloseButton onClose={onClose} fixed />
       {/* A4 가로 컴카드 (PDF 캡처 대상) */}
       <div ref={ref} onClick={e => e.stopPropagation()}
         style={{ width: "min(92vw, 920px)", aspectRatio: "297 / 210", background: "#fff", display: "flex", flexDirection: "column", padding: 14, boxShadow: "0 8px 40px rgba(0,0,0,.4)", borderRadius: 4 }}>
