@@ -85,7 +85,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                     </p>
                     <p style={{ margin:"2px 0 0", fontSize:11, color:C.muted }}><Calendar size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtDate(it.date)} · {it.label}</p>
                   </div>
-                  <span style={{ flexShrink:0, fontSize:13, fontWeight:800, color:it.label==="잔금"?C.text:C.textSub }}>{it.amount.toLocaleString()}원</span>
+                  <span style={{ flexShrink:0, minWidth:92, textAlign:"right", fontSize:13, fontWeight:800, color:it.label==="잔금"?C.text:C.textSub }}>{it.amount.toLocaleString()}원</span>
                 </div>
               );
             })}

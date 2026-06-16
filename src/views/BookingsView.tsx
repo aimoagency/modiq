@@ -20,7 +20,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><ClipboardList size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 ({filteredBookings.length}건)</h1>
         <button onClick={openAddPicker} style={btnS(C.blue)}>+ 섭외 추가</button>
       </div>
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"flex", gap:10, flexWrap:"wrap" }}>
+      <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"flex", gap:10, flexWrap:"wrap" }}>
         <input style={{ ...inp, marginBottom:0, flex:"1 1 160px" }} placeholder="모델/고객사/프로젝트 검색" value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />
         <select style={{ ...inp, marginBottom:0, flex:"1 1 130px" }} value={bookingStatusF} onChange={e=>setBookingStatusF(e.target.value)}>
           <option value="ALL">전체 상태</option>
@@ -76,7 +76,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
             </div>
             );
         return (
-          <div style={{ display:"grid", gap:8 }}>
+          <div style={{ width:"100%", boxSizing:"border-box", display:"grid", gap:8 }}>
             {order.map((item,oi)=>{
               if(item.type==="single") return Card(item.b);
               const bs=groups[item.pid!]; const total=bs.reduce((s,b)=>s+bookingTotal(b),0);
@@ -85,7 +85,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
                 <div key={"g"+oi} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33`, flexWrap:"wrap" }}>
                     <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
-                    <span style={{ fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
+                    <span style={{ flex:"1 1 auto", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
                     <div style={{ display:"flex", marginLeft:4 }}>
                       {ms.slice(0,3).map((m:any,i:number)=>(m.thumb_url
                         ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />
