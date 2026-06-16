@@ -1622,7 +1622,10 @@ async function sharePdf(){
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
+            <div style={{ minWidth:0 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
+            {(()=>{ const _m=models.find((m:any)=>m.id===selectedBooking.model_id); const _c=customers.find((c:any)=>c.id===selectedBooking.customer_id); return (_m||_c)?(<p style={{ margin:"4px 0 0 25px", fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{_m?.name||"?"}{_c?<span style={{ color:C.muted, fontWeight:500 }}> · {_c.name}</span>:null}</p>):null; })()}
+            </div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!editingBooking
                 ? <>
@@ -1983,7 +1986,7 @@ async function sharePdf(){
                 {/* 모델료(세션) · 매출총이익 */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6, paddingTop:6, borderTop:`1px solid ${C.border}` }}>
                   <span style={{ color:C.muted, fontSize:12 }}>모델료 ({sessionLabel(selectedBooking)}) {(()=>{ const f = sess==="half" ? (Number(mdl?.fee_half)||Number(mdl?.fee_day)||0) : (Number(mdl?.fee_day)||0); return <b style={{ color:C.textSub, fontWeight:700 }}>{f>0?f.toLocaleString()+"원":"-"}</b>; })()}</span>
-                  <span style={{ color:C.muted, fontSize:12 }}>매출총이익 <b style={{ color:C.blue, fontWeight:800, fontSize:13 }}>{bookingAgencyFee(selectedBooking, models).toLocaleString()}원</b></span>
+                  <span style={{ color:C.muted, fontSize:12 }}>에이전시 마진 <b style={{ color:C.blue, fontWeight:800, fontSize:13 }}>{bookingAgencyFee(selectedBooking, models).toLocaleString()}원</b></span>
                 </div>
                 {/* 편집 모드: 모델 지급 정산방식·금액 건별 수정 */}
                 {editingBooking&&(
@@ -2292,7 +2295,7 @@ async function sharePdf(){
                   <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
-                  <span style={{ color:C.muted }}>매출총이익</span>
+                  <span style={{ color:C.muted }}>에이전시 마진</span>
                   <span style={{ color:C.blue }}>{margin.toLocaleString()}원</span>
                 </div>
               </div>
