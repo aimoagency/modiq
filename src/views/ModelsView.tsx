@@ -5,12 +5,14 @@ import { periodRange } from "../lib/utils";
 import { visaDday, ageFromSSN6 } from "../lib/utils";
 import { User, Phone, Coins, Plane } from "../components/icons";
 
-export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowModelForm, setSelectedModel, setMEditMode, bookings, isMobile = false, onBulkAdd }: {
+export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowModelForm, setSelectedModel, setMEditMode, bookings, isMobile = false, onBulkAdd, legacyIdCount = 0, onMigrateIds }: {
   filteredModels: any[]; modelQ: string; setModelQ: (v:string)=>void;
   setShowModelForm: (v:boolean)=>void; setSelectedModel: (m:any)=>void; setMEditMode: (v:boolean)=>void;
   bookings: any[];
   isMobile?: boolean;
   onBulkAdd?: ()=>void;
+  legacyIdCount?: number;
+  onMigrateIds?: ()=>void;
 }) {
   const [sortMode, setSortMode] = useState<"reg"|"rev">("reg");
   const [revBasis, setRevBasis] = useState<"real"|"expected">("real");
@@ -23,6 +25,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><User size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 ({filteredModels.length}명)</h1>
         <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+          {legacyIdCount>0&&onMigrateIds&&<button onClick={onMigrateIds} title="기존 모델 ID를 규칙 ID(MK/FK/MX/FX)로 변경합니다" style={{ padding:"6px 12px", background:"transparent", color:C.yellow, border:`1px solid ${C.yellow}`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12 }}>🆔 ID규칙 적용 ({legacyIdCount})</button>}
           {onBulkAdd&&<button onClick={onBulkAdd} style={{ padding:"6px 12px", background:"transparent", color:C.textSub, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:12 }}>📋 대량 등록</button>}
           <button onClick={()=>setShowModelForm(true)} style={btnS(C.blue)}>+ 모델 추가</button>
         </div>

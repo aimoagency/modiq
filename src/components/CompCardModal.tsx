@@ -188,7 +188,6 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
         {onSave && <button onClick={saveSlots} disabled={savingSlots} style={pill({ disabled: savingSlots })}>
           <Save size={15} /> {savingSlots ? "저장 중…" : "컴카드 지정 저장"}
         </button>}
-        <button onClick={onClose} style={pill()}>닫기</button>
       </div>
     </div>
   );

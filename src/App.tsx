@@ -675,6 +675,38 @@ export default function App() {
     } catch (e) { alert("고객사 추가 실패: "+String(e)); }
   };
 
+  // ── 기존 모델 ID → 규칙 ID(MK/FK/MX/FX) 일괄 변경 ──
+  // 섭외(bookings)·휴무(model_offs)의 model_id 참조도 함께 업데이트. FK 안전 순서: 새 행 insert → 참조 갱신 → 옛 행 delete
+  const isSpecModelId = (id: string) => /^(?:MK|FK|MX|FX)\d{3}-\d{6}-\d{4}$/.test(id);
+  const legacyIdCount = useMemo(() => models.filter(m => !isSpecModelId(String(m.id || ""))).length, [models]);
+  const migrateModelIds = async () => {
+    const legacy = models.filter(m => !isSpecModelId(String(m.id || "")));
+    if (!legacy.length) { alert("규칙 ID로 변경할 모델이 없습니다. 모두 규칙 ID예요."); return; }
+    if (!confirm(`기존 모델 ${legacy.length}명의 ID를 규칙 ID(MK/FK/MX/FX)로 변경합니다.\n섭외·휴무 연결도 함께 업데이트됩니다.\n\n⚠️ 진행 전 Supabase에서 백업을 권장합니다. 진행할까요?`)) return;
+    const agNo = (agency as any).agency_no || 1;
+    let seq = nextModelSeq(models);
+    let done = 0;
+    try {
+      for (const m of legacy) {
+        const natType = (m.is_foreigner || m.nationality_type === "X" || (m.country && m.country !== "대한민국")) ? "X" : "K";
+        const gender = m.gender === "M" ? "M" : "F"; // 미지정 시 기본 F
+        const newId = generateModelId(genderNatCode(gender, natType), agNo, seq++);
+        const oldQ = `?id=eq.${encodeURIComponent(m.id)}`;
+        const oldRefQ = `?model_id=eq.${encodeURIComponent(m.id)}`;
+        const { id: _drop, ...rest } = m;                         // 1) 새 id로 모델 복제
+        await sb("models", "POST", { ...rest, id: newId });
+        await sb("bookings", "PATCH", { model_id: newId }, oldRefQ); // 2) 섭외 참조 갱신
+        try { await sb("model_offs", "PATCH", { model_id: newId }, oldRefQ); } catch {} // 휴무(테이블 없을 수 있음)
+        await sb("models", "DELETE", null, oldQ);                  // 3) 옛 모델 삭제
+        setModels(prev => prev.map(x => x.id === m.id ? { ...x, id: newId } : x));
+        setBookings(prev => prev.map(b => b.model_id === m.id ? { ...b, model_id: newId } : b));
+        setModelOffs(prev => prev.map(o => o.model_id === m.id ? { ...o, model_id: newId } : o));
+        done++;
+      }
+      alert(`완료 — 모델 ${done}명의 ID를 규칙 ID로 변경했습니다.`);
+    } catch (e) { alert("변경 중 오류: " + String(e) + "\n일부만 처리됐을 수 있어요. 새로고침 후 다시 실행하면 남은 모델만 이어서 변경합니다."); }
+  };
+
   const openEditCustomer = (c: any) => {
     setSelectedCustomer(c);
     setCName(c.name||""); setCBrand(c.brand||""); setCManager(c.manager_name||"");
@@ -717,7 +749,22 @@ export default function App() {
     items: { id:string; mode:"insert"|"update"; record:Record<string,any> }[]
   ): Promise<{ inserted:number; updated:number }> => {
     const table = entity === "model" ? "models" : "customers";
-    const inserts = items.filter(i=>i.mode==="insert").map(i=>({ ...i.record, id:i.id, agency_id:agency.id }));
+    // 신규 항목 ID 발급: 모델은 규칙 ID(MK/FK/MX/FX…), 고객사는 임의 ID
+    const _agNo = (agency as any).agency_no || 1;
+    let _seq = nextModelSeq(models);
+    const inserts = items.filter(i=>i.mode==="insert").map(i=>{
+      let id = i.id;
+      if (!id) {
+        if (entity === "model") {
+          const natType = i.record.is_foreigner ? "X" : "K";
+          const gender = i.record.gender === "M" ? "M" : "F"; // 미지정 시 기본 F
+          id = generateModelId(genderNatCode(gender, natType), _agNo, _seq++);
+        } else {
+          id = randomId("CL");
+        }
+      }
+      return { ...i.record, id, agency_id:agency.id };
+    });
     const updates = items.filter(i=>i.mode==="update");
     let insertedRows: any[] = [];
     if (inserts.length) insertedRows = await sb(table, "POST", inserts);
@@ -1666,7 +1713,7 @@ async function sharePdf(){
         {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
 
         {/* ════ 모델 ════ */}
-        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} />}
+        {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} legacyIdCount={myRole==="owner"?legacyIdCount:0} onMigrateIds={migrateModelIds} />}
 
         {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
 
@@ -1693,10 +1740,9 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10, paddingRight:48 }}>
             <div style={{ minWidth:0 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            {(()=>{ const _m=models.find((m:any)=>m.id===selectedBooking.model_id); const _c=customers.find((c:any)=>c.id===selectedBooking.customer_id); return (_m||_c)?(<p style={{ margin:"4px 0 0 25px", fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{_m?.name||"?"}{_c?<span style={{ color:C.muted, fontWeight:500 }}> · {_c.name}</span>:null}</p>):null; })()}
             </div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!editingBooking
@@ -1745,7 +1791,6 @@ async function sharePdf(){
                 </div>
                 </>}
 
-                <button onClick={()=>setShowSendMenu(false)} style={{ ...btnS("#555"), width:"100%", marginTop:4 }}>닫기</button>
               </div>
             </div>
           ); })()}
@@ -2137,7 +2182,6 @@ async function sharePdf(){
               </a>
             </div>
           )}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%" }}>닫기</button>
         </Modal>
       )}
 
@@ -2229,7 +2273,6 @@ async function sharePdf(){
                 );
               })}
             </div>
-            <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
           </Modal>
         );
       })()}
@@ -2466,7 +2509,6 @@ async function sharePdf(){
           </label>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={closeDetail} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -2474,7 +2516,7 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:48 }}>
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
@@ -2589,14 +2631,13 @@ async function sharePdf(){
             </div>
             );
           })()}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:48 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
@@ -2658,7 +2699,6 @@ async function sharePdf(){
             </div>
             );
           })()}
-          <button onClick={closeDetail} style={{ ...btnS(C.muted), width:"100%", marginTop:16 }}>닫기</button>
         </Modal>
       )}
 
@@ -2696,7 +2736,6 @@ async function sharePdf(){
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
             <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -2950,7 +2989,6 @@ async function sharePdf(){
           <div style={{ display:"flex", gap:10 }}>
             {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
             <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
-            <button onClick={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -3055,7 +3093,6 @@ async function sharePdf(){
 
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={()=>setShowForeignModal(false)} style={{ ...btnS(C.green), flex:1 }}>저장</button>
-            <button onClick={()=>{ setShowForeignModal(false); }} style={{ ...btnS("#333"), flex:1 }}>닫기</button>
           </div>
         </Modal>
       )}
@@ -3091,7 +3128,6 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleAddCustomer} style={{ ...btnS(C.green), flex:1 }}>추가</button>
-            <button onClick={()=>{setShowCustomerForm(false);resetCustomerForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -3116,7 +3152,12 @@ async function sharePdf(){
         <BulkUploadModal
           entity={bulkEntity}
           isMobile={isMobile}
-          existingIds={new Set((bulkEntity==="model"?models:customers).map((x:any)=>x.id))}
+          existingKeys={new Map((bulkEntity==="model"?models:customers).map((x:any)=>[
+            bulkEntity==="model"
+              ? makeModelId(x.name||"", x.ssn6||"")
+              : makeClientId(x.name||"", String(x.phone||"").replace(/[^0-9]/g,"").slice(-4)),
+            x.id,
+          ]))}
           onClose={()=>setBulkEntity(null)}
           onCommit={(items)=>handleBulkCommit(bulkEntity, items)}
         />
@@ -3402,7 +3443,6 @@ async function sharePdf(){
 
 
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={()=>{ setShowProjectForm(false); resetProjectForm(); }} style={{ ...btnS("#333"), flex:1 }}>취소</button>
             <button onClick={handleAddProject} style={{ ...btnS(C.green), flex:2, fontWeight:800 }}>
               <FolderOpen size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 프로젝트 등록 {pModelLines.length>0 ? `(모델 ${pModelLines.length}명)` : ""}
             </button>
@@ -3704,7 +3744,6 @@ async function sharePdf(){
             {(()=>{ const _vi = (bModel && bDate) ? visaViolation(models.find(m=>m.id===bModel), bDate) : null; return (
               <button onClick={handleAddBooking} disabled={!!_vi} title={_vi||""} style={{ ...btnS(C.green, !!_vi), flex:1 }}>{_vi ? "비자 만료 — 섭외 불가" : "추가"}</button>
             ); })()}
-            <button onClick={()=>{setShowBookingForm(false);resetBookingForm();}} style={{ ...btnS("#333"), flex:1 }}>취소</button>
           </div>
         </Modal>
       )}
