@@ -309,7 +309,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700 }}><FolderOpen size={10} style={{ verticalAlign:-2, flexShrink:0 }}/> 프로젝트</span>
                 {hasHold&&<span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-2, flexShrink:0 }}/>HOLD</span>}
-                <div style={{ flex:1 }}>
+                <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.text }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></p>
                   <p style={{ margin:"2px 0 0", fontSize:13, color:C.textSub }}>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명: {bs.map(b=>models.find(m=>m.id===b.model_id)?.name||"?").join(", ")}</p>
                   {bs.some(x=>isOverdue(x.shoot_date))&&<p style={{ margin:"3px 0 0", fontSize:11, color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영일 지남 — 상태 업데이트 필요</p>}
@@ -329,11 +329,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
                 <TypeIcon type={b.booking_type} size={13}/>
-                <strong style={{ flex:1, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
+                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
                 <Badge code={b.status} type={b.booking_type} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.textSub }}>
-                <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}{b.project_name?` · ${b.project_name}`:""}{isOverdue(b.shoot_date)?" · ":""}{isOverdue(b.shoot_date)&&<span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/>일정지남</span>}</span>
+                <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}{b.project_name?` · ${b.project_name}`:""}{isOverdue(b.shoot_date)?" · ":""}{isOverdue(b.shoot_date)&&<span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/>일정지남</span>}</span>
                 {canViewFinance&&bookingTotal(b)>0&&<span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>}
               </div>
             </div>

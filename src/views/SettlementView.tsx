@@ -73,7 +73,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
             const client = customers.find((c:any)=>c.id===b.customer_id);
             const fee=bookingTotal(b), pay=bookingModelPay(b,models);
             return (
-              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, transition:"border-color 0.2s" }}
+              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:16, cursor:"pointer", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
                 onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
               >
@@ -83,8 +83,8 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                   : <div style={{ width:44, height:44, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:15, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
                 }
                 {/* 정보 */}
-                <div style={{ flex:1 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3, flexWrap:"wrap" }}>
                     <span style={{ color:C.text, fontWeight:700, fontSize:14 }}>{model?.name||"?"}</span>
                     <span style={{ color:C.muted, fontSize:12 }}>· {client?.name||"?"}</span>
                     {b.project_name&&<span style={{ color:C.blue, fontSize:12 }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
@@ -93,7 +93,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 </div>
                 {/* 금액 */}
                 {fee>0&&(
-                  <div style={{ textAlign:"right" }}>
+                  <div style={{ textAlign:"right", flexShrink:0, whiteSpace:"nowrap" }}>
                     <p style={{ margin:0, color:"#e8d5b7", fontWeight:800, fontSize:16 }}>{fee.toLocaleString()}원</p>
                     <p style={{ margin:"2px 0 0", color:C.green, fontSize:12 }}>모델 실지급 {pay.toLocaleString()}원</p>
                   </div>

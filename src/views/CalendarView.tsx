@@ -501,7 +501,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                         <div key={pid} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>
                           <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33` }}>
                             <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
-                            <span style={{ fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find(c=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
+                            <span style={{ flex:1, minWidth:0, fontSize:13, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find(c=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
                             <div style={{ display:"flex", marginLeft:6 }}>
                               {ms.slice(0,3).map((m:any,i)=>(m.thumb_url
                                 ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />

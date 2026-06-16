@@ -52,7 +52,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
             isMobile ? (
             <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                <strong style={{ flex:1, fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</strong>
+                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</strong>
                 {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.category}</span>}
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub }}>
