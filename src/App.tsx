@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, DATA_CACHE_KEY, STATUS, BOOKING_TYPES,
@@ -506,11 +506,22 @@ export default function App() {
       const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
       setModelOffs(mo||[]);
     } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
+  };
+
+  // 패키지(사진) 지연 로딩 — 패키지/스튜디오 페이지 첫 진입 때만 1회 조회
+  const packagesLoadedRef = useRef(false);
+  const loadPackages = async (agencyId: string) => {
+    if (packagesLoadedRef.current) return;
+    packagesLoadedRef.current = true;
     try {
       const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
       setPackages(pk||[]);
-    } catch { setPackages([]); } // packages 테이블 미생성 시 무시
+    } catch { setPackages([]); packagesLoadedRef.current = false; } // 실패 시 재시도 허용
   };
+  useEffect(() => {
+    if ((page==="packages"||page==="studio") && agency?.id) loadPackages(agency.id);
+  }, [page, agency?.id]);
 
   // ── 인증 ──
   const handleSignup = async () => {
@@ -568,6 +579,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(DATA_CACHE_KEY);
+    packagesLoadedRef.current = false;
     setAuthTokens(null, null);
     setSession(null); setAgency(null); setMyRole("member");
     setEmail(""); setPassword(""); setAgencyName("");

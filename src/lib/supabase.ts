@@ -49,6 +49,42 @@ export const sb = async (table: string, method = "GET", body: any = null, query 
   return text ? JSON.parse(text) : [];
 };
 
+// ── Supabase Storage (모델 사진) ──
+// base64를 DB에 저장하던 방식 → Storage에 업로드하고 DB엔 URL만 저장(조회 용량 대폭 감소)
+export const STORAGE_BUCKET = "model-photos";
+
+// data:URL 문자열 → Blob (업로드용)
+export const dataURLtoBlob = (dataURL: string): Blob => {
+  const [head, b64] = dataURL.split(",");
+  const mime = (head.match(/:(.*?);/) || [])[1] || "image/jpeg";
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+};
+
+// Storage 업로드 → 공개 URL 반환. 실패 시 throw (호출부에서 base64 폴백 가능)
+export const sbUpload = async (path: string, blob: Blob, _retry = false): Promise<string> => {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${encodeURI(path)}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
+      "Content-Type": blob.type || "image/jpeg",
+      "x-upsert": "true",
+    },
+    body: blob,
+  });
+  if (res.status === 401 && accessToken && !_retry) {
+    const r = await refreshSession();
+    if (r) return sbUpload(path, blob, true);
+    if (onAuthFail) onAuthFail();
+    throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
+  }
+  if (!res.ok) throw new Error(await res.text());
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURI(path)}`;
+};
+
 export const sbAuth = async (endpoint: string, body: any): Promise<any> => {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
     method: "POST",
