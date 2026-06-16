@@ -6,12 +6,44 @@ import TypeIcon from "../components/TypeIcon";
 import { BOOKING_TYPES } from "../constants";
 import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } from "../components/icons";
 
-export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, onOpenCalendarDate, isMobile = false, canViewFinance = false }: {
+// ── 로딩 스켈레톤 ──
+function SkBox({ h=20, w="100%", r=8, mt=0 }: { h?:number; w?:number|string; r?:number; mt?:number }) {
+  return <div style={{ height:h, width:w, marginTop:mt, borderRadius:r, background:`linear-gradient(90deg, ${C.card2} 25%, ${C.border} 37%, ${C.card2} 63%)`, backgroundSize:"400% 100%", animation:"modiqShimmer 1.2s ease-in-out infinite" }} />;
+}
+function DashboardSkeleton({ isMobile, canViewFinance }: { isMobile:boolean; canViewFinance:boolean }) {
+  const card = { background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16 };
+  return (
+    <div>
+      <style>{`@keyframes modiqShimmer{0%{background-position:100% 0}100%{background-position:0 0}}`}</style>
+      <SkBox h={26} w={140} mt={2} /><div style={{ height:18 }} />
+      {canViewFinance && (
+        <div style={card}>
+          <SkBox h={14} w={90} />
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)", gap:12, marginTop:14 }}>
+            {Array.from({length:4}).map((_,i)=><div key={i}><SkBox h={11} w={70} /><SkBox h={22} w="80%" mt={8} /></div>)}
+          </div>
+        </div>
+      )}
+      {Array.from({length:3}).map((_,i)=>(
+        <div key={i} style={card}>
+          <SkBox h={14} w={120} />
+          <SkBox h={16} mt={14} /><SkBox h={16} w="85%" mt={10} /><SkBox h={16} w="70%" mt={10} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function DashboardView({ bookings, models, customers, projects, setPage, setSelectedBooking, onSelectProject, onOpenCalendarDate, isMobile = false, canViewFinance = false, loading = false }: {
   bookings: any[]; models: any[]; customers: any[]; projects: any[];
   setPage: (p:any)=>void; setSelectedBooking: (b:any)=>void; onSelectProject: (pid:string)=>void;
   onOpenCalendarDate?: (date:string)=>void;
-  isMobile?: boolean; canViewFinance?: boolean;
+  isMobile?: boolean; canViewFinance?: boolean; loading?: boolean;
 }) {
+  // 최초 로딩(캐시 없음) — 빈 0 대신 스켈레톤 표시
+  if (loading && bookings.length===0 && models.length===0 && customers.length===0) {
+    return <DashboardSkeleton isMobile={isMobile} canViewFinance={canViewFinance} />;
+  }
   // 날짜 클릭 → 캘린더의 해당 날짜를 선택 상태로 열기(우측 패널 오픈). 미전달 시 일반 이동.
   const openCal = (date?:string) => (date && onOpenCalendarDate) ? onOpenCalendarDate(date) : setPage("calendar");
   const activeBookings   = bookings.filter(b=>["CONFIRMED","CHECKING","HOLD","SELECTING","PROPOSED"].includes(b.status)).sort((a,b)=>(a.shoot_date||"9999-99-99").localeCompare(b.shoot_date||"9999-99-99"));
