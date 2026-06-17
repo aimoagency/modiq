@@ -2077,14 +2077,14 @@ async function sharePdf(){
               const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료율 ${pay.value||0}%`;
               return (
               <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ color:C.muted, fontSize:12 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                  <span style={{ color:C.muted, fontSize:12, flex:1, minWidth:0 }}>
                     모델 정산액
                     <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:sess==="half"?C.purple+"22":C.blue+"22", color:sess==="half"?C.purple:C.blue, fontSize:10, fontWeight:700 }}>{sessionLabel(selectedBooking)}</span>
                     <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:C.green+"22", color:C.green, fontSize:10, fontWeight:700 }}>{rateTxt}</span>
                     <span style={{ marginLeft:6 }}>({taxTxt}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""}{ovr?", 건별 수정":""})</span>
                   </span>
-                  <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+                  <span style={{ color:"#c9a96e", fontWeight:800, flexShrink:0, whiteSpace:"nowrap" }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
                 </div>
                 {/* 모델료(세션) · 매출총이익 */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6, paddingTop:6, borderTop:`1px solid ${C.border}` }}>
@@ -2631,7 +2631,7 @@ async function sharePdf(){
           })()}
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
             <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:isMobile?1:"0 0 auto" }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
-            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
+            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
           </div>
         </Modal>
       )}

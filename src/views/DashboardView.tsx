@@ -188,7 +188,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
           </div>
 
           {/* 리스트 */}
-          <div style={{ display:"grid", gap:8 }}>
+          <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
             {sorted.map(b=>{
               const model  = models.find(m=>m.id===b.model_id);
               const client = customers.find(c=>c.id===b.customer_id);
@@ -196,7 +196,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const dgo = daysAgo(b.created_at);
               const isToday = (b.created_at||"").slice(0,10)===todayS;
               return (
-                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
+                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, minWidth:0, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
                   onMouseEnter={e=>{ e.currentTarget.style.borderColor=PINK; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${PINK}aa`; }}
                   onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?PINK+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
                 >
@@ -207,7 +207,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                     <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
                     <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
                   </p>
-                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
+                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, whiteSpace:"nowrap", ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
                   <span style={{ color:PINK, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
                 </div>
               );
