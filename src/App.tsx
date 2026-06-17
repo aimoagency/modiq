@@ -2661,8 +2661,8 @@ async function sharePdf(){
             );
           })()}
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
-            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"포트폴리오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:isMobile?1:"0 0 auto" }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
-            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"포트폴리오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:1 }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
+            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
           </div>
         </Modal>
       )}
