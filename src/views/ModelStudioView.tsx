@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
-import { sb, sbUpload, dataURLtoBlob } from "../lib/supabase";
+import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck } from "../components/icons";
@@ -81,6 +81,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
+  const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
 
   // ── 기존 base64 사진 → Storage 이전 (1회용, 멱등) ──
   // photos를 먼저 업로드해 base64→URL 매핑을 만들고, liked_photos는 같은 URL로 치환(순서/좋아요 유지)
@@ -116,6 +117,28 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       alert(`이전 완료 — 사진 ${moved}장을 저장소로 옮겼습니다. 새로고침하면 로딩이 빨라집니다.`);
     } catch (e) { alert("이전 중 오류: " + String(e) + "\n다시 실행하면 남은 사진만 이어서 이전합니다."); }
     setMigrating(false);
+  };
+
+  // ── 기존 Storage 사진 썸네일(_thumb) 일괄 생성 — 갤러리 egress·로딩 절감. 멱등(재실행 안전) ──
+  const storagePhotoCount = useMemo(() => models.reduce((n, m) => n + (Array.isArray(m.photos) ? m.photos.filter((p: string) => typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)).length : 0), 0), [models]);
+  const genAllThumbs = async () => {
+    const targets: string[] = [];
+    models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
+    if (!targets.length) { alert("썸네일을 만들 Storage 사진이 없습니다."); return; }
+    if (!confirm(`사진 ${targets.length}장의 썸네일을 생성합니다.\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    setThumbing(true);
+    let made = 0;
+    for (const url of targets) {
+      try {
+        const small = await new Promise<string>((res, rej) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); res(cv.toDataURL("image/jpeg", 0.62)); }; img.onerror = () => rej(new Error("load")); img.src = url; });
+        const path = decodeURIComponent((url.split("/object/public/" + STORAGE_BUCKET + "/")[1] || "").split("?")[0]);
+        if (!path) continue;
+        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(small));
+        made++;
+      } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
+    }
+    setThumbing(false);
+    alert(`썸네일 ${made}장 생성 완료. 새로고침하면 갤러리 로딩이 빨라집니다.`);
   };
 
   const filtered = useMemo(() => {
@@ -174,7 +197,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     // 리사이즈(base64) → Storage 업로드 → URL 저장. 업로드 실패 시 base64로 폴백(하위호환)
     list.forEach(f => resizeImage(f, async data => {
       try {
-        const url = await sbUpload(`${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(data));
+        const base = `${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const url = await sbUpload(`${base}.jpg`, dataURLtoBlob(data));
+        try { const small = await new Promise<string>(res => makeThumb(data, res)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 가능 */ }
         collected.push(url);
       } catch (e) {
         console.error("사진 업로드 실패 — base64로 저장(폴백)", e);
@@ -298,7 +323,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
             return (
               <div key={m.id} onClick={() => togglePick(m.id)} style={{ border: `2px solid ${on ? C.blue : C.border}`, borderRadius: 10, overflow: "hidden", cursor: "pointer", background: C.card, position: "relative" }}>
                 <div style={{ aspectRatio: "3/4", background: "#e9edf2" }}>
-                  {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  {cover && <img src={thumbUrl(cover)} alt="" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
                 <div style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", background: on ? C.blue : "rgba(0,0,0,.5)", color: "#fff", fontSize: 13, lineHeight: "22px", textAlign: "center" }}>{on ? "✓" : ""}</div>
                 <div style={{ padding: "8px 10px" }}>
@@ -323,6 +348,13 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               title="기존에 DB에 저장된 사진을 저장소(Storage)로 옮겨 로딩 속도를 높입니다"
               style={{ ...btnS(C.blue, migrating), fontSize: 12, whiteSpace: "nowrap" }}>
               {migrating ? "이전 중…" : `⚡ 사진 ${base64Count}장 저장소로 이전`}
+            </button>
+          )}
+          {storagePhotoCount > 0 && (
+            <button onClick={genAllThumbs} disabled={thumbing}
+              title="기존 사진의 작은 썸네일을 만들어 갤러리 로딩 속도와 데이터 사용량(egress)을 줄입니다"
+              style={{ ...btnS(C.purple, thumbing), fontSize: 12, whiteSpace: "nowrap" }}>
+              {thumbing ? "썸네일 생성 중…" : `🖼 썸네일 생성 (${storagePhotoCount})`}
             </button>
           )}
           <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
@@ -387,7 +419,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); if (dragIdx !== i) { const next = [...photos]; const [mv] = next.splice(dragIdx, 1); next.splice(i, 0, mv); savePhotos(next); } setDragIdx(null); } }}
                         onDragEnd={() => setDragIdx(null)}
                         style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
-                        <img src={p} alt="" draggable={false} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
+                        <img src={thumbUrl(p)} alt="" draggable={false} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         <button onClick={(e) => { e.stopPropagation(); setAsCover(i); }} title="이 사진을 대표로 지정" style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: i === 0 ? C.blue : "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>{i === 0 ? "대표" : "대표 지정"}</button>
                       </div>
