@@ -43,6 +43,11 @@ const infoRows = (m: any): [string, string][] => {
   const three = [m.bust, m.waist, m.hip].filter(Boolean).join("-");
   const rows: [string, string][] = [];
   if (m.country) rows.push(["국적", m.country]);
+  if (m.is_foreigner) {
+    if (m.visa_entry) rows.push(["입국일", String(m.visa_entry).replace(/-/g, ".")]);
+    if (m.visa_exit) rows.push(["출국일", String(m.visa_exit).replace(/-/g, ".")]);
+    if (m.visa_type) rows.push(["비자타입", m.visa_type]);
+  }
   if (age !== null) rows.push(["나이", `${age}세`]);
   if (m.height) rows.push(["키", `${m.height}cm`]);
   if (m.shoe) rows.push(["신발", `${m.shoe}mm`]);
