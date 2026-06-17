@@ -1,5 +1,17 @@
 # modiq 변경 로그
 
+## v1.0.0 — 2026.06.17 · MVP 최종 🎉
+
+첫 안정 릴리스(MVP 확정). 버전 표기를 `1.0.0`으로 통일(package.json · constants.ts · README · 앱 내 표시).
+
+### 성능
+- 포트폴리오/검색 목록의 모델 썸네일이 원본(1200px)이 아닌 작은 썸네일(`_thumb`)을 받도록 변경 → 동시 연결 포화 해소, 모델 클릭 시 우측 갤러리 로딩 체감 속도 개선 (`ModelBrowser.tsx`, `ModelSearchView.tsx`에 `thumbUrl()` + `loading="lazy"` + 원본 폴백 적용)
+
+### 문서
+- `docs/DEVELOPMENT.md`(개발 문서), `docs/MANUAL.md`(운영 매뉴얼), `docs/FAQ.md`(Q&A) 신규 작성 및 Notion 동기화
+
+---
+
 ## 2026.06 — feature/package (컴카드·정산·캘린더 동기화)
 
 타입체크/빌드 통과. 노션 정리본: app.notion.com/p/37e8f77dfecc813ba5caf947bd1d5ee8

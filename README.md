@@ -1,6 +1,8 @@
-# Modiq (v0.7.6)
+# Modiq (v1.0.0 · MVP 최종)
 
-모델 마켓플레이스 운영 앱. React + TypeScript + Vite, 백엔드는 Supabase.
+탤런트(모델) 관리 OS — 에이전시 운영 SaaS. React + TypeScript + Vite, 백엔드는 Supabase.
+
+> 📕 운영 매뉴얼 · 개발 문서 · Q&A는 [`docs/`](docs/) 폴더 참고 ([개발 문서](docs/DEVELOPMENT.md) · [운영 매뉴얼](docs/MANUAL.md) · [Q&A](docs/FAQ.md))
 
 ## 빠른 시작
 
