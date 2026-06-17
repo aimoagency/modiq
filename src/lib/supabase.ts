@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://fijtpyrmqzjefucsqfos.supabase.co";
-const SUPABASE_KEY = "sb_publishable_jx5epW3SB77-naKWZeUYnA_v5xoAgbU";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpanRweXJtcXpqZWZ1Y3NxZm9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzMyNjgsImV4cCI6MjA5NTYwOTI2OH0.tdnqIDJBY809IBO6OIEykxCezo9QY1Z_ziiqMFtYW2o";
 
 // ── 사용자 토큰 (로그인 후 모든 호출에 사용 — RLS의 전제) ──
 let accessToken: string | null = null;
