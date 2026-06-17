@@ -72,6 +72,12 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                   {m.payout_pay_value>0&&<span>정산 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                   <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
                 </div>
+                {(m.phone||m.instagram_url)&&(
+                  <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub, paddingLeft:42, marginTop:3 }}>
+                    {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", whiteSpace:"nowrap" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
+                    {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"inline-flex", alignItems:"center", gap:3, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
+                  </div>
+                )}
               </div>
             );
             return (

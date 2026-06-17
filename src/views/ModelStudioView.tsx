@@ -8,7 +8,7 @@ import { C, inp, btnS } from "../theme";
 import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
-import { User, Camera, CardCheck } from "../components/icons";
+import { User, Camera, CardCheck, Pencil } from "../components/icons";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
 import CompCardModal from "../components/CompCardModal";
 import ModelBrowser from "../components/ModelBrowser";
@@ -58,13 +58,14 @@ const infoRows = (m: any): [string, string][] => {
   return rows;
 };
 
-export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false, initModelId = "" }: {
+export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false, initModelId = "", onEditModel }: {
   models: any[];
   setModels: (fn: (prev: any[]) => any[]) => void;
   setPackages: (fn: (prev: Pkg[]) => Pkg[]) => void;
   agency: { id: string; name: string };
   isMobile?: boolean;
   initModelId?: string;
+  onEditModel?: (m: any) => void;
 }) {
   const [mode, setMode] = useState<"photos" | "package" | "search">("photos");
   const [q, setQ] = useState("");
@@ -388,6 +389,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 <button onClick={() => setCompModel(sel)} disabled={photos.length === 0} title={photos.length === 0 ? "사진을 먼저 등록하세요" : "컴카드 만들기"}
                   style={{ width: isMobile ? "100%" : "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
                   <CardCheck size={16} /> 컴카드 만들기
+                </button>
+                <button onClick={() => onEditModel && onEditModel(sel)} style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 0", background: "transparent", color: C.purple, border: `1px solid ${C.purple}`, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                  <Pencil size={15} /> 정보 수정
                 </button>
                 <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 10 }}>{sel.name}</div>
                 {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
