@@ -1740,10 +1740,10 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ marginBottom:14, paddingRight:88 }}>
+          <div style={{ marginBottom:14, paddingRight:isMobile?108:88 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
           </div>
-          {!editingBooking&&<button type="button" onClick={()=>setEditingBooking(true)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>}
+          {!editingBooking&&<button type="button" onClick={()=>setEditingBooking(true)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>}
 
           {/* 일정 보내기 선택창 */}
           {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
@@ -2518,7 +2518,7 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:88 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:isMobile?108:88 }}>
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
@@ -2535,7 +2535,7 @@ async function sharePdf(){
               </div>
             </div>
           </div>
-          <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>
+          <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
@@ -2639,7 +2639,7 @@ async function sharePdf(){
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:88 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:isMobile?108:88 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
@@ -2649,7 +2649,7 @@ async function sharePdf(){
               <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedCustomer.id}</p>
             </div>
           </div>
-          <button type="button" onClick={()=>openEditCustomer(selectedCustomer)} aria-label="정보 수정" title="정보 수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>
+          <button type="button" onClick={()=>openEditCustomer(selectedCustomer)} aria-label="정보 수정" title="정보 수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["대표자 (성명)", selectedCustomer.rep_name],

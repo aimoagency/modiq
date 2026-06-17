@@ -19,8 +19,8 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><Building2 size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 ({filteredCustomers.length}개)</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text, whiteSpace:"nowrap" }}><Building2 size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 ({filteredCustomers.length}개)</h1>
         <div style={{ display:"flex", gap:8, flexShrink:0 }}>
           {onBulkAdd&&<button onClick={onBulkAdd} style={{ padding:"6px 12px", background:"transparent", color:C.textSub, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:12 }}>📋 대량 등록</button>}
           <button onClick={()=>setShowCustomerForm(true)} style={btnS(C.purple)}>+ 고객사 추가</button>

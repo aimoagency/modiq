@@ -101,7 +101,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}><AlertTriangle size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 입금 확인 필요 <span style={{ color:C.muted, fontWeight:600 }}>({items.length}건{overdue>0?` · 경과 ${overdue}`:""})</span></p>
             <span style={{ fontSize:11, color:C.muted }}>고객사 입금 예정일 기준</span>
           </div>
-          <div style={{ display:"grid", gap:8 }}>
+          <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
             {items.map((it,idx)=>{
               const d = dday(it.date);
               const color = d<0?C.red:d===0?C.orange:C.blue;
@@ -110,7 +110,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const client = customers.find((c:any)=>c.id===it.b.customer_id);
               return (
                 <div key={it.b.id+it.label+idx} onClick={()=>setSelectedBooking(it.b)}
-                  style={{ display:"flex", alignItems:"center", gap:10, background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", transition:"border-color 0.15s" }}
+                  style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", transition:"border-color 0.15s" }}
                   onMouseEnter={e=>(e.currentTarget.style.borderColor=color)}
                   onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
                   <span style={{ flexShrink:0, fontSize:11, fontWeight:800, color, background:color+"1a", borderRadius:6, padding:"3px 8px", minWidth:54, textAlign:"center" }}>{ddayLabel}</span>
