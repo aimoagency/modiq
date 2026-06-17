@@ -22,8 +22,8 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><User size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 ({filteredModels.length}명)</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text, whiteSpace:"nowrap" }}><User size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 ({filteredModels.length}명)</h1>
         <div style={{ display:"flex", gap:8, flexShrink:0 }}>
           {legacyIdCount>0&&onMigrateIds&&<button onClick={onMigrateIds} title="기존 모델 ID를 규칙 ID(MK/FK/MX/FX)로 변경합니다" style={{ padding:"6px 12px", background:"transparent", color:C.yellow, border:`1px solid ${C.yellow}`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12 }}>🆔 ID규칙 적용 ({legacyIdCount})</button>}
           {onBulkAdd&&<button onClick={onBulkAdd} style={{ padding:"6px 12px", background:"transparent", color:C.textSub, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:12 }}>📋 대량 등록</button>}
