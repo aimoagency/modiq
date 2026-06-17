@@ -349,7 +349,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px", flexWrap: "wrap", gap: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 모델 포트폴리오</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 포트폴리오</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {base64Count > 0 && (
             <button onClick={migrateToStorage} disabled={migrating}
