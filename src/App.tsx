@@ -1740,25 +1740,10 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10, paddingRight:48 }}>
-            <div style={{ minWidth:0 }}>
+          <div style={{ marginBottom:14, paddingRight:88 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            </div>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {!editingBooking
-                ? <>
-                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
-                      <button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
-                    {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
-                    <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
-                  </>
-                : <>
-                    <button onClick={handleSaveBookingEdit} style={{ ...btnS(C.green), fontSize:12 }}><Save size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
-                    <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:12 }}>취소</button>
-                  </>
-              }
-            </div>
           </div>
+          {!editingBooking&&<button type="button" onClick={()=>setEditingBooking(true)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>}
 
           {/* 일정 보내기 선택창 */}
           {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
@@ -2182,6 +2167,26 @@ async function sharePdf(){
               </a>
             </div>
           )}
+          {/* 하단 작업 바 (개선2: 상태/내용과 분리) */}
+          {(()=>{
+            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date;
+            const canVoucher=!!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status);
+            if(!editingBooking && !canSend && !canVoucher) return null;
+            return (
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+                {!editingBooking
+                  ? <>
+                      {canSend&&<button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
+                      {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
+                    </>
+                  : <>
+                      <button onClick={handleSaveBookingEdit} style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Save size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
+                      <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:13, flex:1 }}>취소</button>
+                    </>
+                }
+              </div>
+            );
+          })()}
         </Modal>
       )}
 
@@ -2242,7 +2247,7 @@ async function sharePdf(){
         const totalFee = pbs.reduce((sum,b)=>sum+bookingTotal(b),0);
         return (
           <Modal onClose={closeDetail} wide>
-            <h3 style={{ marginTop:0, color:C.text }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
+            <h3 style={{ marginTop:0, color:C.text, paddingRight:48 }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>촬영일</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{fmtDate(pbs[0]?.shoot_date)}</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{pbs.length}명</p></div>
@@ -2280,12 +2285,8 @@ async function sharePdf(){
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12, paddingRight:48 }}>
+          <div style={{ marginBottom:12, paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text, fontSize:16 }}><Coins size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
-            <button onClick={()=>openDetail("booking", selectedSettlement.id)}
-              style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-              <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
-            </button>
           </div>
           {(()=>{
             const mh = models.find(m=>m.id===selectedSettlement.model_id);
@@ -2508,6 +2509,7 @@ async function sharePdf(){
             <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 전체 입금완료 (매출 인정) <span style={{ fontWeight:500, color:C.muted }}>· 잔금 입금완료 시 자동 체크</span></span>
           </label>
           <div style={{ display:"flex", gap:10 }}>
+            <button onClick={()=>openDetail("booking", selectedSettlement.id)} style={{ ...btnS(C.blue), flex:isMobile?1:"0 0 auto", whiteSpace:"nowrap" }}><Folder size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세 보기 →</button>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
           </div>
         </Modal>
@@ -2516,7 +2518,7 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:48 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:88 }}>
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
@@ -2532,12 +2534,8 @@ async function sharePdf(){
                 })()}
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
-              <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
-              <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
-              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
-            </div>
           </div>
+          <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
@@ -2631,13 +2629,17 @@ async function sharePdf(){
             </div>
             );
           })()}
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:isMobile?1:"0 0 auto" }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
+            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
+          </div>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:48 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:88 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
@@ -2646,8 +2648,8 @@ async function sharePdf(){
               </div>
               <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedCustomer.id}</p>
             </div>
-            <button onClick={()=>openEditCustomer(selectedCustomer)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
           </div>
+          <button type="button" onClick={()=>openEditCustomer(selectedCustomer)} aria-label="정보 수정" title="정보 수정" style={{ position:"absolute", top:10, right:50, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["대표자 (성명)", selectedCustomer.rep_name],
@@ -2743,12 +2745,6 @@ async function sharePdf(){
         <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8, flexWrap:"wrap", paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
-            {mEditMode&&selectedModel&&(
-              <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.blue}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
-                <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.purple}`, background:"transparent", color:C.purple, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Camera size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 스튜디오</button>
-              </div>
-            )}
           </div>
           {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedModel?.id}</p>}
 
@@ -2986,7 +2982,13 @@ async function sharePdf(){
 
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5, marginTop:4 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />
-          <div style={{ display:"flex", gap:10 }}>
+          {mEditMode&&selectedModel&&(
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+              <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 스튜디오</button>
+            </div>
+          )}
+          <div style={{ display:"flex", gap:10, marginTop:10 }}>
             {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
             <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
           </div>
