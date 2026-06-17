@@ -598,10 +598,11 @@ export default function App() {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
     if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mIsForeign;
+    if (isFgn && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -627,10 +628,11 @@ export default function App() {
   };
 
   const [modelBaseline, setModelBaseline] = useState("");
-  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers }); };
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers }); };
   useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
+    if (mIsForeign && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
     const updated = buildModelData();
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
@@ -1194,6 +1196,29 @@ export default function App() {
   const openCustomerFresh   = (c:any)   => { setModalStack([]); setSelectedCustomer(c); };
   const openProjectFresh    = (pid:string) => { setModalStack([]); setSelectedProjectId(pid); };
   const openSettlementFresh = (b:any)   => { setModalStack([]); openSettlement(b); };
+
+  // ── 브라우저 앞/뒤(뒤로가기) 버튼 → 앱 내 페이지 이동 + 상세 모달 닫기 ──
+  const navPopRef = useRef(false);
+  useEffect(() => {
+    if (navPopRef.current) { navPopRef.current = false; return; }
+    try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+  }, [page]);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const detail = currentDetail();
+      const anyModal = !!detail || showModelForm || mEditMode || showCustomerForm || cEditMode || showProjectForm || showBookingForm || showAddPicker || showMemberForm || showMoreMenu || showStatement || showForeignModal || !!compModel || !!bulkEntity;
+      if (anyModal) {
+        if (detail) closeDetail();
+        try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+        return;
+      }
+      const st = e.state as { modiqPage?: Page } | null;
+      navPopRef.current = true;
+      setPage(st && st.modiqPage ? st.modiqPage : "dashboard");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [page, selectedBooking, selectedSettlement, selectedModel, selectedCustomer, selectedProjectId, showModelForm, mEditMode, showCustomerForm, cEditMode, showProjectForm, showBookingForm, showAddPicker, showMemberForm, showMoreMenu, showStatement, showForeignModal, compModel, bulkEntity]);
 
   // ── 섭외 명세서(바우처) 발급: 인쇄/PDF용 새 창 ──
   const issueVoucher = (b: any) => {
