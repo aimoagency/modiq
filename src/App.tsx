@@ -1628,7 +1628,7 @@ async function sharePdf(){
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
     { target:"models"     as Page, label:"모델",     icon:User },
-    { target:"studio"     as Page, label:"스튜디오", icon:Camera },
+    { target:"studio"     as Page, label:"포트폴리오", icon:Camera },
     { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
@@ -2245,7 +2245,7 @@ async function sharePdf(){
         <Modal onClose={()=>setShowMoreMenu(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>메뉴</h3>
           {([
-            { t:"studio" as Page, l:"스튜디오", I:Camera },
+            { t:"studio" as Page, l:"포트폴리오", I:Camera },
             { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
@@ -2661,7 +2661,7 @@ async function sharePdf(){
             );
           })()}
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
-            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:isMobile?1:"0 0 auto" }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
+            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"포트폴리오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:isMobile?1:"0 0 auto" }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
             <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
           </div>
         </Modal>
@@ -3016,7 +3016,7 @@ async function sharePdf(){
           {mEditMode&&selectedModel&&(
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
               <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
-              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 스튜디오</button>
+              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 포트폴리오</button>
             </div>
           )}
           <div style={{ display:"flex", gap:10, marginTop:10 }}>

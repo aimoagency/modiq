@@ -158,7 +158,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
           <span style={{ fontSize: 12, color: "#9aa2af" }}>{slots.filter(Boolean).length}/5</span>
         </div>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
-          {gallery.length === 0 && <span style={{ color: "#9aa2af", fontSize: 13 }}>이 모델은 등록된 사진이 없습니다. 스튜디오에서 먼저 사진을 올려주세요.</span>}
+          {gallery.length === 0 && <span style={{ color: "#9aa2af", fontSize: 13 }}>이 모델은 등록된 사진이 없습니다. 포트폴리오에서 먼저 사진을 올려주세요.</span>}
           {gallery.map((p, i) => {
             const used = slots.includes(p);
             return (
