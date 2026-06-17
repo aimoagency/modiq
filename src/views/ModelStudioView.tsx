@@ -82,6 +82,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
   const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
+  const [thumbsDone, setThumbsDone] = useState(false); // 썸네일 일괄생성 완료(기기 기억 → 버튼 숨김)
+  useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
 
   // ── 기존 base64 사진 → Storage 이전 (1회용, 멱등) ──
   // photos를 먼저 업로드해 base64→URL 매핑을 만들고, liked_photos는 같은 URL로 치환(순서/좋아요 유지)
@@ -138,7 +140,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
     }
     setThumbing(false);
-    alert(`썸네일 ${made}장 생성 완료. 새로고침하면 갤러리 로딩이 빨라집니다.`);
+    if (made > 0) { setThumbsDone(true); try { localStorage.setItem("modiq_thumbs_" + (agency?.id || ""), "1"); } catch {} }
+    alert(`썸네일 ${made}장 생성 완료.${made > 0 ? " 이 버튼은 이제 사라집니다." : ""}`);
   };
 
   const filtered = useMemo(() => {
@@ -350,7 +353,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               {migrating ? "이전 중…" : `⚡ 사진 ${base64Count}장 저장소로 이전`}
             </button>
           )}
-          {storagePhotoCount > 0 && (
+          {storagePhotoCount > 0 && !thumbsDone && (
             <button onClick={genAllThumbs} disabled={thumbing}
               title="기존 사진의 작은 썸네일을 만들어 갤러리 로딩 속도와 데이터 사용량(egress)을 줄입니다"
               style={{ ...btnS(C.purple, thumbing), fontSize: 12, whiteSpace: "nowrap" }}>
