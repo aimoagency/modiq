@@ -53,6 +53,11 @@ export const sb = async (table: string, method = "GET", body: any = null, query 
 // base64를 DB에 저장하던 방식 → Storage에 업로드하고 DB엔 URL만 저장(조회 용량 대폭 감소)
 export const STORAGE_BUCKET = "model-photos";
 
+// 원본 Storage 사진 URL → 썸네일 URL(_thumb). 업로드 때 함께 저장. 비-Storage(base64 등)는 그대로.
+export const thumbUrl = (url: string) => (typeof url === "string" && url.includes("/object/public/") && /\.jpe?g(\?.*)?$/i.test(url))
+  ? url.replace(/(\.jpe?g)(\?.*)?$/i, "_thumb$1$2")
+  : url;
+
 // data:URL 문자열 → Blob (업로드용)
 export const dataURLtoBlob = (dataURL: string): Blob => {
   const [head, b64] = dataURL.split(",");

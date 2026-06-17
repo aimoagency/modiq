@@ -3,7 +3,7 @@
 //  · 로그인 불필요. anon 키 + RLS(is_public=true) 로 share_token 조회.
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useState } from "react";
-import { sb } from "../lib/supabase";
+import { sb, thumbUrl } from "../lib/supabase";
 import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf, compCardInnerHtml } from "../lib/packages";
 
 export default function PackagePublicView({ token, pkg: pkgProp }: { token?: string; pkg?: Pkg }) {
@@ -70,7 +70,7 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
       <div style={{ border: "1px solid #e6e9ef", borderRadius: 10, overflow: "hidden", background: "#fafbfc", ...(isComp ? {} : { flex: "1 1 230px", maxWidth: 320, minWidth: 0 }) }}>
         <div onClick={() => all.length && setGallery(it)} style={{ aspectRatio: "3/4", background: "#e9edf2", overflow: "hidden", cursor: all.length ? "pointer" : "default", position: "relative" }}>
           {cover
-            ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <img src={thumbUrl(cover)} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#aeb4bf", fontSize: 12 }}>사진 없음</div>}
           {all.length > 1 && <span style={{ position: "absolute", bottom: 6, right: 6, background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>＋{all.length}장 보기</span>}
         </div>
@@ -154,7 +154,7 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 10 }}>
                   {gph.map((p, i) => (
                     <div key={i} onClick={() => setZoom({ photos: gph, idx: i })} style={{ aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", cursor: "zoom-in", background: "#22263a" }}>
-                      <img src={p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      <img src={thumbUrl(p)} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     </div>
                   ))}
                 </div>

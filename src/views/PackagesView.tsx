@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
-import { sb } from "../lib/supabase";
+import { sb, thumbUrl } from "../lib/supabase";
 import {
   type Pkg, type PackageItem, type PackageLayout,
   genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow, sizeLine,
@@ -310,7 +310,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8 }}>
                 {it.photos.map((p, pi) => (
                   <div key={pi} style={{ position: "relative", aspectRatio: "3/4" }}>
-                    <img src={p} alt="" onClick={() => setZoom({ photos: it.photos, idx: pi })} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}`, cursor: "zoom-in", display: "block" }} />
+                    <img src={thumbUrl(p)} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} alt="" onClick={() => setZoom({ photos: it.photos, idx: pi })} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6, border: `1px solid ${C.border}`, cursor: "zoom-in", display: "block" }} />
                     <span onClick={() => removePhoto(idx, pi)} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
                   </div>
                 ))}
