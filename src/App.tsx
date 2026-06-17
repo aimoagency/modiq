@@ -142,6 +142,7 @@ export default function App() {
   const [addPrefill,       setAddPrefill]       = useState<{date?:string; model?:string}>({});
   const [showProjectForm,  setShowProjectForm]  = useState(false);
   const [editingBooking,   setEditingBooking]   = useState(false); // 섭외 상세 편집 모드
+  const [bookingBaseline, setBookingBaseline] = useState(""); // 섭외 편집 시작 스냅샷(변경감지)
 
   // ── 프로젝트 폼 state ──
   const [pName,       setPName]       = useState("");
@@ -625,10 +626,12 @@ export default function App() {
     setMEditMode(true);
   };
 
+  const [modelBaseline, setModelBaseline] = useState("");
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers }); };
+  useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
-    const isFgn = mIsForeign;
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
+    const updated = buildModelData();
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -716,11 +719,14 @@ export default function App() {
     setCEditMode(true);
   };
 
+  const [customerBaseline, setCustomerBaseline] = useState("");
+  const buildCustomerData = () => { const bn = cBizNo.replace(/[^0-9]/g,""); return ({ name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory }); };
+  useEffect(() => { if (showCustomerForm || cEditMode) setCustomerBaseline(JSON.stringify(buildCustomerData())); }, [showCustomerForm, cEditMode, selectedCustomer?.id]);
   const handleSaveCustomer = async () => {
     if (!cName) return alert("고객사명 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory };
+    const updated = buildCustomerData();
     try {
       await sb("customers","PATCH",updated,`?id=eq.${selectedCustomer.id}`);
       setCustomers(customers.map(c => c.id===selectedCustomer.id ? {...c,...updated} : c));
@@ -1743,7 +1749,7 @@ async function sharePdf(){
           <div style={{ marginBottom:14, paddingRight:isMobile?108:88 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
           </div>
-          {!editingBooking&&<button type="button" onClick={()=>setEditingBooking(true)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>}
+          {!editingBooking&&<button type="button" onClick={()=>{ setBookingBaseline(JSON.stringify(selectedBooking)); setEditingBooking(true); }} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>}
 
           {/* 일정 보내기 선택창 */}
           {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
@@ -2180,7 +2186,7 @@ async function sharePdf(){
                       {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     </>
                   : <>
-                      <button onClick={handleSaveBookingEdit} style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Save size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
+                      <button onClick={handleSaveBookingEdit} disabled={JSON.stringify(selectedBooking)===bookingBaseline} style={{ ...btnS(C.green, JSON.stringify(selectedBooking)===bookingBaseline), fontSize:13, flex:1 }}><Save size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
                       <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:13, flex:1 }}>취소</button>
                     </>
                 }
@@ -2737,7 +2743,7 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
-            <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
+            <button onClick={handleSaveCustomer} disabled={JSON.stringify(buildCustomerData())===customerBaseline} style={{ ...btnS(C.green, JSON.stringify(buildCustomerData())===customerBaseline), flex:1 }}>저장</button>
           </div>
         </Modal>
       )}
@@ -2990,7 +2996,7 @@ async function sharePdf(){
           )}
           <div style={{ display:"flex", gap:10, marginTop:10 }}>
             {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
-            <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
+            <button onClick={mEditMode?handleSaveModel:handleAddModel} disabled={mEditMode && JSON.stringify(buildModelData())===modelBaseline} style={{ ...btnS(C.green, mEditMode && JSON.stringify(buildModelData())===modelBaseline), flex:1 }}>{mEditMode?"저장":"추가"}</button>
           </div>
         </Modal>
       )}
