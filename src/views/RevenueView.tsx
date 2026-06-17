@@ -115,9 +115,9 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
         {sel && <button onClick={()=>setSel(null)} style={{ padding:"4px 12px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer" }}>✕ 전체 보기</button>}
       </div>
       {listed.length===0 ? <p style={{ color:C.muted }}>이 기간에 매출이 없습니다.</p> : (
-        <div style={{ display:"grid", gap:6 }}>
+        <div style={{ display:"grid", gap:6, gridTemplateColumns:"minmax(0,1fr)" }}>
           {listed.map(b=>(
-            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                   <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
