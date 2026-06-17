@@ -59,6 +59,12 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
                 {c.manager_name&&<span><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
                 <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.customer_id===c.id).length}건 →</span>
               </div>
+              {(c.phone||c.email)&&(
+                <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub, marginTop:3 }}>
+                  {c.phone&&<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", whiteSpace:"nowrap", flexShrink:0 }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>}
+                  {c.email&&<span style={{ color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</span>}
+                </div>
+              )}
             </div>
             ) : (
             <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, transition:"border-color 0.2s" }}
