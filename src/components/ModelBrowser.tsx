@@ -8,6 +8,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
 import { GENDERS, MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
+import { thumbUrl } from "../lib/supabase";
 
 // 범위 기본값(프리필) — 변경 안 하면 이 값 기준, 단 값 미입력 모델은 통과
 const DEF = { ageMin: "1", ageMax: "99", hMin: "100", hMax: "200", shMin: "180", shMax: "310", feeMin: "0", feeMax: "500" };
@@ -139,7 +140,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
           return (
             <div key={m.id} onClick={() => { if (multi && added) return; onSelect(m); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "18" : C.card, cursor: multi && added ? "default" : "pointer", opacity: multi && added ? 0.5 : 1 }}>
               {cover
-                ? <img src={cover} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                ? <img src={thumbUrl(cover)} alt="" width={32} height={32} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 : <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{(m.name || "?")[0]}</div>}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name || "?"}</div>
