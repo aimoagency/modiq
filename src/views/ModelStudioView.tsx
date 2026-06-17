@@ -370,7 +370,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: isMobile ? "stretch" : "flex-start" }}>
         <ModelBrowser models={models} isMobile={isMobile} onSelect={(m: any) => setSelId(m.id)} selectedId={selId || undefined} />
 
         {/* 우측: 선택 모델 프로필 + 사진 */}
