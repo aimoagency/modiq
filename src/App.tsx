@@ -1796,7 +1796,7 @@ async function sharePdf(){
           ); })()}
 
           {/* 상태 (보기=배지 / 편집=선택) */}
-          <div style={{ marginBottom:16 }}>
+          <div style={{ marginTop:12, marginBottom:16 }}>
             {!editingBooking
               ? (()=>{ const bt=BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return (
                   <span style={{ display:"inline-flex", alignItems:"center", gap:8 }}>
@@ -1812,7 +1812,7 @@ async function sharePdf(){
           {/* 조회 모드 */}
           {!editingBooking ? (
             <>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
                 {/* 모델 (클릭 → 모델 상세) */}
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p>
@@ -2741,7 +2741,7 @@ async function sharePdf(){
       )}
       {(showModelForm||mEditMode)&&(
         <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8, flexWrap:"wrap", paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
             {mEditMode&&selectedModel&&(
               <div style={{ display:"flex", gap:6, flexShrink:0 }}>
