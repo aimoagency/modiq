@@ -2207,8 +2207,8 @@ async function sharePdf(){
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
                 {!editingBooking
                   ? <>
-                      {canSend&&<button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
-                      {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
+                      {canSend&&<button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
+                      {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     </>
                   : <>
                       <button onClick={handleSaveBookingEdit} disabled={JSON.stringify(selectedBooking)===bookingBaseline} style={{ ...btnS(C.green, JSON.stringify(selectedBooking)===bookingBaseline), fontSize:13, flex:1 }}><Save size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
@@ -3015,13 +3015,13 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />
           {mEditMode&&selectedModel&&(
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
-              <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
-              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:isMobile?1:"0 0 auto" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 포트폴리오</button>
+              <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:1 }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 포트폴리오</button>
             </div>
           )}
           <div style={{ display:"flex", gap:10, marginTop:10 }}>
-            {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
             <button onClick={mEditMode?handleSaveModel:handleAddModel} disabled={mEditMode && JSON.stringify(buildModelData())===modelBaseline} style={{ ...btnS(C.green, mEditMode && JSON.stringify(buildModelData())===modelBaseline), flex:1 }}>{mEditMode?"저장":"추가"}</button>
+            {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
           </div>
         </Modal>
       )}
