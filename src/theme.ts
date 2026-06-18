@@ -11,7 +11,7 @@ export const C = {
 };
 
 export const inp: CSSProperties = {
-  width:"100%", padding:"9px 12px", background:"var(--c-card2)",
+  width:"100%", minWidth:0, padding:"9px 12px", background:"var(--c-card2)",
   border:`1px solid ${C.border}`, borderRadius:6, color:C.text,
   fontSize:13, boxSizing:"border-box" as const, marginBottom:10,
 };
