@@ -86,9 +86,11 @@ function PageLoading() {
 export default function App() {
 
   const [authMode,    setAuthMode]    = useState<AuthMode>("login");
-  const [session,     setSession]     = useState<any>(null);
-  const [agency,      setAgency]      = useState<any>(null);
-  const [myRole,      setMyRole]      = useState<"owner"|"member">("member");
+  // 첫 렌더부터 저장된 세션을 동기적으로 복원 → 로그인 화면 깜빡임 없이 즉시 대시보드 표시(토큰 검증은 백그라운드)
+  const _savedSession = (() => { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); return s?.tokens?.refresh_token ? s : null; } catch { return null; } })();
+  const [session,     setSession]     = useState<any>(_savedSession?.user || null);
+  const [agency,      setAgency]      = useState<any>(_savedSession?.agencyData || null);
+  const [myRole,      setMyRole]      = useState<"owner"|"member">(_savedSession?.role || "member");
   const [email,       setEmail]       = useState("");
   const [password,    setPassword]    = useState("");
   const [agencyName,  setAgencyName]  = useState("");
@@ -2789,8 +2791,8 @@ async function sharePdf(){
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
             <button onClick={handleSaveCustomer} disabled={JSON.stringify(buildCustomerData())===customerBaseline} style={{ ...btnS(C.green, JSON.stringify(buildCustomerData())===customerBaseline), flex:1 }}>저장</button>
+            <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
           </div>
         </Modal>
       )}

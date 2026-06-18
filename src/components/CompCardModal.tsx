@@ -4,7 +4,7 @@
 //  · 슬롯끼리 드래그 → 위치 교체 / 갤러리에서 슬롯으로 드래그 → 배치
 //  · 슬롯 클릭 → 비우기 · PDF 다운로드(A4 가로)
 // ════════════════════════════════════════════════════════════════
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type { CSSProperties } from "react";
 import { C } from "../theme";
 import CloseButton from "./CloseButton";
@@ -50,6 +50,20 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   });
   const [drag, setDrag] = useState<Drag>(null);
 
+  // A4 가로 고정 크기(px) — 모든 내부 글자·여백은 이 크기 기준으로 디자인.
+  // 화면 폭에 맞춰 카드 전체를 transform:scale로 균일 축소 → 웹/모바일 레이아웃이 동일하게 보임.
+  const BASE_W = 1000, BASE_H = Math.round(1000 * 210 / 297); // 707 (A4 가로 297:210)
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = wrapRef.current; if (!el) return;
+    const update = () => setScale(Math.min(1, el.clientWidth / BASE_W));
+    update();
+    const ro = new ResizeObserver(update); ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => { ro.disconnect(); window.removeEventListener("resize", update); };
+  }, []);
+
   const saveSlots = async () => {
     if (!onSave) return;
     setSavingSlots(true);
@@ -80,7 +94,9 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   const info = useMemo(() => {
     const age = ageFromSSN6(model.ssn6);
     return [
+      // 순서: 이름 → 국적 → 나이 → 신체정보(성별·키·가슴·허리·엉덩이·신발·머리색)
       ["이름(아이디)", model.name || "-"],
+      ["국적", model.country || "-"],
       ["나이", age !== null ? String(age) : "-"],
       ["성별", (model.gender === "F" ? "여성" : model.gender === "M" ? "남성" : "") || "-"],
       ["키 cm", model.height || "-"],
@@ -89,16 +105,17 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
       ["엉덩이 cm", model.hip || "-"],
       ["신발 mm", model.shoe || "-"],
       ["머리색", model.hair_color || "-"],
-      ["국적", model.country || "-"],
     ] as [string, string][];
   }, [model]);
 
   const download = async () => {
     if (!ref.current) return;
     setBusy(true);
-    try { await downloadNodePdf(ref.current, `${model.name || "모델"}_컴카드.pdf`, "l"); }
+    const el = ref.current; const prev = el.style.transform;
+    el.style.transform = "none"; // 캡처 시 원본 A4 크기로(축소 해제)
+    try { await downloadNodePdf(el, `${model.name || "모델"}_컴카드.pdf`, "l"); }
     catch (e) { alert("PDF 생성 실패: " + String(e)); }
-    setBusy(false);
+    finally { el.style.transform = prev; setBusy(false); }
   };
 
   // 슬롯 렌더 (드롭 타깃 + 드래그 소스)
@@ -127,27 +144,29 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1500, padding: 16, overflowY: "auto" }}>
       <CloseButton onClose={onClose} fixed />
-      {/* A4 가로 컴카드 (PDF 캡처 대상) */}
-      <div ref={ref} onClick={e => e.stopPropagation()}
-        style={{ width: "min(92vw, 920px)", aspectRatio: "297 / 210", background: "#fff", display: "flex", flexDirection: "column", padding: 14, boxShadow: "0 8px 40px rgba(0,0,0,.4)", borderRadius: 4 }}>
-        {/* 사진 영역: 왼쪽 메인 + 오른쪽 2×2 */}
-        <div style={{ display: "flex", gap: 6, flex: 1, minHeight: 0 }}>
-          <Slot i={0} style={{ flex: 1.12, borderRadius: 3 }} />
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gridTemplateRows: "minmax(0,1fr) minmax(0,1fr)", gap: 6 }}>
-            <Slot i={1} style={{ borderRadius: 3 }} />
-            <Slot i={2} style={{ borderRadius: 3 }} />
-            <Slot i={3} style={{ borderRadius: 3 }} />
-            <Slot i={4} style={{ borderRadius: 3 }} />
-          </div>
-        </div>
-        {/* 하단 정보 바 */}
-        <div style={{ display: "flex", borderTop: "1px solid #e6e9ef", marginTop: 8, paddingTop: 4 }}>
-          {info.map(([label, val], k) => (
-            <div key={k} style={{ flex: 1, textAlign: "center", padding: "6px 2px", borderLeft: k === 0 ? "none" : "1px solid #f0f2f5" }}>
-              <div style={{ fontSize: "clamp(8px, 1vw, 11px)", color: "#9aa2af", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
-              <div style={{ fontSize: "clamp(11px, 1.4vw, 15px)", fontWeight: 800, color: "#1a1d27", marginTop: 2 }}>{val}</div>
+      {/* A4 가로 컴카드 — 고정 크기 카드를 화면 폭에 맞춰 균일 축소(scale). 웹/모바일 레이아웃 동일 */}
+      <div ref={wrapRef} onClick={e => e.stopPropagation()} style={{ width: "min(92vw, 1000px)", height: BASE_H * scale }}>
+        <div ref={ref}
+          style={{ width: BASE_W, height: BASE_H, transform: `scale(${scale})`, transformOrigin: "top left", background: "#fff", display: "flex", flexDirection: "column", padding: 20, boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,.4)", borderRadius: 6 }}>
+          {/* 사진 영역: 왼쪽 메인 + 오른쪽 2×2 */}
+          <div style={{ display: "flex", gap: 8, flex: 1, minHeight: 0 }}>
+            <Slot i={0} style={{ flex: 1.12, borderRadius: 4 }} />
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gridTemplateRows: "minmax(0,1fr) minmax(0,1fr)", gap: 8 }}>
+              <Slot i={1} style={{ borderRadius: 4 }} />
+              <Slot i={2} style={{ borderRadius: 4 }} />
+              <Slot i={3} style={{ borderRadius: 4 }} />
+              <Slot i={4} style={{ borderRadius: 4 }} />
             </div>
-          ))}
+          </div>
+          {/* 하단 정보 바 — 고정 px(카드와 함께 비례 축소) */}
+          <div style={{ display: "flex", borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 6 }}>
+            {info.map(([label, val], k) => (
+              <div key={k} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderLeft: k === 0 ? "none" : "1px solid #f0f2f5" }}>
+                <div style={{ fontSize: 12, color: "#9aa2af", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1d27", marginTop: 3, whiteSpace: "nowrap" }}>{val}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -179,9 +198,11 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
         <button onClick={async () => {
           if (!ref.current) return;
           setBusy(true);
-          try { await shareNodePng(ref.current, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`); }
+          const el = ref.current; const prev = el.style.transform;
+          el.style.transform = "none";
+          try { await shareNodePng(el, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`); }
           catch (e) { alert("공유 실패: " + String(e)); }
-          setBusy(false);
+          finally { el.style.transform = prev; setBusy(false); }
         }} disabled={busy} style={pill({ disabled: busy })}>
           <Link2 size={15} /> 공유하기
         </button>
