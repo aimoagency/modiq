@@ -89,6 +89,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
+  const [careerOpen, setCareerOpen] = useState(false); // 모델 정보 리스트 경력 펼침
   const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
   const [thumbsDone, setThumbsDone] = useState(false); // 썸네일 일괄생성 완료(기기 기억 → 버튼 숨김)
   useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
@@ -417,6 +418,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                     </div>
                   ))}
                 </div>
+                {/* 경력 — 정보 리스트 맨 아래 펼침 메뉴 */}
+                {sel.career && (
+                  <div style={{ marginTop: 10 }}>
+                    <button type="button" onClick={() => setCareerOpen(v => !v)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "8px 10px", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", color: C.text, fontSize: 12.5, fontWeight: 700 }}>
+                      <span>경력 (작품·활동 이력)</span>
+                      <span style={{ color: C.muted, fontSize: 11 }}>{careerOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+                    </button>
+                    {careerOpen && <div style={{ marginTop: 6, padding: 10, background: C.card2, borderRadius: 8, whiteSpace: "pre-wrap", fontSize: 12.5, color: C.text, lineHeight: 1.6 }}>{sel.career}</div>}
+                  </div>
+                )}
               </div>
 
               {/* 사진 업로드 영역 */}
