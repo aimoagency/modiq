@@ -499,14 +499,12 @@ export default function App() {
       });
     } catch (e) { console.error("로드 실패", e); }
     finally { setSyncing(false); }
-    try {
-      const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
-      setHolidays(h||[]);
-    } catch { setHolidays([]); } // holidays 테이블 미생성 시 무시
-    try {
-      const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
-      setModelOffs(mo||[]);
-    } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    const [hr, mor] = await Promise.allSettled([
+      sb("holidays","GET",null,`?agency_id=eq.${agencyId}`),
+      sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`),
+    ]);
+    setHolidays(hr.status==="fulfilled" ? (hr.value||[]) : []); // 테이블 미생성 시 무시
+    setModelOffs(mor.status==="fulfilled" ? (mor.value||[]) : []); // 테이블 미생성 시 무시
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
@@ -1470,17 +1468,19 @@ async function sharePdf(){
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
   const settlementProjects = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.project_name)s.add(b.project_name)}); return Array.from(s); },[settlementData]);
 
-  const filteredModels    = models.filter(m=>{
-    if (!modelQ.trim()) return true;
+  const filteredModels = useMemo(()=>{
+    if (!modelQ.trim()) return models;
     const q = modelQ.trim().toLowerCase();
-    if (m.name?.toLowerCase().includes(q)||m.phone?.includes(q)||m.email?.toLowerCase().includes(q)) return true;
-    // 섭외 이력(과거+진행중)의 고객사명/브랜드명으로도 검색
-    return bookings.some(b=>{
-      if (b.model_id!==m.id) return false;
-      const c = customers.find(cc=>cc.id===b.customer_id);
-      return !!c&&(c.name?.toLowerCase().includes(q)||c.brand?.toLowerCase().includes(q));
+    const custMap = new Map<string,any>(customers.map(c=>[c.id,c]));
+    const matchedByCustomer = new Set<string>();
+    bookings.forEach(b=>{
+      const c = custMap.get(b.customer_id);
+      if (c&&(c.name?.toLowerCase().includes(q)||c.brand?.toLowerCase().includes(q))) matchedByCustomer.add(b.model_id);
     });
-  });
+    return models.filter(m=>
+      m.name?.toLowerCase().includes(q)||m.phone?.includes(q)||m.email?.toLowerCase().includes(q)||matchedByCustomer.has(m.id)
+    );
+  }, [models, bookings, customers, modelQ]);
   const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
   // 분야 직접입력값을 에이전시 영구 목록(client_categories)에 등록
   const addClientCategory = async (name: string) => {
@@ -1494,26 +1494,29 @@ async function sharePdf(){
       setAgency(updated); saveSession(session, updated, myRole);
     } catch (e) { alert("분야 추가 실패: "+String(e)); }
   };
-  const filteredCustomers = customers.filter(c=>{
-    if (!customerQ.trim()) return true;
+  const filteredCustomers = useMemo(()=>{
+    if (!customerQ.trim()) return customers;
     const q = customerQ.trim().toLowerCase();
-    return c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||c.category?.toLowerCase().includes(q)||c.rep_name?.toLowerCase().includes(q);
-  });
-  const filteredBookings  = bookings.filter(b=>{
-    const mn=models.find(m=>m.id===b.model_id)?.name||"";
-    const cn=customers.find(c=>c.id===b.customer_id)?.name||"";
-    const matchQ=mn.includes(bookingQ)||cn.includes(bookingQ)||(b.project_name||"").includes(bookingQ);
-    const matchSt=bookingStatusF==="ALL"||b.status===bookingStatusF;
-    const matchMg=bookingManagerF==="ALL"||b.manager===bookingManagerF;
-    const matchMo=bookingMonthF==="ALL"||(b.shoot_date||"").startsWith(bookingMonthF);
-    // 취소 건은 기본 숨김 — '취소' 상태를 직접 선택했을 때만 표시
-    const matchCancel = bookingStatusF==="CANCELLED" || b.status!=="CANCELLED";
-    return matchQ&&matchSt&&matchMg&&matchMo&&matchCancel;
-  });
-  const bookingMonths = Array.from(new Set(bookings.filter(b=>b.shoot_date).map(b=>b.shoot_date.slice(0,7)))).sort().reverse();
+    return customers.filter(c=>c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||c.category?.toLowerCase().includes(q)||c.rep_name?.toLowerCase().includes(q));
+  }, [customers, customerQ]);
+  const filteredBookings = useMemo(()=>{
+    const modelNameMap = new Map<string,string>(models.map(m=>[m.id, m.name||""]));
+    const custNameMap  = new Map<string,string>(customers.map(c=>[c.id, c.name||""]));
+    return bookings.filter(b=>{
+      const mn = modelNameMap.get(b.model_id)||"";
+      const cn = custNameMap.get(b.customer_id)||"";
+      const matchQ = mn.includes(bookingQ)||cn.includes(bookingQ)||(b.project_name||"").includes(bookingQ);
+      const matchSt = bookingStatusF==="ALL"||b.status===bookingStatusF;
+      const matchMg = bookingManagerF==="ALL"||b.manager===bookingManagerF;
+      const matchMo = bookingMonthF==="ALL"||(b.shoot_date||"").startsWith(bookingMonthF);
+      const matchCancel = bookingStatusF==="CANCELLED" || b.status!=="CANCELLED";
+      return matchQ&&matchSt&&matchMg&&matchMo&&matchCancel;
+    });
+  }, [bookings, models, customers, bookingQ, bookingStatusF, bookingManagerF, bookingMonthF]);
+  const bookingMonths = useMemo(()=>Array.from(new Set(bookings.filter(b=>b.shoot_date).map(b=>b.shoot_date.slice(0,7)))).sort().reverse(), [bookings]);
 
   const maxMembers  = getTotalMemberLimit(agency?.plan||"trial", agency?.additional_members||0);
-  const memberNames = members.map(m=>m.name);
+  const memberNames = useMemo(()=>members.map(m=>m.name), [members]);
   // 재무(매출·정산) 열람 권한: 현재는 대표만. 추후 member.can_view_finance 추가 예정.
   const myMember = members.find(m=>m.user_id===session?.id);
   const canViewFinance = myRole==="owner" || !!myMember?.can_view_finance;
