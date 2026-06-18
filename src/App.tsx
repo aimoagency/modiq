@@ -510,11 +510,19 @@ export default function App() {
 
   // 패키지(사진) 지연 로딩 — 패키지/스튜디오 페이지 첫 진입 때만 1회 조회
   const packagesLoadedRef = useRef(false);
+  // 목록은 무거운 items(사진)/brand_logo를 제외하고 경량 조회 → 상세는 열 때 지연 로딩(PackagesView.hydrate)
+  const LIGHT_PKG_COLS = "id,agency_id,title,client_name,layout,memo,show_brand,brand_name,share_token,is_public,created_at,item_count";
   const loadPackages = async (agencyId: string) => {
     if (packagesLoadedRef.current) return;
     packagesLoadedRef.current = true;
     try {
-      const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      let pk: any;
+      try {
+        pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc&select=${LIGHT_PKG_COLS}`);
+      } catch {
+        // item_count 컬럼 미생성(package_item_count_setup.sql 미실행) → 전체 조회로 폴백
+        pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      }
       setPackages(pk||[]);
     } catch { setPackages([]); packagesLoadedRef.current = false; } // 실패 시 재시도 허용
   };

@@ -53,6 +53,28 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const [picked, setPicked] = useState<Set<string>>(new Set()); // 검색에서 담을 모델 체크
   const [pickQ, setPickQ] = useState("");
   const [compModel, setCompModel] = useState<any | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null); // 상세 지연 로딩 중인 패키지 id
+
+  // 목록은 무거운 items(사진)/brand_logo를 뺀 경량 조회 → 편집·미리보기·PDF 시 해당 1건만 전체 로딩
+  const hydrate = async (p: Pkg): Promise<Pkg | null> => {
+    if (Array.isArray(p.items)) return p; // 이미 전체 로딩됨(신규 생성·이전 hydrate)
+    if (busyId) return null;              // 중복 클릭 방지
+    try {
+      setBusyId(p.id);
+      const rows = await sb("packages", "GET", null, `?id=eq.${p.id}&select=items,brand_logo`);
+      const full: Pkg = { ...p, items: rows?.[0]?.items || [], brand_logo: rows?.[0]?.brand_logo || "" };
+      setPackages(prev => prev.map(x => x.id === p.id ? full : x)); // 캐시 — 재오픈 즉시
+      return full;
+    } catch (e) {
+      alert("패키지를 불러오지 못했습니다: " + String(e));
+      return null;
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const openPreview = async (p: Pkg) => { const f = await hydrate(p); if (f) setPreview(f); };
+  const openPdf     = async (p: Pkg) => { const f = await hydrate(p); if (f) openPackageWindow(f, agency.name); };
+  const openEdit    = async (p: Pkg) => { const f = await hydrate(p); if (f) startEdit(f); };
 
   const newDraft = (): Pkg => ({
     id: genPkgId(), agency_id: agency.id, title: "", client_name: "",
@@ -178,12 +200,12 @@ export default function PackagesView({ packages, setPackages, models, customers,
           <div style={{ display: "grid", gap: 8 }}>
             {packages.map(p => (
               <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-                <div onClick={() => setPreview(p)} title="클릭하면 고객이 보는 화면으로 미리보기" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer" }}>
+                <div onClick={() => openPreview(p)} title="클릭하면 고객이 보는 화면으로 미리보기" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer", opacity: busyId === p.id ? 0.5 : 1 }}>
                   <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
                   <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
                     {p.layout === "compcard" ? "컴카드" : "제안 패키지"}
                   </span>
-                  <span style={{ fontSize: 12, color: C.muted }}><User size={11} style={{ verticalAlign: -2 }} /> {p.items?.length || 0}명</span>
+                  <span style={{ fontSize: 12, color: C.muted }}><User size={11} style={{ verticalAlign: -2 }} /> {p.item_count ?? p.items?.length ?? 0}명</span>
                   {p.client_name && <span style={{ fontSize: 12, color: C.muted }}><Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</span>}
                   <span style={{ fontSize: 11, color: p.is_public ? C.green : C.muted, marginLeft: isMobile ? 0 : "auto" }}>
                     {p.is_public ? "● 공개" : "○ 비공개"}
@@ -191,8 +213,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
                   <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
-                  <button onClick={() => openPackageWindow({ ...p }, agency.name)} style={btnS(C.purple)}>PDF / 인쇄</button>
-                  <button onClick={() => startEdit(p)} style={{ ...btnS(C.muted) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
+                  <button onClick={() => openPdf(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}>{busyId === p.id ? "여는 중…" : "PDF / 인쇄"}</button>
+                  <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...btnS(C.muted, busyId === p.id) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
                   <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
                   <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
                 </div>
