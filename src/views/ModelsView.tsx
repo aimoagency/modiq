@@ -4,6 +4,7 @@ import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
 import { visaDday, ageFromSSN6 } from "../lib/utils";
 import { User, Phone, Coins, Plane } from "../components/icons";
+import SearchInput from "../components/SearchInput";
 
 export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowModelForm, setSelectedModel, setMEditMode, bookings, isMobile = false, onBulkAdd, legacyIdCount = 0, onMigrateIds }: {
   filteredModels: any[]; modelQ: string; setModelQ: (v:string)=>void;
@@ -30,7 +31,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
           <button onClick={()=>setShowModelForm(true)} style={btnS(C.blue)}>+ 모델 추가</button>
         </div>
       </div>
-      <input style={inp} placeholder="이름·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={e=>setModelQ(e.target.value)} />
+      <SearchInput placeholder="이름·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={setModelQ} />
       <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
         {(["reg","rev"] as const).map(m=>(
           <button key={m} onClick={()=>setSortMode(m)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sortMode===m?C.blue:C.border}`, background:sortMode===m?C.blue+"22":"transparent", color:sortMode===m?C.blue:C.muted, fontSize:12, fontWeight:sortMode===m?700:500, cursor:"pointer" }}>{m==="reg"?"등록순":"매출순"}</button>

@@ -8,6 +8,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
 import { GENDERS, MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
+import SearchInput from "./SearchInput";
 import { thumbUrl } from "../lib/supabase";
 
 // 범위 기본값(프리필) — 변경 안 하면 이 값 기준, 단 값 미입력 모델은 통과
@@ -92,7 +93,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
 
   const filterControls = (
     <div>
-      <input style={{ ...inp, marginBottom: 8 }} placeholder="이름·특기 검색" value={q} onChange={e => setQ(e.target.value)} />
+      <SearchInput placeholder="이름·특기 검색" value={q} onChange={setQ} style={{ marginBottom: 8 }} />
       <p style={{ ...sec, marginTop: 0 }}>성별</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{GENDERS.map(([c, l]) => <span key={c} onClick={() => toggle(genderF, setGenderF, c)} style={chip(genderF.includes(c))}>{l}</span>)}</div>
       <p style={sec}>국적</p>

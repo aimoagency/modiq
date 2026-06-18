@@ -3,6 +3,7 @@ import { C, inp, btnS } from "../theme";
 import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
 import { Building2, User, Phone, Mail } from "../components/icons";
+import SearchInput from "../components/SearchInput";
 
 export default function CustomersView({ filteredCustomers, customerQ, setCustomerQ, setShowCustomerForm, setSelectedCustomer, setCEditMode, bookings, isMobile = false, onBulkAdd }: {
   filteredCustomers: any[]; customerQ: string; setCustomerQ: (v:string)=>void;
@@ -26,7 +27,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
           <button onClick={()=>setShowCustomerForm(true)} style={btnS(C.purple)}>+ 고객사 추가</button>
         </div>
       </div>
-      <input style={inp} placeholder="고객사명·브랜드·전화·담당자·이메일 검색" value={customerQ} onChange={e=>setCustomerQ(e.target.value)} />
+      <SearchInput placeholder="고객사명·브랜드·전화·담당자·이메일 검색" value={customerQ} onChange={setCustomerQ} />
       <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
         {(["reg","rev"] as const).map(m=>(
           <button key={m} onClick={()=>setSortMode(m)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sortMode===m?C.blue:C.border}`, background:sortMode===m?C.blue+"22":"transparent", color:sortMode===m?C.blue:C.muted, fontSize:12, fontWeight:sortMode===m?700:500, cursor:"pointer" }}>{m==="reg"?"등록순":"매출순"}</button>

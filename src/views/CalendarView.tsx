@@ -6,6 +6,7 @@ import Badge from "../components/Badge";
 import Modal from "../components/Modal";
 import TypeIcon from "../components/TypeIcon";
 import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, Plane, AlertTriangle, Flag, Coins } from "../components/icons";
+import SearchInput from "../components/SearchInput";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
 export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", holidays = [], onAddHoliday, onDeleteHoliday, modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
@@ -550,7 +551,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
         <Modal onClose={()=>setShowOffForm(false)}>
           <h3 style={{ marginTop:0, color:C.text }}><CalendarOff size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무 등록</h3>
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델 * <span style={{ color:C.muted, fontWeight:400 }}>(이름 검색 후 선택)</span></label>
-          <input style={inp} type="text" placeholder="모델 이름 검색" value={offModelQ} onChange={e=>{ setOffModelQ(e.target.value); setOffModel(""); }} />
+          <SearchInput placeholder="모델 이름 검색" value={offModelQ} onChange={(v)=>{ setOffModelQ(v); setOffModel(""); }} />
           {offModelQ.trim() && !offModel && (() => { const r = models.filter(m=>(m.name||"").toLowerCase().includes(offModelQ.trim().toLowerCase())); return (
             <div style={{ border:`1px solid ${C.border}`, borderRadius:8, marginTop:-6, marginBottom:10, maxHeight:200, overflowY:"auto" }}>
               {r.length ? r.slice(0,50).map(m=>(

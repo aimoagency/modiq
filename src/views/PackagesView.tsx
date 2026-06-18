@@ -14,6 +14,7 @@ import { useBackClose } from "../lib/backstack";
 import { ageFromSSN6 } from "../lib/utils";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
+import SearchInput from "../components/SearchInput";
 import PackagePublicView from "./PackagePublicView";
 import ModelBrowser from "../components/ModelBrowser";
 
@@ -400,7 +401,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
         <div onClick={() => setModelPick(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, width: "92%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 16, color: C.text }}>모델 선택</h3>
-            <input style={inp} placeholder="이름·카테고리 검색" value={pickQ} onChange={e => setPickQ(e.target.value)} autoFocus />
+            <SearchInput placeholder="이름·카테고리 검색" value={pickQ} onChange={setPickQ} autoFocus />
             <div style={{ overflowY: "auto", display: "grid", gap: 6 }}>
               {pickModels.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>모델이 없습니다.</p>}
               {pickModels.map(m => (
