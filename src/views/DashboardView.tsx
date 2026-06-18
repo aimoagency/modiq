@@ -138,11 +138,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
         { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
       ];
       return (
-        <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":`repeat(${statCards.length},minmax(0,1fr))`, gap:12, marginBottom:16 }}>
+        <div style={{ display:"grid", gridTemplateColumns:`repeat(${statCards.length},minmax(0,1fr))`, gap:isMobile?6:12, marginBottom:16 }}>
           {statCards.map(item=>(
-            <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
-              <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
-              <p style={{ fontSize:24, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
+            <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:isMobile?"10px 8px":"16px 18px" }}>
+              <p style={{ fontSize:isMobile?10:11, color:C.muted, margin:0, lineHeight:1.25, wordBreak:"keep-all" }}>{item.label}</p>
+              <p style={{ fontSize:isMobile?17:24, fontWeight:800, margin:isMobile?"4px 0 0":"6px 0 0", color:item.color }}>{item.value}</p>
             </div>
           ))}
         </div>

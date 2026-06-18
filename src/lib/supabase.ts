@@ -76,6 +76,8 @@ export const sbUpload = async (path: string, blob: Blob, _retry = false): Promis
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
       "Content-Type": blob.type || "image/jpeg",
+      // 업로드 경로가 타임스탬프+랜덤으로 고유(immutable) → 1년 캐시 안전. 재방문 시 썸네일 즉시 로딩
+      "cache-control": "max-age=31536000, immutable",
       "x-upsert": "true",
     },
     body: blob,
