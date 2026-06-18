@@ -3,7 +3,7 @@ import { STATUS, BOOKING_TYPES } from "../constants";
 import { fmtDate, fmtTime, bookingTotal } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
-import { ClipboardList, Calendar, MapPin, User, Coins, Folder } from "../components/icons";
+import { ClipboardList, Calendar, MapPin, User, Coins, Folder, Search } from "../components/icons";
 
 export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, bookingStatusF, setBookingStatusF, bookingManagerF, setBookingManagerF, bookingMonthF, setBookingMonthF, bookingMonths, memberNames, models, customers, openAddPicker, setSelectedBooking, isMobile = false }: {
   filteredBookings: any[]; bookingQ: string; setBookingQ: (v:string)=>void;
@@ -21,16 +21,19 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
         <button onClick={openAddPicker} style={btnS(C.blue)}>+ 섭외 추가</button>
       </div>
       <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"flex", gap:10, flexWrap:"wrap" }}>
-        <input style={{ ...inp, marginBottom:0, flex:"1 1 160px" }} placeholder="모델/고객사/프로젝트 검색" value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 130px" }} value={bookingStatusF} onChange={e=>setBookingStatusF(e.target.value)}>
+        <div style={{ position:"relative", flex:"1 1 140px", minWidth:0 }}>
+          <Search size={15} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", color:C.muted, pointerEvents:"none" }} />
+          <input style={{ ...inp, marginBottom:0, paddingLeft:34 }} placeholder="모델·고객사·프로젝트" value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />
+        </div>
+        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingStatusF} onChange={e=>setBookingStatusF(e.target.value)}>
           <option value="ALL">전체 상태</option>
           {Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
         </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 120px" }} value={bookingManagerF} onChange={e=>setBookingManagerF(e.target.value)}>
+        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingManagerF} onChange={e=>setBookingManagerF(e.target.value)}>
           <option value="ALL">전체 담당자</option>
           {memberNames.map(m=><option key={m} value={m}>{m}</option>)}
         </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 110px" }} value={bookingMonthF} onChange={e=>setBookingMonthF(e.target.value)}>
+        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingMonthF} onChange={e=>setBookingMonthF(e.target.value)}>
           <option value="ALL">전체 월</option>
           {bookingMonths.map(m=><option key={m} value={m}>{m.replace("-",".")}</option>)}
         </select>
