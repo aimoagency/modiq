@@ -67,13 +67,13 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
       {(filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
-        <div style={{ display:"grid", gap:8 }}>
+        <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
           {filteredSettlement.map(b=>{
             const model = models.find((m:any)=>m.id===b.model_id);
             const client = customers.find((c:any)=>c.id===b.customer_id);
             const fee=bookingTotal(b), pay=bookingModelPay(b,models);
             return (
-              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, transition:"border-color 0.2s" }}
+              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, minWidth:0, transition:"border-color 0.2s" }}
                 onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
                 onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
               >

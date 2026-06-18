@@ -50,6 +50,7 @@ import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from
 import { sendCalEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
 import type { Pkg } from "./lib/packages";
+import { useBackClose, topBack } from "./lib/backstack";
 import BulkUploadModal from "./components/BulkUploadModal";
 import CompCardModal from "./components/CompCardModal";
 import SettlementStatementModal from "./components/SettlementStatementModal";
@@ -66,9 +67,9 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   const style = document.getElementById("pretendard-global") || document.createElement("style");
   style.id = "pretendard-global";
   style.textContent = `*, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
-:root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#ffffff; --c-text-sub:#c8ccd8; --c-muted:#6b7280; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
+:root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#f0f2f5; --c-text-sub:#c8ccd8; --c-muted:#9aa1ad; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#737a85; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }`;
+html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#5b626d; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }`;
   if (!document.getElementById("pretendard-global")) document.head.appendChild(style);
 })();
 
@@ -142,6 +143,7 @@ export default function App() {
   const [addPrefill,       setAddPrefill]       = useState<{date?:string; model?:string}>({});
   const [showProjectForm,  setShowProjectForm]  = useState(false);
   const [editingBooking,   setEditingBooking]   = useState(false); // 섭외 상세 편집 모드
+  const [bookingBaseline, setBookingBaseline] = useState(""); // 섭외 편집 시작 스냅샷(변경감지)
 
   // ── 프로젝트 폼 state ──
   const [pName,       setPName]       = useState("");
@@ -498,24 +500,30 @@ export default function App() {
       });
     } catch (e) { console.error("로드 실패", e); }
     finally { setSyncing(false); }
-    try {
-      const h = await sb("holidays","GET",null,`?agency_id=eq.${agencyId}`);
-      setHolidays(h||[]);
-    } catch { setHolidays([]); } // holidays 테이블 미생성 시 무시
-    try {
-      const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
-      setModelOffs(mo||[]);
-    } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    const [hr, mor] = await Promise.allSettled([
+      sb("holidays","GET",null,`?agency_id=eq.${agencyId}`),
+      sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`),
+    ]);
+    setHolidays(hr.status==="fulfilled" ? (hr.value||[]) : []); // 테이블 미생성 시 무시
+    setModelOffs(mor.status==="fulfilled" ? (mor.value||[]) : []); // 테이블 미생성 시 무시
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
   // 패키지(사진) 지연 로딩 — 패키지/스튜디오 페이지 첫 진입 때만 1회 조회
   const packagesLoadedRef = useRef(false);
+  // 목록은 무거운 items(사진)/brand_logo를 제외하고 경량 조회 → 상세는 열 때 지연 로딩(PackagesView.hydrate)
+  const LIGHT_PKG_COLS = "id,agency_id,title,client_name,layout,memo,show_brand,brand_name,share_token,is_public,created_at,item_count";
   const loadPackages = async (agencyId: string) => {
     if (packagesLoadedRef.current) return;
     packagesLoadedRef.current = true;
     try {
-      const pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      let pk: any;
+      try {
+        pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc&select=${LIGHT_PKG_COLS}`);
+      } catch {
+        // item_count 컬럼 미생성(package_item_count_setup.sql 미실행) → 전체 조회로 폴백
+        pk = await sb("packages","GET",null,`?agency_id=eq.${agencyId}&order=created_at.desc`);
+      }
       setPackages(pk||[]);
     } catch { setPackages([]); packagesLoadedRef.current = false; } // 실패 시 재시도 허용
   };
@@ -597,10 +605,11 @@ export default function App() {
     if (!mName||!mSSN) return alert("모델명과 주민번호 앞 6자리 필수");
     if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mIsForeign;
+    if (isFgn && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
@@ -625,10 +634,13 @@ export default function App() {
     setMEditMode(true);
   };
 
+  const [modelBaseline, setModelBaseline] = useState("");
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers }); };
+  useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
-    const isFgn = mIsForeign;
-    const updated = { name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn?mEntry:null, visa_exit:isFgn?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, instagram_followers:mFollowers };
+    if (mIsForeign && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
+    const updated = buildModelData();
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
@@ -716,11 +728,14 @@ export default function App() {
     setCEditMode(true);
   };
 
+  const [customerBaseline, setCustomerBaseline] = useState("");
+  const buildCustomerData = () => { const bn = cBizNo.replace(/[^0-9]/g,""); return ({ name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory }); };
+  useEffect(() => { if (showCustomerForm || cEditMode) setCustomerBaseline(JSON.stringify(buildCustomerData())); }, [showCustomerForm, cEditMode, selectedCustomer?.id]);
   const handleSaveCustomer = async () => {
     if (!cName) return alert("고객사명 필수");
     const bn = cBizNo.replace(/[^0-9]/g,"");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    const updated = { name:cName, brand:cBrand, manager_name:cManager, phone:cPhone, email:cEmail, biz_no:bn, tax_email:cTaxEmail, memo:cMemo, rep_name:cRepName, address:cAddress, biz_type:cBizType, biz_item:cBizItem, category:cCategory };
+    const updated = buildCustomerData();
     try {
       await sb("customers","PATCH",updated,`?id=eq.${selectedCustomer.id}`);
       setCustomers(customers.map(c => c.id===selectedCustomer.id ? {...c,...updated} : c));
@@ -1189,6 +1204,39 @@ export default function App() {
   const openProjectFresh    = (pid:string) => { setModalStack([]); setSelectedProjectId(pid); };
   const openSettlementFresh = (b:any)   => { setModalStack([]); openSettlement(b); };
 
+  // ── 브라우저 앞/뒤(뒤로가기) 버튼 → 앱 내 페이지 이동 + 상세 모달 닫기 ──
+  const navPopRef = useRef(false);
+  useEffect(() => {
+    if (navPopRef.current) { navPopRef.current = false; return; }
+    try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+  }, [page]);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      // (1) 자식/로컬 오버레이(미리보기·라이트박스 등)가 열려 있으면 가장 위부터 닫고 흡수
+      const overlayClose = topBack();
+      if (overlayClose) {
+        overlayClose();
+        try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+        return;
+      }
+      const detail = currentDetail();
+      const anyModal = !!detail || showModelForm || mEditMode || showCustomerForm || cEditMode || showProjectForm || showBookingForm || showAddPicker || showMemberForm || showMoreMenu || showStatement || showForeignModal || !!compModel || !!bulkEntity;
+      if (anyModal) {
+        if (detail) closeDetail();
+        try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+        return;
+      }
+      const st = e.state as { modiqPage?: Page } | null;
+      navPopRef.current = true;
+      setPage(st && st.modiqPage ? st.modiqPage : "dashboard");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [page, selectedBooking, selectedSettlement, selectedModel, selectedCustomer, selectedProjectId, showModelForm, mEditMode, showCustomerForm, cEditMode, showProjectForm, showBookingForm, showAddPicker, showMemberForm, showMoreMenu, showStatement, showForeignModal, compModel, bulkEntity]);
+  // App 로컬 전체화면 오버레이도 뒤로가기로 닫히도록 등록(LIFO)
+  useBackClose(!!lightboxSrc, () => setLightboxSrc(null));
+  useBackClose(showSendMenu, () => setShowSendMenu(false));
+
   // ── 섭외 명세서(바우처) 발급: 인쇄/PDF용 새 창 ──
   const issueVoucher = (b: any) => {
     const model  = models.find((m:any)=>m.id===b.model_id);
@@ -1439,17 +1487,19 @@ async function sharePdf(){
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
   const settlementProjects = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.project_name)s.add(b.project_name)}); return Array.from(s); },[settlementData]);
 
-  const filteredModels    = models.filter(m=>{
-    if (!modelQ.trim()) return true;
+  const filteredModels = useMemo(()=>{
+    if (!modelQ.trim()) return models;
     const q = modelQ.trim().toLowerCase();
-    if (m.name?.toLowerCase().includes(q)||m.phone?.includes(q)||m.email?.toLowerCase().includes(q)) return true;
-    // 섭외 이력(과거+진행중)의 고객사명/브랜드명으로도 검색
-    return bookings.some(b=>{
-      if (b.model_id!==m.id) return false;
-      const c = customers.find(cc=>cc.id===b.customer_id);
-      return !!c&&(c.name?.toLowerCase().includes(q)||c.brand?.toLowerCase().includes(q));
+    const custMap = new Map<string,any>(customers.map(c=>[c.id,c]));
+    const matchedByCustomer = new Set<string>();
+    bookings.forEach(b=>{
+      const c = custMap.get(b.customer_id);
+      if (c&&(c.name?.toLowerCase().includes(q)||c.brand?.toLowerCase().includes(q))) matchedByCustomer.add(b.model_id);
     });
-  });
+    return models.filter(m=>
+      m.name?.toLowerCase().includes(q)||m.phone?.includes(q)||m.email?.toLowerCase().includes(q)||matchedByCustomer.has(m.id)
+    );
+  }, [models, bookings, customers, modelQ]);
   const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
   // 분야 직접입력값을 에이전시 영구 목록(client_categories)에 등록
   const addClientCategory = async (name: string) => {
@@ -1463,26 +1513,29 @@ async function sharePdf(){
       setAgency(updated); saveSession(session, updated, myRole);
     } catch (e) { alert("분야 추가 실패: "+String(e)); }
   };
-  const filteredCustomers = customers.filter(c=>{
-    if (!customerQ.trim()) return true;
+  const filteredCustomers = useMemo(()=>{
+    if (!customerQ.trim()) return customers;
     const q = customerQ.trim().toLowerCase();
-    return c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||c.category?.toLowerCase().includes(q)||c.rep_name?.toLowerCase().includes(q);
-  });
-  const filteredBookings  = bookings.filter(b=>{
-    const mn=models.find(m=>m.id===b.model_id)?.name||"";
-    const cn=customers.find(c=>c.id===b.customer_id)?.name||"";
-    const matchQ=mn.includes(bookingQ)||cn.includes(bookingQ)||(b.project_name||"").includes(bookingQ);
-    const matchSt=bookingStatusF==="ALL"||b.status===bookingStatusF;
-    const matchMg=bookingManagerF==="ALL"||b.manager===bookingManagerF;
-    const matchMo=bookingMonthF==="ALL"||(b.shoot_date||"").startsWith(bookingMonthF);
-    // 취소 건은 기본 숨김 — '취소' 상태를 직접 선택했을 때만 표시
-    const matchCancel = bookingStatusF==="CANCELLED" || b.status!=="CANCELLED";
-    return matchQ&&matchSt&&matchMg&&matchMo&&matchCancel;
-  });
-  const bookingMonths = Array.from(new Set(bookings.filter(b=>b.shoot_date).map(b=>b.shoot_date.slice(0,7)))).sort().reverse();
+    return customers.filter(c=>c.name?.toLowerCase().includes(q)||c.phone?.includes(q)||c.brand?.toLowerCase().includes(q)||c.manager_name?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||c.category?.toLowerCase().includes(q)||c.rep_name?.toLowerCase().includes(q));
+  }, [customers, customerQ]);
+  const filteredBookings = useMemo(()=>{
+    const modelNameMap = new Map<string,string>(models.map(m=>[m.id, m.name||""]));
+    const custNameMap  = new Map<string,string>(customers.map(c=>[c.id, c.name||""]));
+    return bookings.filter(b=>{
+      const mn = modelNameMap.get(b.model_id)||"";
+      const cn = custNameMap.get(b.customer_id)||"";
+      const matchQ = mn.includes(bookingQ)||cn.includes(bookingQ)||(b.project_name||"").includes(bookingQ);
+      const matchSt = bookingStatusF==="ALL"||b.status===bookingStatusF;
+      const matchMg = bookingManagerF==="ALL"||b.manager===bookingManagerF;
+      const matchMo = bookingMonthF==="ALL"||(b.shoot_date||"").startsWith(bookingMonthF);
+      const matchCancel = bookingStatusF==="CANCELLED" || b.status!=="CANCELLED";
+      return matchQ&&matchSt&&matchMg&&matchMo&&matchCancel;
+    });
+  }, [bookings, models, customers, bookingQ, bookingStatusF, bookingManagerF, bookingMonthF]);
+  const bookingMonths = useMemo(()=>Array.from(new Set(bookings.filter(b=>b.shoot_date).map(b=>b.shoot_date.slice(0,7)))).sort().reverse(), [bookings]);
 
   const maxMembers  = getTotalMemberLimit(agency?.plan||"trial", agency?.additional_members||0);
-  const memberNames = members.map(m=>m.name);
+  const memberNames = useMemo(()=>members.map(m=>m.name), [members]);
   // 재무(매출·정산) 열람 권한: 현재는 대표만. 추후 member.can_view_finance 추가 예정.
   const myMember = members.find(m=>m.user_id===session?.id);
   const canViewFinance = myRole==="owner" || !!myMember?.can_view_finance;
@@ -1597,7 +1650,7 @@ async function sharePdf(){
     { target:"calendar"   as Page, label:"캘린더",   icon:CalendarCheck },
     { target:"bookings"   as Page, label:"섭외",     icon:ClipboardCheck },
     { target:"models"     as Page, label:"모델",     icon:User },
-    { target:"studio"     as Page, label:"스튜디오", icon:Camera },
+    { target:"studio"     as Page, label:"포트폴리오", icon:Camera },
     { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
     ...(canViewFinance?[
@@ -1717,7 +1770,7 @@ async function sharePdf(){
 
         {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
 
-        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} />}
+        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} onEditModel={openEditModel} />}
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
@@ -1740,25 +1793,10 @@ async function sharePdf(){
       {selectedBooking&&(
         <Modal onClose={closeDetail} wide>
           {/* 헤더 */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10, paddingRight:48 }}>
-            <div style={{ minWidth:0 }}>
+          <div style={{ marginBottom:14, paddingRight:isMobile?108:88 }}>
             <h3 style={{ margin:0, color:C.text }}><ClipboardList size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세</h3>
-            </div>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {!editingBooking
-                ? <>
-                    {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&selectedBooking.shoot_date&&
-                      <button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
-                    {BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:12 }}><ClipboardList size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
-                    <button onClick={()=>setEditingBooking(true)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
-                  </>
-                : <>
-                    <button onClick={handleSaveBookingEdit} style={{ ...btnS(C.green), fontSize:12 }}><Save size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
-                    <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:12 }}>취소</button>
-                  </>
-              }
-            </div>
           </div>
+          {!editingBooking&&<button type="button" onClick={()=>{ setBookingBaseline(JSON.stringify(selectedBooking)); setEditingBooking(true); }} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>}
 
           {/* 일정 보내기 선택창 */}
           {showSendMenu&&(()=>{ const m=models.find(x=>x.id===selectedBooking.model_id); const hasEmail=!!m?.email; const synced=!!selectedBooking.gcal_event_id; return (
@@ -1796,7 +1834,7 @@ async function sharePdf(){
           ); })()}
 
           {/* 상태 (보기=배지 / 편집=선택) */}
-          <div style={{ marginBottom:16 }}>
+          <div style={{ marginTop:12, marginBottom:16 }}>
             {!editingBooking
               ? (()=>{ const bt=BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return (
                   <span style={{ display:"inline-flex", alignItems:"center", gap:8 }}>
@@ -1812,7 +1850,7 @@ async function sharePdf(){
           {/* 조회 모드 */}
           {!editingBooking ? (
             <>
-              <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
                 {/* 모델 (클릭 → 모델 상세) */}
                 <div>
                   <p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p>
@@ -2092,14 +2130,14 @@ async function sharePdf(){
               const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료율 ${pay.value||0}%`;
               return (
               <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span style={{ color:C.muted, fontSize:12 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                  <span style={{ color:C.muted, fontSize:12, flex:1, minWidth:0 }}>
                     모델 정산액
                     <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:sess==="half"?C.purple+"22":C.blue+"22", color:sess==="half"?C.purple:C.blue, fontSize:10, fontWeight:700 }}>{sessionLabel(selectedBooking)}</span>
                     <span style={{ marginLeft:6, padding:"1px 7px", borderRadius:10, background:C.green+"22", color:C.green, fontSize:10, fontWeight:700 }}>{rateTxt}</span>
                     <span style={{ marginLeft:6 }}>({taxTxt}{overchargeTotal(selectedBooking)>0?", 추가금 포함":""}{ovr?", 건별 수정":""})</span>
                   </span>
-                  <span style={{ color:"#c9a96e", fontWeight:800 }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
+                  <span style={{ color:"#c9a96e", fontWeight:800, flexShrink:0, whiteSpace:"nowrap" }}>{bookingModelPay(selectedBooking, models).toLocaleString()}원</span>
                 </div>
                 {/* 모델료(세션) · 매출총이익 */}
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6, paddingTop:6, borderTop:`1px solid ${C.border}` }}>
@@ -2182,6 +2220,26 @@ async function sharePdf(){
               </a>
             </div>
           )}
+          {/* 하단 작업 바 (개선2: 상태/내용과 분리) */}
+          {(()=>{
+            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date;
+            const canVoucher=!!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status);
+            if(!editingBooking && !canSend && !canVoucher) return null;
+            return (
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+                {!editingBooking
+                  ? <>
+                      {canSend&&<button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
+                      {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
+                    </>
+                  : <>
+                      <button onClick={handleSaveBookingEdit} disabled={JSON.stringify(selectedBooking)===bookingBaseline} style={{ ...btnS(C.green, JSON.stringify(selectedBooking)===bookingBaseline), fontSize:13, flex:1 }}><Save size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 저장</button>
+                      <button onClick={()=>setEditingBooking(false)} style={{ ...btnS("#555"), fontSize:13, flex:1 }}>취소</button>
+                    </>
+                }
+              </div>
+            );
+          })()}
         </Modal>
       )}
 
@@ -2209,7 +2267,7 @@ async function sharePdf(){
         <Modal onClose={()=>setShowMoreMenu(false)}>
           <h3 style={{ marginTop:0, color:C.text }}>메뉴</h3>
           {([
-            { t:"studio" as Page, l:"스튜디오", I:Camera },
+            { t:"studio" as Page, l:"포트폴리오", I:Camera },
             { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
@@ -2242,7 +2300,7 @@ async function sharePdf(){
         const totalFee = pbs.reduce((sum,b)=>sum+bookingTotal(b),0);
         return (
           <Modal onClose={closeDetail} wide>
-            <h3 style={{ marginTop:0, color:C.text }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
+            <h3 style={{ marginTop:0, color:C.text, paddingRight:48 }}><FolderOpen size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||pbs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>· {client?.name||"?"}</span></h3>
             <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:12, marginBottom:14 }}>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>촬영일</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{fmtDate(pbs[0]?.shoot_date)}</p></div>
               <div><p style={{ margin:0, fontSize:12, color:C.muted }}>모델</p><p style={{ margin:"3px 0 0", fontSize:13, fontWeight:700, color:C.text }}>{pbs.length}명</p></div>
@@ -2280,12 +2338,8 @@ async function sharePdf(){
       {/* ════ 모달: 정산 상세 ════ */}
       {selectedSettlement&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12, paddingRight:48 }}>
+          <div style={{ marginBottom:12, paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text, fontSize:16 }}><Coins size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 정산 상세</h3>
-            <button onClick={()=>openDetail("booking", selectedSettlement.id)}
-              style={{ flexShrink:0, display:"inline-flex", alignItems:"center", gap:5, background:C.blue+"18", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-              <Folder size={12} style={{ flexShrink:0 }}/> 섭외 상세 보기 →
-            </button>
           </div>
           {(()=>{
             const mh = models.find(m=>m.id===selectedSettlement.model_id);
@@ -2508,6 +2562,7 @@ async function sharePdf(){
             <span style={{ fontSize:12, fontWeight:700, color:editPaid?C.blue:C.textSub, lineHeight:1.3 }}>고객사 전체 입금완료 (매출 인정) <span style={{ fontWeight:500, color:C.muted }}>· 잔금 입금완료 시 자동 체크</span></span>
           </label>
           <div style={{ display:"flex", gap:10 }}>
+            <button onClick={()=>openDetail("booking", selectedSettlement.id)} style={{ ...btnS(C.blue), flex:isMobile?1:"0 0 auto", whiteSpace:"nowrap" }}><Folder size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 상세 보기 →</button>
             <button onClick={handleSaveSettlement} style={{ ...btnS(C.green), flex:1 }}>저장</button>
           </div>
         </Modal>
@@ -2516,7 +2571,7 @@ async function sharePdf(){
       {/* ════ 모달: 모델 상세 ════ */}
       {selectedModel&&!mEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:48 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, marginBottom:20, flexWrap:"wrap", paddingRight:isMobile?108:88 }}>
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
@@ -2532,12 +2587,8 @@ async function sharePdf(){
                 })()}
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
-              <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"스튜디오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:12 }}><CardCheck size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
-              <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:12 }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더 보기</button>
-              <button onClick={()=>openEditModel(selectedModel)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 수정</button>
-            </div>
           </div>
+          <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
@@ -2631,13 +2682,17 @@ async function sharePdf(){
             </div>
             );
           })()}
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+            <button onClick={()=>setCompModel(selectedModel)} disabled={!(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)} title={Array.isArray(selectedModel.photos)&&selectedModel.photos.length?"컴카드 만들기":"포트폴리오에서 사진을 먼저 등록하세요"} style={{ ...btnS(C.green, !(Array.isArray(selectedModel.photos)&&selectedModel.photos.length)), fontSize:13, flex:1 }}><CardCheck size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 컴카드</button>
+            <button onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setSelectedModel(null); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+          </div>
         </Modal>
       )}
 
       {/* ════ 모달: 고객사 상세 ════ */}
       {selectedCustomer&&!cEditMode&&(
         <Modal onClose={closeDetail} wide>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:48 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, paddingRight:isMobile?108:88 }}>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedCustomer.name}</h2>
@@ -2646,8 +2701,8 @@ async function sharePdf(){
               </div>
               <p style={{ margin:"4px 0 0", fontSize:12, color:C.muted }}>ID: {selectedCustomer.id}</p>
             </div>
-            <button onClick={()=>openEditCustomer(selectedCustomer)} style={{ ...btnS(C.purple), fontSize:12 }}><Pencil size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 정보 수정</button>
           </div>
+          <button type="button" onClick={()=>openEditCustomer(selectedCustomer)} aria-label="정보 수정" title="정보 수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
             {[
               ["대표자 (성명)", selectedCustomer.rep_name],
@@ -2735,20 +2790,14 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
-            <button onClick={handleSaveCustomer} style={{ ...btnS(C.green), flex:1 }}>저장</button>
+            <button onClick={handleSaveCustomer} disabled={JSON.stringify(buildCustomerData())===customerBaseline} style={{ ...btnS(C.green, JSON.stringify(buildCustomerData())===customerBaseline), flex:1 }}>저장</button>
           </div>
         </Modal>
       )}
       {(showModelForm||mEditMode)&&(
         <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8, flexWrap:"wrap", paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
-            {mEditMode&&selectedModel&&(
-              <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.blue}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Calendar size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
-                <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ padding:"6px 12px", borderRadius:7, border:`1px solid ${C.purple}`, background:"transparent", color:C.purple, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}><Camera size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> 스튜디오</button>
-              </div>
-            )}
           </div>
           {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedModel?.id}</p>}
 
@@ -2986,9 +3035,15 @@ async function sharePdf(){
 
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5, marginTop:4 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />
-          <div style={{ display:"flex", gap:10 }}>
+          {mEditMode&&selectedModel&&(
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+              <button type="button" onClick={()=>{ setCalInitModel(selectedModel.id); setPage("calendar"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델별 캘린더</button>
+              <button type="button" onClick={()=>{ setStudioInitModel(selectedModel.id); setPage("studio"); setShowModelForm(false); setMEditMode(false); setSelectedModel(null); resetModelForm(); setModalStack([]); }} style={{ ...btnS(C.purple), fontSize:13, flex:1 }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 포트폴리오</button>
+            </div>
+          )}
+          <div style={{ display:"flex", gap:10, marginTop:10 }}>
+            <button onClick={mEditMode?handleSaveModel:handleAddModel} disabled={mEditMode && JSON.stringify(buildModelData())===modelBaseline} style={{ ...btnS(C.green, mEditMode && JSON.stringify(buildModelData())===modelBaseline), flex:1 }}>{mEditMode?"저장":"추가"}</button>
             {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
-            <button onClick={mEditMode?handleSaveModel:handleAddModel} style={{ ...btnS(C.green), flex:1 }}>{mEditMode?"저장":"추가"}</button>
           </div>
         </Modal>
       )}

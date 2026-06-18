@@ -101,7 +101,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}><AlertTriangle size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 입금 확인 필요 <span style={{ color:C.muted, fontWeight:600 }}>({items.length}건{overdue>0?` · 경과 ${overdue}`:""})</span></p>
             <span style={{ fontSize:11, color:C.muted }}>고객사 입금 예정일 기준</span>
           </div>
-          <div style={{ display:"grid", gap:8 }}>
+          <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
             {items.map((it,idx)=>{
               const d = dday(it.date);
               const color = d<0?C.red:d===0?C.orange:C.blue;
@@ -110,7 +110,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const client = customers.find((c:any)=>c.id===it.b.customer_id);
               return (
                 <div key={it.b.id+it.label+idx} onClick={()=>setSelectedBooking(it.b)}
-                  style={{ display:"flex", alignItems:"center", gap:10, background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", transition:"border-color 0.15s" }}
+                  style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", transition:"border-color 0.15s" }}
                   onMouseEnter={e=>(e.currentTarget.style.borderColor=color)}
                   onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}>
                   <span style={{ flexShrink:0, fontSize:11, fontWeight:800, color, background:color+"1a", borderRadius:6, padding:"3px 8px", minWidth:54, textAlign:"center" }}>{ddayLabel}</span>
@@ -138,11 +138,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
         { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
       ];
       return (
-        <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":`repeat(${statCards.length},minmax(0,1fr))`, gap:12, marginBottom:16 }}>
+        <div style={{ display:"grid", gridTemplateColumns:`repeat(${statCards.length},minmax(0,1fr))`, gap:isMobile?6:12, marginBottom:16 }}>
           {statCards.map(item=>(
-            <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
-              <p style={{ fontSize:11, color:C.muted, margin:0 }}>{item.label}</p>
-              <p style={{ fontSize:24, fontWeight:800, margin:"6px 0 0", color:item.color }}>{item.value}</p>
+            <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:isMobile?"10px 8px":"16px 18px" }}>
+              <p style={{ fontSize:isMobile?10:11, color:C.muted, margin:0, lineHeight:1.25, wordBreak:"keep-all" }}>{item.label}</p>
+              <p style={{ fontSize:isMobile?17:24, fontWeight:800, margin:isMobile?"4px 0 0":"6px 0 0", color:item.color }}>{item.value}</p>
             </div>
           ))}
         </div>
@@ -188,7 +188,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
           </div>
 
           {/* 리스트 */}
-          <div style={{ display:"grid", gap:8 }}>
+          <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
             {sorted.map(b=>{
               const model  = models.find(m=>m.id===b.model_id);
               const client = customers.find(c=>c.id===b.customer_id);
@@ -196,7 +196,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
               const dgo = daysAgo(b.created_at);
               const isToday = (b.created_at||"").slice(0,10)===todayS;
               return (
-                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
+                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, minWidth:0, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
                   onMouseEnter={e=>{ e.currentTarget.style.borderColor=PINK; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${PINK}aa`; }}
                   onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?PINK+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
                 >
@@ -207,7 +207,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                     <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
                     <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
                   </p>
-                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
+                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, whiteSpace:"nowrap", ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
                   <span style={{ color:PINK, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
                 </div>
               );

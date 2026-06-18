@@ -6,6 +6,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
 import { GENDERS, MODEL_FIELDS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
+import { thumbUrl } from "../lib/supabase";
 
 export default function ModelSearchView({ models, isMobile = false, onPick }: {
   models: any[];
@@ -127,7 +128,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
               <div key={m.id} onClick={() => onPick(m)} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", cursor: "pointer" }}>
                 <div style={{ aspectRatio: "3/4", background: C.card2 }}>
                   {cover
-                    ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={thumbUrl(cover)} alt="" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg,#c9a96e,#8b6a3e)" }}>{(m.name || "?")[0]}</div>}
                 </div>
                 <div style={{ padding: "8px 10px" }}>

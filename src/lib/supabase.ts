@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://fijtpyrmqzjefucsqfos.supabase.co";
-const SUPABASE_KEY = "sb_publishable_jx5epW3SB77-naKWZeUYnA_v5xoAgbU";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpanRweXJtcXpqZWZ1Y3NxZm9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzMyNjgsImV4cCI6MjA5NTYwOTI2OH0.tdnqIDJBY809IBO6OIEykxCezo9QY1Z_ziiqMFtYW2o";
 
 // ── 사용자 토큰 (로그인 후 모든 호출에 사용 — RLS의 전제) ──
 let accessToken: string | null = null;
@@ -53,6 +53,11 @@ export const sb = async (table: string, method = "GET", body: any = null, query 
 // base64를 DB에 저장하던 방식 → Storage에 업로드하고 DB엔 URL만 저장(조회 용량 대폭 감소)
 export const STORAGE_BUCKET = "model-photos";
 
+// 원본 Storage 사진 URL → 썸네일 URL(_thumb). 업로드 때 함께 저장. 비-Storage(base64 등)는 그대로.
+export const thumbUrl = (url: string) => (typeof url === "string" && url.includes("/object/public/") && /\.jpe?g(\?.*)?$/i.test(url))
+  ? url.replace(/(\.jpe?g)(\?.*)?$/i, "_thumb$1$2")
+  : url;
+
 // data:URL 문자열 → Blob (업로드용)
 export const dataURLtoBlob = (dataURL: string): Blob => {
   const [head, b64] = dataURL.split(",");
@@ -71,6 +76,8 @@ export const sbUpload = async (path: string, blob: Blob, _retry = false): Promis
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
       "Content-Type": blob.type || "image/jpeg",
+      // 업로드 경로가 타임스탬프+랜덤으로 고유(immutable) → 1년 캐시 안전. 재방문 시 썸네일 즉시 로딩
+      "cache-control": "max-age=31536000, immutable",
       "x-upsert": "true",
     },
     body: blob,

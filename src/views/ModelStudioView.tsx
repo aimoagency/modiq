@@ -5,11 +5,12 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
-import { sb, sbUpload, dataURLtoBlob } from "../lib/supabase";
+import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
-import { User, Camera, CardCheck } from "../components/icons";
+import { User, Camera, CardCheck, Pencil } from "../components/icons";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
+import { useBackClose } from "../lib/backstack";
 import CompCardModal from "../components/CompCardModal";
 import ModelBrowser from "../components/ModelBrowser";
 
@@ -43,6 +44,11 @@ const infoRows = (m: any): [string, string][] => {
   const three = [m.bust, m.waist, m.hip].filter(Boolean).join("-");
   const rows: [string, string][] = [];
   if (m.country) rows.push(["국적", m.country]);
+  if (m.is_foreigner) {
+    if (m.visa_entry) rows.push(["입국일", String(m.visa_entry).replace(/-/g, ".")]);
+    if (m.visa_exit) rows.push(["출국일", String(m.visa_exit).replace(/-/g, ".")]);
+    if (m.visa_type) rows.push(["비자타입", m.visa_type]);
+  }
   if (age !== null) rows.push(["나이", `${age}세`]);
   if (m.height) rows.push(["키", `${m.height}cm`]);
   if (m.shoe) rows.push(["신발", `${m.shoe}mm`]);
@@ -58,13 +64,14 @@ const infoRows = (m: any): [string, string][] => {
   return rows;
 };
 
-export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false, initModelId = "" }: {
+export default function ModelStudioView({ models, setModels, setPackages, agency, isMobile = false, initModelId = "", onEditModel }: {
   models: any[];
   setModels: (fn: (prev: any[]) => any[]) => void;
   setPackages: (fn: (prev: Pkg[]) => Pkg[]) => void;
   agency: { id: string; name: string };
   isMobile?: boolean;
   initModelId?: string;
+  onEditModel?: (m: any) => void;
 }) {
   const [mode, setMode] = useState<"photos" | "package" | "search">("photos");
   const [q, setQ] = useState("");
@@ -81,6 +88,12 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
+  const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
+  const [thumbsDone, setThumbsDone] = useState(false); // 썸네일 일괄생성 완료(기기 기억 → 버튼 숨김)
+  useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
+  // 전체화면 오버레이 → 브라우저 뒤로가기로 닫기
+  useBackClose(viewer !== null, () => setViewer(null));
+  useBackClose(!!compModel, () => setCompModel(null));
 
   // ── 기존 base64 사진 → Storage 이전 (1회용, 멱등) ──
   // photos를 먼저 업로드해 base64→URL 매핑을 만들고, liked_photos는 같은 URL로 치환(순서/좋아요 유지)
@@ -118,6 +131,29 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     setMigrating(false);
   };
 
+  // ── 기존 Storage 사진 썸네일(_thumb) 일괄 생성 — 갤러리 egress·로딩 절감. 멱등(재실행 안전) ──
+  const storagePhotoCount = useMemo(() => models.reduce((n, m) => n + (Array.isArray(m.photos) ? m.photos.filter((p: string) => typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)).length : 0), 0), [models]);
+  const genAllThumbs = async () => {
+    const targets: string[] = [];
+    models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
+    if (!targets.length) { alert("썸네일을 만들 Storage 사진이 없습니다."); return; }
+    if (!confirm(`사진 ${targets.length}장의 썸네일을 생성합니다.\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    setThumbing(true);
+    let made = 0;
+    for (const url of targets) {
+      try {
+        const small = await new Promise<string>((res, rej) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); res(cv.toDataURL("image/jpeg", 0.62)); }; img.onerror = () => rej(new Error("load")); img.src = url; });
+        const path = decodeURIComponent((url.split("/object/public/" + STORAGE_BUCKET + "/")[1] || "").split("?")[0]);
+        if (!path) continue;
+        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(small));
+        made++;
+      } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
+    }
+    setThumbing(false);
+    if (made > 0) { setThumbsDone(true); try { localStorage.setItem("modiq_thumbs_" + (agency?.id || ""), "1"); } catch {} }
+    alert(`썸네일 ${made}장 생성 완료.${made > 0 ? " 이 버튼은 이제 사라집니다." : ""}`);
+  };
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return models.filter(m => !s || (m.name || "").toLowerCase().includes(s) || (m.category || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)));
@@ -145,7 +181,6 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       setModels(prev => prev.map(m => m.id === sel.id ? { ...m, liked_photos: next } : m));
     } catch (e) { alert("좋아요 저장 실패: " + String(e)); }
   };
-  const toggleLike = (url: string) => saveLikes(liked.includes(url) ? liked.filter(l => l !== url) : [...liked, url]);
 
   // 대표 썸네일 = 작게 압축한 복사본(목록·카드용). 큰 사진도 자동 축소 → 용량 제한 걱정 없음.
   const makeThumb = (src: string, cb: (small: string) => void) => {
@@ -174,7 +209,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     // 리사이즈(base64) → Storage 업로드 → URL 저장. 업로드 실패 시 base64로 폴백(하위호환)
     list.forEach(f => resizeImage(f, async data => {
       try {
-        const url = await sbUpload(`${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(data));
+        const base = `${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const url = await sbUpload(`${base}.jpg`, dataURLtoBlob(data));
+        try { const small = await new Promise<string>(res => makeThumb(data, res)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 가능 */ }
         collected.push(url);
       } catch (e) {
         console.error("사진 업로드 실패 — base64로 저장(폴백)", e);
@@ -298,7 +335,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
             return (
               <div key={m.id} onClick={() => togglePick(m.id)} style={{ border: `2px solid ${on ? C.blue : C.border}`, borderRadius: 10, overflow: "hidden", cursor: "pointer", background: C.card, position: "relative" }}>
                 <div style={{ aspectRatio: "3/4", background: "#e9edf2" }}>
-                  {cover && <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  {cover && <img src={thumbUrl(cover)} alt="" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                 </div>
                 <div style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", background: on ? C.blue : "rgba(0,0,0,.5)", color: "#fff", fontSize: 13, lineHeight: "22px", textAlign: "center" }}>{on ? "✓" : ""}</div>
                 <div style={{ padding: "8px 10px" }}>
@@ -316,7 +353,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 16px", flexWrap: "wrap", gap: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 모델 스튜디오</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}><Camera size={20} style={{ verticalAlign: -2 }} /> 포트폴리오</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {base64Count > 0 && (
             <button onClick={migrateToStorage} disabled={migrating}
@@ -325,11 +362,18 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               {migrating ? "이전 중…" : `⚡ 사진 ${base64Count}장 저장소로 이전`}
             </button>
           )}
+          {storagePhotoCount > 0 && !thumbsDone && (
+            <button onClick={genAllThumbs} disabled={thumbing}
+              title="기존 사진의 작은 썸네일을 만들어 갤러리 로딩 속도와 데이터 사용량(egress)을 줄입니다"
+              style={{ ...btnS(C.purple, thumbing), fontSize: 12, whiteSpace: "nowrap" }}>
+              {thumbing ? "썸네일 생성 중…" : `🖼 썸네일 생성 (${storagePhotoCount})`}
+            </button>
+          )}
           <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: isMobile ? "stretch" : "flex-start" }}>
         <ModelBrowser models={models} isMobile={isMobile} onSelect={(m: any) => setSelId(m.id)} selectedId={selId || undefined} />
 
         {/* 우측: 선택 모델 프로필 + 사진 */}
@@ -354,6 +398,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   style={{ width: isMobile ? "100%" : "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
                   <CardCheck size={16} /> 컴카드 만들기
                 </button>
+                <button onClick={() => onEditModel && onEditModel(sel)} style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 0", background: "transparent", color: C.purple, border: `1px solid ${C.purple}`, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                  <Pencil size={15} /> 정보 수정
+                </button>
                 <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 10 }}>{sel.name}</div>
                 {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
                 <div style={{ marginTop: 12, display: "grid", gap: 5 }}>
@@ -369,7 +416,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               {/* 사진 업로드 영역 */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <strong style={{ fontSize: 14, color: C.text }}>포트폴리오 사진 <span style={{ color: C.muted, fontWeight: 500 }}>{photos.length}/{MAX_PHOTOS}</span>{liked.length > 0 && <span style={{ color: "#ff4d6d", fontWeight: 600, fontSize: 12, marginLeft: 8 }}>♥ {liked.length}</span>}</strong>
+                  <strong style={{ fontSize: 14, color: C.text }}>포트폴리오 사진 <span style={{ color: C.muted, fontWeight: 500 }}>{photos.length}/{MAX_PHOTOS}</span></strong>
                   {saving && <span style={{ fontSize: 12, color: C.muted }}>저장 중…</span>}
                 </div>
                 <div
@@ -379,7 +426,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   style={{ border: `2px dashed ${drag ? C.blue : C.border}`, borderRadius: 12, padding: 14, background: drag ? C.blue + "11" : "transparent" }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
-                    {photos.map((p, i) => { const isLiked = liked.includes(p); return (
+                    {photos.map((p, i) => { return (
                       <div key={i}
                         draggable
                         onDragStart={() => setDragIdx(i)}
@@ -387,7 +434,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); if (dragIdx !== i) { const next = [...photos]; const [mv] = next.splice(dragIdx, 1); next.splice(i, 0, mv); savePhotos(next); } setDragIdx(null); } }}
                         onDragEnd={() => setDragIdx(null)}
                         style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
-                        <img src={p} alt="" draggable={false} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
+                        <img src={thumbUrl(p)} alt="" draggable={false} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         <button onClick={(e) => { e.stopPropagation(); setAsCover(i); }} title="이 사진을 대표로 지정" style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: i === 0 ? C.blue : "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>{i === 0 ? "대표" : "대표 지정"}</button>
                       </div>
@@ -407,7 +454,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         </div>
       </div>
 
-      {viewer !== null && photos[viewer] && (() => { const total = photos.length; const cur = photos[viewer]; const isLiked = liked.includes(cur); const go = (d: number) => setViewer(v => v === null ? v : (v + d + total) % total); return (
+      {viewer !== null && photos[viewer] && (() => { const total = photos.length; const cur = photos[viewer]; const go = (d: number) => setViewer(v => v === null ? v : (v + d + total) % total); return (
         <div onClick={() => setViewer(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.9)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <span onClick={() => setViewer(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
           {total > 1 && <span onClick={e => { e.stopPropagation(); go(-1); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 10, userSelect: "none" }}>‹</span>}
@@ -415,7 +462,6 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
           <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, maxWidth: "92%" }}>
             <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
               <img src={cur} alt="" style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8, display: "block" }} />
-              <span onClick={() => toggleLike(cur)} title={isLiked ? "좋아요 취소" : "좋아요"} style={{ position: "absolute", top: 10, right: 10, width: 40, height: 40, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: isLiked ? "#ff4d6d" : "#fff", fontSize: 22, lineHeight: "40px", textAlign: "center", cursor: "pointer" }}>{isLiked ? "♥" : "♡"}</span>
             </div>
             <span style={{ color: "rgba(255,255,255,.7)", fontSize: 13 }}>{viewer + 1} / {total}</span>
           </div>

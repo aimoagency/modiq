@@ -22,8 +22,8 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><User size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 ({filteredModels.length}명)</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text, whiteSpace:"nowrap" }}><User size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 ({filteredModels.length}명)</h1>
         <div style={{ display:"flex", gap:8, flexShrink:0 }}>
           {legacyIdCount>0&&onMigrateIds&&<button onClick={onMigrateIds} title="기존 모델 ID를 규칙 ID(MK/FK/MX/FX)로 변경합니다" style={{ padding:"6px 12px", background:"transparent", color:C.yellow, border:`1px solid ${C.yellow}`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12 }}>🆔 ID규칙 적용 ({legacyIdCount})</button>}
           {onBulkAdd&&<button onClick={onBulkAdd} style={{ padding:"6px 12px", background:"transparent", color:C.textSub, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:12 }}>📋 대량 등록</button>}
@@ -69,9 +69,15 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub, paddingLeft:42 }}>
                   {m.rate>0&&<span>{m.rate.toLocaleString()}원</span>}
-                  {m.payout_pay_value>0&&<span>정산 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
+                  {m.payout_pay_value>0&&<span>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                   <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
                 </div>
+                {(m.phone||m.instagram_url)&&(
+                  <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub, paddingLeft:42, marginTop:3 }}>
+                    {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", whiteSpace:"nowrap" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
+                    {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"inline-flex", alignItems:"center", gap:3, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
+                  </div>
+                )}
               </div>
             );
             return (
@@ -94,7 +100,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ fontSize:12, color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
                 {/* 단가/수수료 */}
                 {m.rate>0&&<span style={{ fontSize:12, color:C.textSub }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.rate.toLocaleString()}원</span>}
-                {m.payout_pay_value>0&&<span style={{ fontSize:12, color:C.textSub }}>정산 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
+                {m.payout_pay_value>0&&<span style={{ fontSize:12, color:C.textSub }}>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                 {/* 브랜드 아이콘 링크 */}
                 {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:3, fontSize:12, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
                 {m.aimo_url&&<a href={m.aimo_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, textDecoration:"none", whiteSpace:"nowrap", background:"linear-gradient(135deg,#4f46e5,#06b6d4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", fontWeight:700 }}>AIMO</a>}
