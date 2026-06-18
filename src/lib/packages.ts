@@ -40,6 +40,7 @@ export type Pkg = {
   share_token: string;
   is_public: boolean;
   created_at?: string;
+  item_count?: number;       // 목록 경량 조회용(DB generated). 상세 미로딩 시 items 대신 카운트 표시
 };
 
 import { ageFromSSN6 } from "./utils";
