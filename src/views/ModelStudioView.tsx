@@ -138,23 +138,26 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const storagePhotoCount = useMemo(() => models.reduce((n, m) => n + (Array.isArray(m.photos) ? m.photos.filter((p: string) => typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)).length : 0), 0), [models]);
   const genAllThumbs = async () => {
     const targets: string[] = [];
-    models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
-    if (!targets.length) { alert("썸네일을 만들 Storage 사진이 없습니다."); return; }
-    if (!confirm(`사진 ${targets.length}장의 썸네일을 생성합니다.\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p) && !/_thumb\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
+    if (!targets.length) { alert("최적화할 Storage 사진이 없습니다."); return; }
+    if (!confirm(`기존 사진 ${targets.length}장을 최적화합니다.\n· 원본을 긴 변 1500px / 품질 0.6으로 재압축(용량↓)\n· 360px 썸네일 생성(로딩↑)\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
     setThumbing(true);
     let made = 0;
+    // 이미지 1회 로드 → 원본(1500/0.6)·썸네일(360/0.62) 두 버전 생성
+    const render = (img: HTMLImageElement, max: number, q: number) => { const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL("image/jpeg", q); };
     for (const url of targets) {
       try {
-        const small = await new Promise<string>((res, rej) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); res(cv.toDataURL("image/jpeg", 0.62)); }; img.onerror = () => rej(new Error("load")); img.src = url; });
+        const img = await new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => rej(new Error("load")); im.src = url; });
         const path = decodeURIComponent((url.split("/object/public/" + STORAGE_BUCKET + "/")[1] || "").split("?")[0]);
         if (!path) continue;
-        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(small));
+        await sbUpload(path, dataURLtoBlob(render(img, 1500, 0.6)));                          // 원본 재압축(덮어쓰기)
+        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(render(img, 360, 0.62))); // 썸네일
         made++;
       } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
     }
     setThumbing(false);
     if (made > 0) { setThumbsDone(true); try { localStorage.setItem("modiq_thumbs_" + (agency?.id || ""), "1"); } catch {} }
-    alert(`썸네일 ${made}장 생성 완료.${made > 0 ? " 이 버튼은 이제 사라집니다." : ""}`);
+    alert(`사진 ${made}장 최적화 완료(원본 재압축 + 썸네일 생성).${made > 0 ? " 이 버튼은 이제 사라집니다." : ""}`);
   };
 
   const filtered = useMemo(() => {
@@ -367,9 +370,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
           )}
           {storagePhotoCount > 0 && !thumbsDone && (
             <button onClick={genAllThumbs} disabled={thumbing}
-              title="기존 사진의 작은 썸네일을 만들어 갤러리 로딩 속도와 데이터 사용량(egress)을 줄입니다"
+              title="기존 사진을 1500px/품질0.6으로 재압축하고 360px 썸네일을 만들어 용량↓·로딩↑"
               style={{ ...btnS(C.purple, thumbing), fontSize: 12, whiteSpace: "nowrap" }}>
-              {thumbing ? "썸네일 생성 중…" : `🖼 썸네일 생성 (${storagePhotoCount})`}
+              {thumbing ? "최적화 중…" : `🖼 사진 최적화 (${storagePhotoCount})`}
             </button>
           )}
           <span style={{ fontSize: 12, color: C.muted }}>모델 갤러리 사진을 등록·관리하세요. 패키지·컴카드는 이 갤러리에서 사진을 골라 구성합니다.</span>
