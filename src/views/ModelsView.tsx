@@ -51,7 +51,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
       </div>
       {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb /> :
        filteredModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
-        <div style={{ display:"grid", gap:6 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {filteredModels.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
             const age = ageFromSSN6(m.ssn6);

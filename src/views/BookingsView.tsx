@@ -76,7 +76,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
             </div>
             );
         return (
-          <div style={{ width:"100%", boxSizing:"border-box", display:"grid", gap:8 }}>
+          <div style={{ width:"100%", boxSizing:"border-box", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:8 }}>
             {order.map((item,oi)=>{
               if(item.type==="single") return Card(item.b);
               const bs=groups[item.pid!]; const total=bs.reduce((s,b)=>s+bookingTotal(b),0);
@@ -115,7 +115,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
                     {total>0&&<span style={{ marginLeft:"auto", fontSize:14, color:C.yellow, fontWeight:800 }}>{total.toLocaleString()}원</span>}
                   </div>
                   )}
-                  <div style={{ display:"grid", gap:8, padding:isMobile?8:10 }}>{bs.map(Card)}</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:8, padding:isMobile?8:10 }}>{bs.map(Card)}</div>
                 </div>
               );
             })}
