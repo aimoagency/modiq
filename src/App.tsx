@@ -50,6 +50,7 @@ import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from
 import { sendCalEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
 import type { Pkg } from "./lib/packages";
+import { useBackClose, topBack } from "./lib/backstack";
 import BulkUploadModal from "./components/BulkUploadModal";
 import CompCardModal from "./components/CompCardModal";
 import SettlementStatementModal from "./components/SettlementStatementModal";
@@ -1211,6 +1212,13 @@ export default function App() {
   }, [page]);
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
+      // (1) 자식/로컬 오버레이(미리보기·라이트박스 등)가 열려 있으면 가장 위부터 닫고 흡수
+      const overlayClose = topBack();
+      if (overlayClose) {
+        overlayClose();
+        try { window.history.pushState({ modiqPage: page }, ""); } catch {}
+        return;
+      }
       const detail = currentDetail();
       const anyModal = !!detail || showModelForm || mEditMode || showCustomerForm || cEditMode || showProjectForm || showBookingForm || showAddPicker || showMemberForm || showMoreMenu || showStatement || showForeignModal || !!compModel || !!bulkEntity;
       if (anyModal) {
@@ -1225,6 +1233,9 @@ export default function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [page, selectedBooking, selectedSettlement, selectedModel, selectedCustomer, selectedProjectId, showModelForm, mEditMode, showCustomerForm, cEditMode, showProjectForm, showBookingForm, showAddPicker, showMemberForm, showMoreMenu, showStatement, showForeignModal, compModel, bulkEntity]);
+  // App 로컬 전체화면 오버레이도 뒤로가기로 닫히도록 등록(LIFO)
+  useBackClose(!!lightboxSrc, () => setLightboxSrc(null));
+  useBackClose(showSendMenu, () => setShowSendMenu(false));
 
   // ── 섭외 명세서(바우처) 발급: 인쇄/PDF용 새 창 ──
   const issueVoucher = (b: any) => {

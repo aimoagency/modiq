@@ -8,8 +8,9 @@ import { C, inp, btnS } from "../theme";
 import { sb, thumbUrl } from "../lib/supabase";
 import {
   type Pkg, type PackageItem, type PackageLayout,
-  genPkgId, genShareToken, emptyItem, shareUrl, openPackageWindow, sizeLine,
+  genPkgId, genShareToken, emptyItem, shareUrl, sizeLine,
 } from "../lib/packages";
+import { useBackClose } from "../lib/backstack";
 import { ageFromSSN6 } from "../lib/utils";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
@@ -73,8 +74,13 @@ export default function PackagesView({ packages, setPackages, models, customers,
     }
   };
   const openPreview = async (p: Pkg) => { const f = await hydrate(p); if (f) setPreview(f); };
-  const openPdf     = async (p: Pkg) => { const f = await hydrate(p); if (f) openPackageWindow(f, agency.name); };
   const openEdit    = async (p: Pkg) => { const f = await hydrate(p); if (f) startEdit(f); };
+
+  // 전체화면 오버레이 → 브라우저 뒤로가기로 닫기(LIFO: 라이트박스가 미리보기보다 먼저 닫힘)
+  useBackClose(!!preview, () => setPreview(null));
+  useBackClose(!!zoom, () => setZoom(null));
+  useBackClose(modelPick, () => setModelPick(false));
+  useBackClose(!!compModel, () => setCompModel(null));
 
   const newDraft = (): Pkg => ({
     id: genPkgId(), agency_id: agency.id, title: "", client_name: "",
@@ -200,7 +206,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
           <div style={{ display: "grid", gap: 8 }}>
             {packages.map(p => (
               <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-                <div onClick={() => openPreview(p)} title="클릭하면 고객이 보는 화면으로 미리보기" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", cursor: "pointer", opacity: busyId === p.id ? 0.5 : 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
                   <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
                     {p.layout === "compcard" ? "컴카드" : "제안 패키지"}
@@ -212,8 +218,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                  <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
                   <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
-                  <button onClick={() => openPdf(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}>{busyId === p.id ? "여는 중…" : "PDF / 인쇄"}</button>
                   <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...btnS(C.muted, busyId === p.id) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
                   <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
                   <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>

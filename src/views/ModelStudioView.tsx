@@ -10,6 +10,7 @@ import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck, Pencil } from "../components/icons";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
+import { useBackClose } from "../lib/backstack";
 import CompCardModal from "../components/CompCardModal";
 import ModelBrowser from "../components/ModelBrowser";
 
@@ -90,6 +91,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
   const [thumbsDone, setThumbsDone] = useState(false); // 썸네일 일괄생성 완료(기기 기억 → 버튼 숨김)
   useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
+  // 전체화면 오버레이 → 브라우저 뒤로가기로 닫기
+  useBackClose(viewer !== null, () => setViewer(null));
+  useBackClose(!!compModel, () => setCompModel(null));
 
   // ── 기존 base64 사진 → Storage 이전 (1회용, 멱등) ──
   // photos를 먼저 업로드해 base64→URL 매핑을 만들고, liked_photos는 같은 URL로 치환(순서/좋아요 유지)
