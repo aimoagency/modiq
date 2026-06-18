@@ -9,6 +9,7 @@ import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl } from "../lib/su
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck, Pencil } from "../components/icons";
+import SearchInput from "../components/SearchInput";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
 import { useBackClose } from "../lib/backstack";
 import CompCardModal from "../components/CompCardModal";
@@ -283,7 +284,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   // ── 좌측: 모델 리스트 ──
   const listPanel = (
     <div style={{ width: isMobile ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, ...(isMobile ? {} : { borderRight: `1px solid ${C.border}`, paddingRight: 16 }) }}>
-      <input style={inp} placeholder="이름·카테고리·분야 검색" value={q} onChange={e => setQ(e.target.value)} />
+      <SearchInput placeholder="이름·카테고리·분야 검색" value={q} onChange={setQ} />
       <div style={{ display: "grid", gap: 6, maxHeight: isMobile ? 200 : "calc(100vh - 200px)", overflowY: "auto" }}>
         {filtered.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>모델이 없습니다.</p>}
         {filtered.map(m => {
@@ -309,7 +310,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const packagePanel = (
     <div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-        <input style={{ ...inp, marginBottom: 0, maxWidth: 260 }} placeholder="이름 검색" value={q} onChange={e => setQ(e.target.value)} />
+        <SearchInput placeholder="이름 검색" value={q} onChange={setQ} style={{ marginBottom: 0, maxWidth: 260 }} />
         <span style={{ fontSize: 12, color: C.muted }}>분야:</span>
         {MODEL_FIELDS.map(f => {
           const on = fieldF.includes(f);

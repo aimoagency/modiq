@@ -6,6 +6,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
 import { GENDERS, MODEL_FIELDS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
+import SearchInput from "../components/SearchInput";
 import { thumbUrl } from "../lib/supabase";
 
 export default function ModelSearchView({ models, isMobile = false, onPick }: {
@@ -80,7 +81,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
       {/* 필터 패널 */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
-          <input style={{ ...inp, marginBottom: 0, flex: 1, minWidth: 180 }} placeholder="이름·특기·분야 검색" value={q} onChange={e => setQ(e.target.value)} />
+          <SearchInput placeholder="이름·특기·분야 검색" value={q} onChange={setQ} style={{ marginBottom: 0, flex: 1, minWidth: 180 }} />
           {active > 0 && <button onClick={reset} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>초기화 ({active})</button>}
         </div>
 
