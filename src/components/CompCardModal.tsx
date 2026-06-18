@@ -162,8 +162,8 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
           <div style={{ display: "flex", borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 6 }}>
             {info.map(([label, val], k) => (
               <div key={k} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderLeft: k === 0 ? "none" : "1px solid #f0f2f5" }}>
-                <div style={{ fontSize: 12, color: "#9aa2af", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1d27", marginTop: 3, whiteSpace: "nowrap" }}>{val}</div>
+                <div style={{ fontSize: k === 0 ? 12 : 10, color: "#9aa2af", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
+                <div style={{ fontSize: k === 0 ? 17 : 12, fontWeight: 800, color: "#1a1d27", marginTop: 3, whiteSpace: "nowrap" }}>{val}</div>
               </div>
             ))}
           </div>
