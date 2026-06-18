@@ -330,6 +330,7 @@ export default function App() {
   const [mFields,      setMFields]      = useState<string[]>([]);
   const [mSpecialty,   setMSpecialty]   = useState("");
   const [mCareer,      setMCareer]      = useState(""); // 경력(작품·활동 이력)
+  const [mCareerOpen,  setMCareerOpen]  = useState(false); // 수정폼 경력 입력칸 펼침
   const [mFollowers,   setMFollowers]   = useState("");
   const [mHairColor,   setMHairColor]   = useState("");
   const [mSizeUnit,    setMSizeUnit]    = useState<"cm"|"inch">("cm"); // 3사이즈 입력 단위(저장은 항상 cm)
@@ -600,7 +601,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -631,7 +632,7 @@ export default function App() {
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
     setMKakao(m.kakao_id||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
     { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
-    setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
+    setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMCareerOpen(!!m.career); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
     setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
@@ -2939,15 +2940,20 @@ async function sharePdf(){
             <MultiCheck label="분야 (복수 선택)" options={MODEL_FIELDS} value={mFields} onChange={setMFields} />
             <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>특기 <span style={{ color:C.muted }}>(쉼표로 구분 — 노래, 외국어, 수영, 스키 등)</span></label>
             <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
-            {/* 경력 — 입력량에 따라 아래로 커지는 자동확장 입력창 */}
-            <label style={{ fontSize:11, color:C.muted, display:"block", margin:"12px 0 5px" }}>경력 <span style={{ color:C.muted }}>(작품·활동 이력 — 예: MBC 드라마 '사랑이 뭐길래' 주연. 검색 시 이 내용도 매칭됨)</span></label>
-            <textarea
-              value={mCareer}
-              onChange={e=>{ setMCareer(e.target.value); const t=e.currentTarget; t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }}
-              ref={el=>{ if(el){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } }}
-              placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
-              style={{ ...inp, marginBottom:0, minHeight:56, resize:"none", overflow:"hidden", lineHeight:1.5 }}
-            />
+            {/* 경력 — 펼침/접기. 펼치면 입력량에 따라 아래로 커지는 자동확장 입력창 */}
+            <button type="button" onClick={()=>setMCareerOpen(v=>!v)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", margin:"12px 0 0", padding:"9px 12px", background:C.card2, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", color:C.text, fontSize:12, fontWeight:700 }}>
+              <span>경력 <span style={{ color:C.muted, fontWeight:500 }}>(작품·활동 이력)</span></span>
+              <span style={{ color:C.muted, fontSize:11 }}>{mCareerOpen?"접기 ▲":"펼치기 ▼"}</span>
+            </button>
+            {mCareerOpen&&(
+              <textarea
+                value={mCareer}
+                onChange={e=>{ setMCareer(e.target.value); const t=e.currentTarget; t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }}
+                ref={el=>{ if(el){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } }}
+                placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
+                style={{ ...inp, marginTop:6, marginBottom:0, minHeight:56, resize:"none", overflow:"hidden", lineHeight:1.5 }}
+              />
+            )}
           </div>
 
           {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
