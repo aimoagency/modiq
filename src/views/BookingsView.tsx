@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { C, inp, btnS } from "../theme";
 import { STATUS, BOOKING_TYPES } from "../constants";
 import { fmtDate, fmtTime, bookingTotal } from "../lib/utils";
@@ -14,26 +15,44 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
   openAddPicker: ()=>void; setSelectedBooking: (b:any)=>void;
   isMobile?: boolean;
 }) {
+  // 검색칸 placeholder 타이핑 애니메이션 (모델 → 고객사 → 프로젝트 순환)
+  const [ph, setPh] = useState("");
+  useEffect(() => {
+    const words = ["모델 검색", "고객사 검색", "프로젝트 검색"];
+    let wi = 0, ci = 0, del = false, alive = true, timer: ReturnType<typeof setTimeout>;
+    const run = () => {
+      if (!alive) return;
+      const w = words[wi];
+      ci = del ? ci - 1 : ci + 1;
+      setPh(w.slice(0, ci));
+      let delay = del ? 55 : 110;
+      if (!del && ci === w.length) { del = true; delay = 1100; }
+      else if (del && ci === 0) { del = false; wi = (wi + 1) % words.length; delay = 350; }
+      timer = setTimeout(run, delay);
+    };
+    timer = setTimeout(run, 400);
+    return () => { alive = false; clearTimeout(timer); };
+  }, []);
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><ClipboardList size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 ({filteredBookings.length}건)</h1>
         <button onClick={openAddPicker} style={btnS(C.blue)}>+ 섭외 추가</button>
       </div>
-      <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"flex", gap:10, flexWrap:"wrap" }}>
-        <div style={{ position:"relative", flex:"1 1 140px", minWidth:0 }}>
+      <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+        <div style={{ position:"relative", minWidth:0 }}>
           <Search size={15} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", color:C.muted, pointerEvents:"none" }} />
-          <input style={{ ...inp, marginBottom:0, paddingLeft:34 }} placeholder="모델·고객사·프로젝트" value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />
+          <input style={{ ...inp, marginBottom:0, paddingLeft:34 }} placeholder={`${ph}▌`} value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />
         </div>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingStatusF} onChange={e=>setBookingStatusF(e.target.value)}>
+        <select style={{ ...inp, marginBottom:0 }} value={bookingStatusF} onChange={e=>setBookingStatusF(e.target.value)}>
           <option value="ALL">전체 상태</option>
           {Object.entries(STATUS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
         </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingManagerF} onChange={e=>setBookingManagerF(e.target.value)}>
+        <select style={{ ...inp, marginBottom:0 }} value={bookingManagerF} onChange={e=>setBookingManagerF(e.target.value)}>
           <option value="ALL">전체 담당자</option>
           {memberNames.map(m=><option key={m} value={m}>{m}</option>)}
         </select>
-        <select style={{ ...inp, marginBottom:0, flex:"1 1 140px" }} value={bookingMonthF} onChange={e=>setBookingMonthF(e.target.value)}>
+        <select style={{ ...inp, marginBottom:0 }} value={bookingMonthF} onChange={e=>setBookingMonthF(e.target.value)}>
           <option value="ALL">전체 월</option>
           {bookingMonths.map(m=><option key={m} value={m}>{m.replace("-",".")}</option>)}
         </select>
