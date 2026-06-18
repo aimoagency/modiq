@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { sb, thumbUrl } from "../lib/supabase";
 import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf, compCardInnerHtml } from "../lib/packages";
+import { useBackClose } from "../lib/backstack";
 
 export default function PackagePublicView({ token, pkg: pkgProp }: { token?: string; pkg?: Pkg }) {
   const [pkg, setPkg] = useState<Pkg | null>(pkgProp || null);
@@ -25,6 +26,11 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
       } catch { setState("notfound"); }
     })();
   }, [token, pkgProp]);
+
+  // 전체화면 오버레이 → 뒤로가기로 닫기(인앱 미리보기에서 LIFO 동작). 훅은 조기 return 전에 호출.
+  useBackClose(!!compItem, () => setCompItem(null));
+  useBackClose(!!zoom, () => setZoom(null));
+  useBackClose(!!gallery, () => setGallery(null));
 
   const wrap: React.CSSProperties = {
     minHeight: "100vh", background: "#eceff3", color: "#1a1d27",
