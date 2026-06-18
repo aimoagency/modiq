@@ -24,13 +24,13 @@ const resizeImage = (file: File, cb: (data: string) => void) => {
   r.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const max = 1200;
+      const max = 1500; // 긴 변 최대 1500px로 축소 저장. 더 작은 사진은 원본 유지(확대 안 함)
       const sc = Math.min(1, max / Math.max(img.width, img.height));
       const cv = document.createElement("canvas");
       cv.width = Math.round(img.width * sc);
       cv.height = Math.round(img.height * sc);
       cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
-      cb(cv.toDataURL("image/jpeg", 0.82));
+      cb(cv.toDataURL("image/jpeg", 0.6));
     };
     img.src = String(r.result);
   };
@@ -112,7 +112,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         for (const p of srcPhotos) {
           if (typeof p === "string" && p.startsWith("data:")) {
             try {
-              const url = await sbUpload(`${safeSeg(agency.id)}/${safeSeg(m.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, dataURLtoBlob(p));
+              const base = `${safeSeg(agency.id)}/${safeSeg(m.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+              const url = await sbUpload(`${base}.jpg`, dataURLtoBlob(p));
+              try { const small = await new Promise<string>(res => makeThumb(p, res)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 */ }
               map.set(p, url); newPhotos.push(url); moved++;
             } catch { newPhotos.push(p); } // 실패분은 그대로 둠(재시도 가능)
           } else newPhotos.push(p);
