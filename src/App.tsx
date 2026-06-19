@@ -1513,7 +1513,7 @@ async function sharePdf(){
 
   const settlementSummary = useMemo(()=>{
     const total = filteredSettlement.reduce((s,b)=>s+bookingTotal(b),0);
-    // 수수료·모델지급은 모델별 수수료율로 건별 계산 후 합산
+    // 수수료·모델지급은 모델별 수수료로 건별 계산 후 합산
     const commission = filteredSettlement.reduce((s,b)=>s+bookingAgencyFee(b,models),0);
     const modelPay = filteredSettlement.reduce((s,b)=>s+bookingModelPay(b,models),0);
     // 고객사 입금(받을 돈) 흐름 — is_paid 기준
@@ -2169,7 +2169,7 @@ async function sharePdf(){
               const sess = bookingSession(selectedBooking);
               const ovr = !!selectedBooking.model_pay_type;
               const pay = payCfg(selectedBooking, mdl);
-              const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료율 ${pay.value||0}%`;
+              const rateTxt = pay.type==="fixed" ? `정액 ${Number(pay.value||0).toLocaleString()}원` : `수수료 ${pay.value||0}%`;
               return (
               <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(201,169,110,0.08)", borderRadius:8 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
@@ -2191,20 +2191,20 @@ async function sharePdf(){
                   <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                       <span style={{ fontSize:11, color:C.muted, minWidth:54 }}>지급 방식</span>
-                      {([["","모델 기본"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+                      {([["","모델 기본"],["rate","수수료(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                         <button key={k||"def"} type="button" onClick={()=>setSelectedBooking((p:any)=>({...p, model_pay_type:k||null, ...(k===""?{model_pay_value:null}:{})}))} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${(selectedBooking.model_pay_type||"")===k?C.green:C.border}`, background:(selectedBooking.model_pay_type||"")===k?C.green+"22":"transparent", color:(selectedBooking.model_pay_type||"")===k?C.green:C.muted, fontSize:12, fontWeight:(selectedBooking.model_pay_type||"")===k?700:500, cursor:"pointer" }}>{l}</button>
                       ))}
                       {selectedBooking.model_pay_type&&(
                         <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                           <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
-                            placeholder={selectedBooking.model_pay_type==="rate"?"수수료율":"정액"}
+                            placeholder={selectedBooking.model_pay_type==="rate"?"수수료":"정액"}
                             value={selectedBooking.model_pay_value!=null&&selectedBooking.model_pay_value!==""?(selectedBooking.model_pay_type==="fixed"?Number(selectedBooking.model_pay_value).toLocaleString("ko-KR"):String(selectedBooking.model_pay_value)):""}
                             onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setSelectedBooking((p:any)=>({...p, model_pay_value:v===""?null:Number(v)})); }} />
                           <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{selectedBooking.model_pay_type==="rate"?"%":"원"}</span>
                         </span>
                       )}
                     </div>
-                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 수수료율/정액을 선택해 입력하세요.`}</p>
+                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.muted }}>{selectedBooking.model_pay_type?"이 섭외만 지급액을 직접 지정합니다.":`모델 기본값(${sessionLabel(selectedBooking)} 단가)을 따릅니다. 건별로 다르면 수수료/정액을 선택해 입력하세요.`}</p>
                   </div>
                 )}
               </div>
@@ -2539,13 +2539,13 @@ async function sharePdf(){
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:10, background:C.card2 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:78 }}>정산 방식</span>
-              {([["","모델 기본값"],["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["","모델 기본값"],["rate","수수료(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setEditPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${editPayType===k?C.green:C.border}`, background:editPayType===k?C.green+"22":"transparent", color:editPayType===k?C.green:C.muted, fontSize:12, fontWeight:editPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
               {editPayType!==""&&(
                 <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                   <input style={{ ...inp, marginBottom:0, width:120 }} type="text" inputMode="numeric"
-                    placeholder={editPayType==="rate"?"수수료율":"정액"}
+                    placeholder={editPayType==="rate"?"수수료":"정액"}
                     value={editPayValue ? (editPayType==="fixed"?Number(editPayValue).toLocaleString("ko-KR"):editPayValue) : ""}
                     onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) setEditPayValue(v); }} />
                   <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{editPayType==="rate"?"%":"원"}</span>
@@ -2637,7 +2637,7 @@ async function sharePdf(){
               ["이메일",   selectedModel.email],
               ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
-              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료율 ${selectedModel.payout_pay_value}%`) : "-"],
+              ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
             ].map(([k,v])=>(
               <div key={String(k)}>
@@ -2962,7 +2962,7 @@ async function sharePdf(){
                 </select>
               </div>
               <div>
-                <label style={{ fontSize:11, color:"#E1306C", display:"block", marginBottom:5 }}>인스타 팔로워 수</label>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>인스타 팔로워 수</label>
                 <input style={{ ...inp, marginBottom:0 }} type="text" placeholder="예: 12500" value={mFollowers} onChange={e=>setMFollowers(e.target.value)} />
               </div>
             </div>
@@ -2974,9 +2974,9 @@ async function sharePdf(){
             <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>특기 <span style={{ color:C.muted }}>(쉼표로 구분 — 노래, 외국어, 수영, 스키 등)</span></label>
             <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
             {/* 경력 — 펼침/접기. 펼치면 입력량에 따라 아래로 커지는 자동확장 입력창 */}
-            <button type="button" onClick={()=>setMCareerOpen(v=>!v)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", margin:"12px 0 0", padding:"9px 12px", background:C.card2, border:`1px solid ${C.border}`, borderRadius:6, cursor:"pointer", color:C.text, fontSize:12, fontWeight:700 }}>
-              <span>경력 <span style={{ color:C.muted, fontWeight:500 }}>(작품·활동 이력)</span></span>
-              <span style={{ color:C.muted, fontSize:11 }}>{mCareerOpen?"접기 ▲":"펼치기 ▼"}</span>
+            <button type="button" onClick={()=>setMCareerOpen(v=>!v)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", margin:"12px 0 5px", padding:0, background:"transparent", border:"none", cursor:"pointer", color:C.muted, fontSize:11, textAlign:"left" }}>
+              <span>경력 <span style={{ color:C.muted }}>(작품·활동 이력)</span></span>
+              <span style={{ color:C.blue, fontSize:11 }}>{mCareerOpen?"접기 ▲":"펼치기 ▼"}</span>
             </button>
             {mCareerOpen&&(
               <textarea
@@ -3001,7 +3001,7 @@ async function sharePdf(){
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ color:C.red, fontWeight:700 }}>*필수</span> <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
-            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day (9h)",mFeeDay,setMFeeDay],["Half day (5h)",mFeeHalf,setMFeeHalf],["Hour (1h)",mFeeHour,setMFeeHour]] as [string,number,(v:number)=>void][]).map(([lab,val,set])=>(
                 <div key={lab}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
@@ -3009,7 +3009,7 @@ async function sharePdf(){
                     <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric" placeholder="0"
                       value={val ? Number(val).toLocaleString("ko-KR") : ""}
                       onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) set(Number(v)||0); }} />
-                    <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>원</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:C.textSub }}>원</span>
                   </span>
                 </div>
               ))}
@@ -3034,21 +3034,20 @@ async function sharePdf(){
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
-              {([["rate","수수료율(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
+              {([["rate","수수료(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
                 <button key={k} type="button" onClick={()=>setMPayType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mPayType===k?C.green:C.border}`, background:mPayType===k?C.green+"22":"transparent", color:mPayType===k?C.green:C.muted, fontSize:12, fontWeight:mPayType===k?700:500, cursor:"pointer" }}>{l}</button>
               ))}
-              <span style={{ fontSize:11, color:C.muted }}>{mPayType==="rate"?"에이전시 수수료율 — 모델은 나머지 수령":"정액 그대로(모델료 무관)"}</span>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
               {([["Day","Day(9h)",mPayDayValue,setMPayDayValue],["Half","Half day(5h)",mPayHalfValue,setMPayHalfValue],["Hour","Hours(1h)",mPayHourValue,setMPayHourValue]] as [string,string,number,(v:number)=>void][]).map(([key,lab,val,set])=>(
                 <div key={key}>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{lab}</label>
                   <span style={{ display:"flex", alignItems:"center", gap:4 }}>
                     <input style={{ ...inp, marginBottom:0, flex:1, minWidth:0 }} type="text" inputMode="numeric"
-                      placeholder={mPayType==="rate"?"수수료율":"정액"}
+                      placeholder={mPayType==="rate"?"수수료":"정액"}
                       value={val ? (mPayType==="fixed"? Number(val).toLocaleString("ko-KR") : String(val)) : ""}
                       onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(v===""||!isNaN(Number(v))) set(Number(v)||0); }} />
-                    <span style={{ fontSize:13, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:C.textSub }}>{mPayType==="rate"?"%":"원"}</span>
                   </span>
                 </div>
               ))}
