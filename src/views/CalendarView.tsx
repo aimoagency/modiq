@@ -9,15 +9,12 @@ import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, 
 import SearchInput from "../components/SearchInput";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
-export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", holidays = [], onAddHoliday, onDeleteHoliday, modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
+export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
   bookings: any[]; models: any[]; customers: any[];
   onSelectBooking: (b: any) => void;
   onAddBooking: (preModel?: string, preDate?: string) => void;
   initModelId?: string;
   initDate?: string;
-  holidays?: any[];
-  onAddHoliday?: (date: string, label?: string) => void;
-  onDeleteHoliday?: (id: string) => void;
   modelOffs?: any[];
   onAddModelOff?: (model_id: string, start: string, end: string, reason?: string) => void;
   onDeleteModelOff?: (id: string) => void;
@@ -38,9 +35,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const [calMonth,   setCalMonth]   = useState(_initD ? _initD.getMonth()    : today.getMonth());
   const [selDate,    setSelDate]    = useState<string|null>(initDate || null);
   const [modelFilter,setModelFilter]= useState(initModelId); // 모델 필터
-  const [showHolidayForm, setShowHolidayForm] = useState(false);
-  const [hDate,  setHDate]  = useState("");
-  const [hLabel, setHLabel] = useState("휴무일");
   const [dayView, setDayView] = useState<"list"|"timeline">("list"); // 날짜 패널 보기 모드
   // 모델 휴무(기간) 등록 폼
   const [showOffForm, setShowOffForm] = useState(false);
@@ -82,9 +76,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
   const selDateBookings = selDate ? (bookingsByDate[selDate]||[]) : [];
 
-  // 휴무일 맵 (수동 저장분)
-  const holidayByDate: Record<string, any> = {};
-  holidays.forEach(h=>{ if(h.date) holidayByDate[h.date]=h; });
 
   // 모델 휴무: 해당 날짜에 걸친 휴무들 (모델 필터 시 그 모델만)
   const modelName = (id:string) => models.find(m=>m.id===id)?.name || "?";
@@ -124,7 +115,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><CalendarDays size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 캘린더</h1>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={()=>{ setHDate(selDate||todayStr); setHLabel("휴무일"); setShowHolidayForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.border}`, color:C.textSub }}><CalendarOff size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 지정</button>
           <button onClick={()=>{ setOffModel(modelFilter||""); setOffModelQ(modelFilter ? (models.find(m=>m.id===modelFilter)?.name||"") : ""); setOffStart(selDate||todayStr); setOffEnd(selDate||todayStr); setOffReason(""); setShowOffForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.orange}55`, color:C.orange }}><User size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 휴무</button>
           <button onClick={()=>onAddBooking(modelFilter||undefined, selDate||undefined)} style={btnS(C.green)}>+ 섭외 추가</button>
         </div>
@@ -296,7 +286,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const dayBookings= cell.date?(bookingsByDate[cell.date]||[]):[];
             const isVisaExit = !!cell.date && !!visaExit && cell.date===visaExit;
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
-            const manHol = cell.date ? holidayByDate[cell.date] : undefined;
             const dayOffs = cell.cur && cell.date ? offsForDate(cell.date) : [];
 
             // ── [추가] 충돌 정보 ──
@@ -320,12 +309,11 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
                 {/* 날짜 숫자 */}
                 <div style={{ marginBottom:3, textAlign:isMobile?"center":"left" }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":"transparent", color:isToday?"white":isVisaExit?C.red:!cell.cur?C.border:(krHol||manHol)?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":"transparent", color:isToday?"white":isVisaExit?C.red:!cell.cur?C.border:krHol?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
                   {/* [추가] 충돌 ⚠️ 배지 */}
                   {dayConflict&&<span title={dayConflict.worst==="OVERLAP"?"시간 겹침 충돌":"완충시간 부족"} style={{ marginLeft:3, display:"inline-flex", alignItems:"center", verticalAlign:"middle" }}><AlertTriangle size={isMobile?9:11} color={conflictColor!} strokeWidth={2.4} style={{ flexShrink:0 }}/></span>}
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
-                  {!isMobile&&!krHol&&manHol&&<span style={{ fontSize:9, color:C.orange, fontWeight:700, marginLeft:2 }}>{manHol.label}</span>}
                   {dayOffs.length>0&&<span title={dayOffs.map((o:any)=>`${modelName(o.model_id)} 휴무 (${fmtD(o.start_date)}~${fmtD(o.end_date)})`).join("\n")} style={{ fontSize:9, color:C.muted, fontWeight:700, marginLeft:2, whiteSpace:"nowrap" }}><CalendarOff size={9} style={{ verticalAlign:-1, flexShrink:0 }}/>{isMobile?"":(modelFilter?" 휴무":` 휴무 ${dayOffs.length}`)}</span>}
                 </div>
 
@@ -384,15 +372,9 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 {selDateBookings.filter(b=>b.status==="HOLD").length>0&&<span style={{ marginLeft:8, color:C.yellow, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> HOLD {selDateBookings.filter(b=>b.status==="HOLD").length}건</span>}
                 {isOutsideVisa(selDate)&&filteredModel&&<span style={{ marginLeft:8, color:C.red, fontWeight:700, fontSize:11 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 비자 범위 밖</span>}
                 {KR_HOLIDAYS[selDate]&&<span style={{ marginLeft:8, color:C.red, fontWeight:700 }}><Flag size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> {KR_HOLIDAYS[selDate]}</span>}
-                {holidayByDate[selDate]&&<span style={{ marginLeft:8, color:C.orange, fontWeight:700 }}><CalendarOff size={12} style={{ verticalAlign:-2, flexShrink:0 }}/> {holidayByDate[selDate].label}</span>}
               </p>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              {/* 휴무일 지정/해제 */}
-              {holidayByDate[selDate]
-                ? <button onClick={()=>onDeleteHoliday&&onDeleteHoliday(holidayByDate[selDate].id)} style={{ ...btnS("#3a1a1a"), border:`1px solid ${C.red}55`, color:C.red, padding:"6px 14px", fontSize:12 }}><CalendarOff size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 해제</button>
-                : <button onClick={()=>{ setHDate(selDate); setHLabel("휴무일"); setShowHolidayForm(true); }} style={{ ...btnS(C.card2), border:`1px solid ${C.border}`, color:C.textSub, padding:"6px 14px", fontSize:12 }}><CalendarOff size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 지정</button>
-              }
               {/* 날짜 클릭 → 해당 모델 + 날짜 pre-선택 섭외 등록 */}
               <button onClick={()=>onAddBooking(modelFilter||undefined, selDate)}
                 style={{ ...btnS(C.green), padding:"6px 14px", fontSize:12 }}>
@@ -524,26 +506,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
         </div>
       )}
       </div>
-      )}
-
-      {/* ════ 모달: 휴무일 지정 ════ */}
-      {showHolidayForm&&(
-        <Modal onClose={()=>setShowHolidayForm(false)}>
-          <h3 style={{ marginTop:0, color:C.text }}><CalendarOff size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 휴무일 지정</h3>
-          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>날짜 *</label>
-          <input style={inp} type="date" value={hDate} onChange={e=>setHDate(e.target.value)} />
-          <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>휴무일 내용 *</label>
-          <input style={inp} type="text" placeholder="예: 전사 휴무, 워크샵, 개인 휴가" value={hLabel} onChange={e=>setHLabel(e.target.value)} />
-          <div style={{ display:"flex", gap:10, marginTop:6 }}>
-            <button onClick={()=>{
-              if (!hDate) return alert("날짜를 선택하세요");
-              if (holidayByDate[hDate]) return alert(`이미 휴무일이 지정된 날짜입니다 (${holidayByDate[hDate].label})`);
-              onAddHoliday&&onAddHoliday(hDate, hLabel.trim()||"휴무일");
-              setShowHolidayForm(false);
-            }} style={{ ...btnS(C.green), flex:1, padding:"10px 0", fontSize:13 }}>저장</button>
-            <button onClick={()=>setShowHolidayForm(false)} style={{ ...btnS("#333"), flex:1, padding:"10px 0", fontSize:13 }}>취소</button>
-          </div>
-        </Modal>
       )}
 
       {/* ════ 모달: 모델 휴무(기간) 등록 ════ */}

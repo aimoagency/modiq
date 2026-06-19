@@ -104,7 +104,6 @@ export default function App() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [bookings,  setBookings]  = useState<any[]>([]);
   const [projects,  setProjects]  = useState<any[]>([]);
-  const [holidays,    setHolidays]    = useState<any[]>([]); // 수동 휴무일(에이전시 전체)
   const [modelOffs,   setModelOffs]   = useState<any[]>([]); // 모델별 휴무 기간
   const [packages,    setPackages]    = useState<Pkg[]>([]); // 모델 사진 패키지
   const [selectedProjectId, setSelectedProjectId] = useState<string|null>(null); // 프로젝트 상세
@@ -506,12 +505,10 @@ export default function App() {
       });
     } catch (e) { console.error("로드 실패", e); }
     finally { setSyncing(false); }
-    const [hr, mor] = await Promise.allSettled([
-      sb("holidays","GET",null,`?agency_id=eq.${agencyId}`),
-      sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`),
-    ]);
-    setHolidays(hr.status==="fulfilled" ? (hr.value||[]) : []); // 테이블 미생성 시 무시
-    setModelOffs(mor.status==="fulfilled" ? (mor.value||[]) : []); // 테이블 미생성 시 무시
+    try {
+      const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
+      setModelOffs(mo||[]);
+    } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
@@ -1003,18 +1000,6 @@ export default function App() {
     } catch(e) { alert("섭외 추가 실패: "+String(e)); }
   };
 
-  // ── 휴무일 ──
-  const handleAddHoliday = async (date: string, label = "휴무일") => {
-    if (!date) return alert("날짜를 선택하세요");
-    const nh = { id:`H_${Date.now()}`, agency_id: agency.id, date, label: label||"휴무일" };
-    try { await sb("holidays","POST",nh); setHolidays([...holidays, nh]); }
-    catch(e) { alert("휴무일 저장 실패 — Supabase에 holidays 테이블이 필요합니다.\n(README.md의 SQL 참고)\n"+String(e)); }
-  };
-  const handleDeleteHoliday = async (id: string) => {
-    if (!confirm("이 휴무일을 해제할까요?")) return;
-    try { await sb("holidays","DELETE",null,`?id=eq.${id}`); setHolidays(holidays.filter(h=>h.id!==id)); }
-    catch(e) { alert("휴무일 해제 실패: "+String(e)); }
-  };
 
   // ── 모델 휴무(기간) ──
   const handleAddModelOff = async (model_id: string, start_date: string, end_date: string, reason = "") => {
@@ -1805,9 +1790,6 @@ async function sharePdf(){
         {page==="calendar" && (
           <CalendarView
             isMobile={isMobile}
-            holidays={holidays}
-            onAddHoliday={handleAddHoliday}
-            onDeleteHoliday={handleDeleteHoliday}
             modelOffs={modelOffs}
             onAddModelOff={handleAddModelOff}
             onDeleteModelOff={handleDeleteModelOff}
