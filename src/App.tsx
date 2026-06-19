@@ -66,7 +66,8 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   }
   const style = document.getElementById("pretendard-global") || document.createElement("style");
   style.id = "pretendard-global";
-  style.textContent = `*, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
+  style.textContent = `@font-face { font-family: 'Pretendard-fallback'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'), local('Malgun Gothic'), local('Noto Sans KR'), local('Roboto'); size-adjust: 105.6%; ascent-override: 95.2%; descent-override: 24.1%; line-gap-override: 0%; }
+*, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
 :root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#f0f2f5; --c-text-sub:#c8ccd8; --c-muted:#9aa1ad; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
 html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#5b626d; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }`;
