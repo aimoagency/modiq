@@ -95,16 +95,25 @@ export const calSubscribePageUrl = (token: string) => `${location.origin}${locat
 
 // ── 섭외 → 캘린더 이벤트 ──
 const TYPE_LABEL: Record<string, string> = { SHOOT: "촬영", MEETING: "실물미팅", FITTING: "피팅", AUDITION: "오디션" };
-export const bookingToCalEvent = (b: any, modelName: string, clientName: string): CalEvent => {
+const TYPE_LABEL_EN: Record<string, string> = { SHOOT: "Shoot", MEETING: "Meeting", FITTING: "Fitting", AUDITION: "Audition" };
+// bilingual=true → 제목·설명을 영어/국문 병기(외국인 모델 캘린더용)
+export const bookingToCalEvent = (b: any, modelName: string, clientName: string, opts: { bilingual?: boolean } = {}): CalEvent => {
   const ty = TYPE_LABEL[b.booking_type || "SHOOT"] || "일정";
-  const desc = [
+  const tyEn = TYPE_LABEL_EN[b.booking_type || "SHOOT"] || "Schedule";
+  const bi = !!opts.bilingual;
+  const desc = (bi ? [
+    `Type/유형: ${tyEn} · ${ty}`, `Model/모델: ${modelName}`, `Client/고객사: ${clientName}`,
+    b.manager ? `Manager/담당: ${b.manager}` : "",
+    b.project_name ? `Project/프로젝트: ${b.project_name}` : "",
+    b.memo ? `Memo/메모: ${b.memo}` : "",
+  ] : [
     `유형: ${ty}`, `모델: ${modelName}`, `고객사: ${clientName}`,
     b.manager ? `담당: ${b.manager}` : "",
     b.project_name ? `프로젝트: ${b.project_name}` : "",
     b.memo ? `메모: ${b.memo}` : "",
-  ].filter(Boolean).join("\n");
+  ]).filter(Boolean).join("\n");
   return {
-    title: `[${ty}] ${clientName} · ${modelName}`,
+    title: bi ? `[${tyEn}·${ty}] ${clientName} · ${modelName}` : `[${ty}] ${clientName} · ${modelName}`,
     date: b.shoot_date,
     start: b.start_time || undefined,
     end: b.end_time || undefined,

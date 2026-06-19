@@ -41,27 +41,92 @@ export const sendEmail = async (opts: EmailOpts): Promise<{ ok: boolean; skipped
 // utf-8 문자열 → base64 (한글 안전)
 const b64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
 
-// 캘린더 일정을 모델에게 메일로 (구글 추가 링크 + .ics 첨부)
-export const sendCalEmail = (to: string, ev: CalEvent, modelName = "", subscribeUrl = "", agencyName = "", replyTo = "") => {
-  const when = ev.start ? `${ev.date.replace(/-/g, ".")} ${ev.start}${ev.end ? `~${ev.end}` : ""}` : `${ev.date.replace(/-/g, ".")} (종일)`;
+// ── 일정 메일 포맷 헬퍼(영문/국문 병기) ──
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WD_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WD_KR = ["일", "월", "화", "수", "목", "금", "토"];
+const fmtDateBi = (d: string): { en: string; kr: string } => {
+  const dt = new Date(d + "T00:00:00");
+  if (isNaN(dt.getTime())) return { en: d, kr: d };
+  return {
+    en: `${MONTHS_EN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()} (${WD_EN[dt.getDay()]})`,
+    kr: `${d.replace(/-/g, ".")} (${WD_KR[dt.getDay()]})`,
+  };
+};
+const to12h = (t: string): string => {
+  const [h, m] = t.split(":").map(Number);
+  const ap = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m || 0).padStart(2, "0")} ${ap}`;
+};
+const fmtTimeBi = (start?: string, end?: string): string =>
+  !start ? "All day · 종일" : `${to12h(start)}${end ? ` – ${to12h(end)}` : ""} (KST)`;
+const mapsUrl = (loc: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+// 예약 유형 영문/국문 병기 + 배지 색
+const TYPE_BI: Record<string, { kr: string; en: string; color: string }> = {
+  SHOOT:    { kr: "촬영",      en: "Shoot",    color: "#3b82f6" },
+  MEETING:  { kr: "실물 미팅", en: "Meeting",  color: "#8b5cf6" },
+  FITTING:  { kr: "피팅",      en: "Fitting",  color: "#ec4899" },
+  AUDITION: { kr: "오디션",    en: "Audition", color: "#f59e0b" },
+};
+
+// 캘린더 일정을 모델에게 메일로 (영문/국문 병기 · 유형 배지 · 구글 추가 링크 · 지도 · .ics 첨부)
+// 항목 순서: 프로젝트 → 브랜드 → 날짜 → 시간 → 장소
+export const sendCalEmail = (
+  to: string, ev: CalEvent, modelName = "", subscribeUrl = "", agencyName = "", replyTo = "",
+  meta: { project?: string; brand?: string; type?: string } = {},
+) => {
+  const project = (meta.project || "").trim();
+  const brand = (meta.brand || "").trim();
+  const ty = TYPE_BI[meta.type || "SHOOT"];
+  const headline = project || brand || ev.title;
+  const d = fmtDateBi(ev.date);
+  const timeStr = fmtTimeBi(ev.start, ev.end);
+  const row = (en: string, kr: string, value: string) => `
+        <tr style="border-top:1px solid #f1f3f5">
+          <td style="padding:9px 0;color:#8a93a0;width:132px;vertical-align:top;font-size:13px;line-height:1.35">${en}<br><span style="font-size:11px">${kr}</span></td>
+          <td style="padding:9px 0;color:#16181f;vertical-align:top;font-size:13px;line-height:1.5">${value}</td>
+        </tr>`;
+  const rows = [
+    project ? row("Project", "프로젝트", esc(project)) : "",
+    brand ? row("Brand", "브랜드", esc(brand)) : "",
+    row("Date", "날짜", `${esc(d.en)}<br><span style="color:#6b7280">${esc(d.kr)}</span>`),
+    row("Time", "시간", esc(timeStr)),
+    ev.location ? row("Location", "위치", `${esc(ev.location)}<div style="margin-top:5px"><a href="${mapsUrl(ev.location)}" style="color:#1a73e8;text-decoration:none;font-size:12px">📍 Open in Google Maps →</a></div>`) : "",
+  ].filter(Boolean).join("");
   const html = `
-    <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:480px;margin:0 auto;color:#1a1d27">
-      <p style="font-size:12px;color:#9aa2af;letter-spacing:1px;margin:0">일정 안내</p>
-      <h2 style="margin:6px 0 14px;font-size:19px">${esc(ev.title)}</h2>
-      <div style="background:#f4f6f9;border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.9">
-        <div><b>일시</b>  ${esc(when)}</div>
-        ${ev.location ? `<div><b>장소</b>  ${esc(ev.location)}</div>` : ""}
+    <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;color:#16181f">
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #eef0f3">
+        <div style="font-size:11px;letter-spacing:1.5px;color:#8a93a0">SCHEDULE NOTICE · 일정 안내</div>
+        ${ty ? `<div style="margin-top:8px"><span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">${ty.kr} · ${ty.en}</span></div>` : ""}
+        <div style="font-size:18px;font-weight:700;margin-top:8px">${esc(headline)}</div>
+        ${agencyName ? `<div style="font-size:12px;color:#8a93a0;margin-top:2px">from ${esc(agencyName)}</div>` : ""}
       </div>
-      <p style="margin:18px 0 8px;font-size:14px">${modelName ? esc(modelName) + "님, " : ""}아래에서 캘린더에 추가하세요.</p>
-      <a href="${googleCalUrl(ev)}" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:700;font-size:14px">구글 캘린더에 추가</a>
-      <p style="margin:14px 0 0;font-size:13px;color:#6b7280">애플·네이버·아웃룩 캘린더는 첨부된 .ics 파일을 열어 추가하세요.</p>
-      ${subscribeUrl ? `<p style="margin:16px 0 0;font-size:13px">앞으로의 모든 일정을 자동으로 받으려면 <a href="${esc(subscribeUrl)}">여기서 구독</a>하세요.</p>` : ""}
+      <div style="padding:14px 22px">
+        <table style="width:100%;border-collapse:collapse">${rows}</table>
+      </div>
+      <div style="padding:2px 22px 20px">
+        <a href="${googleCalUrl(ev)}" style="display:block;text-align:center;background:#1a73e8;color:#fff;text-decoration:none;padding:12px;border-radius:8px;font-weight:700;font-size:14px">Add to Google Calendar · 구글 캘린더에 추가</a>
+        <p style="font-size:12px;color:#8a93a0;margin:12px 0 0;line-height:1.7">${modelName ? esc(modelName) + "님 · " : ""}Apple · Naver · Outlook: open the attached <b>.ics</b> · 첨부된 .ics 파일을 여세요.${subscribeUrl ? `<br>Subscribe to all schedules · 모든 일정 자동 받기 → <a href="${esc(subscribeUrl)}" style="color:#1a73e8;text-decoration:none">Subscribe</a>` : ""}</p>
+      </div>
     </div>`;
+  const text = [
+    `[SCHEDULE NOTICE · 일정 안내] ${headline}`,
+    ty ? `Type / 유형: ${ty.kr} · ${ty.en}` : "",
+    project ? `Project / 프로젝트: ${project}` : "",
+    brand ? `Brand / 브랜드: ${brand}` : "",
+    `Date / 날짜: ${d.en} · ${d.kr}`,
+    `Time / 시간: ${timeStr}`,
+    ev.location ? `Location / 위치: ${ev.location}` : "",
+    ev.location ? `Google Maps: ${mapsUrl(ev.location)}` : "",
+    ``,
+    `Add to Google Calendar · 구글 캘린더에 추가: ${googleCalUrl(ev)}`,
+  ].filter(Boolean).join("\n");
   return sendEmail({
     to,
-    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 안내 · ${ev.title}`,
+    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 안내 · Schedule — ${headline}`,
     html,
-    text: `${ev.title}\n일시: ${when}${ev.location ? `\n장소: ${ev.location}` : ""}\n\n구글 캘린더에 추가: ${googleCalUrl(ev)}`,
+    text,
     icsBase64: b64(icsText(ev)),
     icsFilename: `${ev.title}.ics`,
     fromName: agencyName || undefined,
