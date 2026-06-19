@@ -61,7 +61,7 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
     const link = document.createElement("link");
     link.id = "pretendard-font";
     link.rel = "stylesheet";
-    link.href = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.min.css";
+    link.href = "/fonts/pretendard-subset.css";
     document.head.appendChild(link);
   }
   const style = document.getElementById("pretendard-global") || document.createElement("style");
