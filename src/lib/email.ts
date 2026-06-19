@@ -82,23 +82,23 @@ export const sendCalEmail = (
   const headline = project || brand || ev.title;
   const d = fmtDateBi(ev.date);
   const timeStr = fmtTimeBi(ev.start, ev.end);
-  const row = (en: string, kr: string, value: string) => `
+  const row = (label: string, value: string) => `
         <tr style="border-top:1px solid #f1f3f5">
-          <td style="padding:9px 0;color:#8a93a0;width:132px;vertical-align:top;font-size:13px;line-height:1.35">${en}<br><span style="font-size:11px">${kr}</span></td>
+          <td style="padding:9px 0;color:#8a93a0;width:110px;vertical-align:top;font-size:13px;line-height:1.5">${label}</td>
           <td style="padding:9px 0;color:#16181f;vertical-align:top;font-size:13px;line-height:1.5">${value}</td>
         </tr>`;
   const rows = [
-    project ? row("Project", "프로젝트", esc(project)) : "",
-    brand ? row("Brand", "브랜드", esc(brand)) : "",
-    row("Date", "날짜", `${esc(d.en)}<br><span style="color:#6b7280">${esc(d.kr)}</span>`),
-    row("Time", "시간", esc(timeStr)),
-    ev.location ? row("Location", "위치", `${esc(ev.location)}<div style="margin-top:5px"><a href="${mapsUrl(ev.location)}" style="color:#1a73e8;text-decoration:none;font-size:12px">📍 Open in Google Maps →</a></div>`) : "",
+    project ? row("Project", esc(project)) : "",
+    brand ? row("Brand", esc(brand)) : "",
+    row("Date", esc(d.en)),
+    row("Time", esc(timeStr)),
+    ev.location ? row("Location", `${esc(ev.location)}<div style="margin-top:5px"><a href="${mapsUrl(ev.location)}" style="color:#1a73e8;text-decoration:none;font-size:12px">📍 Open in Google Maps →</a></div>`) : "",
   ].filter(Boolean).join("");
   const html = `
     <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;color:#16181f">
       <div style="padding:18px 22px 14px;border-bottom:1px solid #eef0f3">
         <div style="font-size:11px;letter-spacing:1.5px;color:#8a93a0">SCHEDULE NOTICE · 일정 안내</div>
-        ${ty ? `<div style="margin-top:8px"><span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">${ty.kr} · ${ty.en}</span></div>` : ""}
+        ${ty ? `<div style="margin-top:8px"><span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">${ty.en}</span></div>` : ""}
         <div style="font-size:18px;font-weight:700;margin-top:8px">${esc(headline)}</div>
         ${agencyName ? `<div style="font-size:12px;color:#8a93a0;margin-top:2px">from ${esc(agencyName)}</div>` : ""}
       </div>
@@ -112,12 +112,12 @@ export const sendCalEmail = (
     </div>`;
   const text = [
     `[SCHEDULE NOTICE · 일정 안내] ${headline}`,
-    ty ? `Type / 유형: ${ty.kr} · ${ty.en}` : "",
-    project ? `Project / 프로젝트: ${project}` : "",
-    brand ? `Brand / 브랜드: ${brand}` : "",
-    `Date / 날짜: ${d.en} · ${d.kr}`,
-    `Time / 시간: ${timeStr}`,
-    ev.location ? `Location / 위치: ${ev.location}` : "",
+    ty ? `Type: ${ty.en}` : "",
+    project ? `Project: ${project}` : "",
+    brand ? `Brand: ${brand}` : "",
+    `Date: ${d.en}`,
+    `Time: ${timeStr}`,
+    ev.location ? `Location: ${ev.location}` : "",
     ev.location ? `Google Maps: ${mapsUrl(ev.location)}` : "",
     ``,
     `Add to Google Calendar · 구글 캘린더에 추가: ${googleCalUrl(ev)}`,

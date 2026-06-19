@@ -15,7 +15,7 @@ import {
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
   makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
-  modelTaxType, isForeignerModel, modelGross, modelWithholding, clientCharge,
+  modelTaxType, modelGross, modelWithholding, clientCharge,
   bookingSession, sessionLabel, foreignerRate, payCfg,
 } from "./lib/utils";
 import Badge from "./components/Badge";
@@ -927,7 +927,7 @@ export default function App() {
         }
         // 구글 캘린더 자동 동기화: 확정 전환(생성·외국인 메일) / 일시·장소 변경(갱신) / 취소(삭제)
         if ((statusChanged || whenLocChanged) && finalStatus!=="HOLD") {
-          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mailForeign: statusChanged && finalStatus==="CONFIRMED" });
+          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mail: statusChanged && finalStatus==="CONFIRMED" });
         }
       }
       setSelectedBooking((p:any)=>p?{...p,...updates}:p);
@@ -1081,12 +1081,10 @@ export default function App() {
     } catch { return null; }
   };
 
-  // 섭외 확정/수정/취소 → 구글 캘린더 자동 동기화(+외국인 모델 영어 병기 메일).
+  // 섭외 확정/수정/취소 → 구글 캘린더 자동 동기화(+확정 시 영어 병기 안내 메일).
   // 구글 미연동·모델 이메일 없음·메일함수 미배포 시 안전하게 no-op(앱 흐름 방해 X).
-  const syncBookingToCalendar = async (tb: any, tm: any, tc: any, opts: { mailForeign?: boolean } = {}) => {
+  const syncBookingToCalendar = async (tb: any, tm: any, tc: any, opts: { mail?: boolean } = {}) => {
     if (!agency?.id || !tb) return;
-    // 영어 발동은 "외국인 플래그" 기준(일괄등록·과거 데이터까지 커버) + 정산 세무유형 보조
-    const foreign = !!tm?.is_foreigner || isForeignerModel(tm);
     // 취소: 구글 일정 있으면 삭제
     if (tb.status === "CANCELLED") {
       if (tb.gcal_event_id) {
@@ -1102,7 +1100,7 @@ export default function App() {
     // 확정 계열 + 날짜 있을 때만 동기화
     if (!["CONFIRMED", "COMPLETED", "SETTLED"].includes(tb.status) || !tb.shoot_date) return;
     try {
-      const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사", { bilingual: foreign });
+      const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
       const input: any = { action: tb.gcal_event_id ? "update" : "create", agency_id: agency.id, event_id: tb.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
       if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
       else { input.all_day = true; input.date = ev.date; }
@@ -1113,8 +1111,8 @@ export default function App() {
         setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: r.event_id } : s);
       }
     } catch {}
-    // 외국인 모델: 영어 병기 메일 자동 발송(보조 안내)
-    if (opts.mailForeign && foreign && tm?.email) {
+    // 확정 시 영어 병기 안내 메일 자동 발송(모든 모델 · 내외국인 구분 없이)
+    if (opts.mail && tm?.email) {
       try {
         const tok = await ensureCalToken(tm);
         const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
@@ -1148,7 +1146,7 @@ export default function App() {
           const tm = models.find(m=>m.id===tb.model_id);
           const tc = customers.find(c=>c.id===tb.customer_id);
           sendAlimtalkBoth(tm?.phone||"", tc?.phone||"", status==="CONFIRMED"?"CONFIRM":"CANCEL", { modelName:tm?.name||"모델", booking:tb, clientName:tc?.name||"고객사", managerName:tb.manager||"담당자", senderLabel:agency?.name||"에이전시", contactPhone:agency?.contact_phone||agency?.rep_phone||"" });
-          syncBookingToCalendar(tb, tm, tc, { mailForeign: status==="CONFIRMED" }); // 구글 자동 동기화 + 외국인 영어 메일
+          syncBookingToCalendar(tb, tm, tc, { mail: status==="CONFIRMED" }); // 구글 자동 동기화 + 확정 시 안내 메일(전체)
         }
       }
     } catch (e) { alert("상태 변경 실패: "+String(e)); }
