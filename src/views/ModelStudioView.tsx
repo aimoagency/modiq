@@ -393,7 +393,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
               <div style={{ width: isMobile ? "100%" : 240, flexShrink: 0 }}>
                 <div style={{ position: "relative", width: isMobile ? 96 : "100%" }}>
                   {sel.thumb_url
-                    ? <img src={sel.thumb_url} alt="" style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, objectFit: "cover", border: `1px solid ${C.border}`, display: "block" }} />
+                    ? <img key={sel.thumb_url} src={sel.thumb_url} alt="" style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, objectFit: "cover", border: `1px solid ${C.border}`, background: C.card2, display: "block" }} />
                     : <div style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 40 }}>{(sel.name || "?")[0]}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -444,13 +444,13 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
                     {photos.map((p, i) => { return (
-                      <div key={i}
+                      <div key={p}
                         draggable
                         onDragStart={() => setDragIdx(i)}
                         onDragOver={e => { if (dragIdx !== null) e.preventDefault(); }}
                         onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); if (dragIdx !== i) { const next = [...photos]; const [mv] = next.splice(dragIdx, 1); next.splice(i, 0, mv); savePhotos(next); } setDragIdx(null); } }}
                         onDragEnd={() => setDragIdx(null)}
-                        style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
+                        style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: C.card2, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
                         <img src={thumbUrl(p)} alt="" draggable={false} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         <button onClick={(e) => { e.stopPropagation(); setAsCover(i); }} title="이 사진을 대표로 지정" style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: i === 0 ? C.blue : "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>{i === 0 ? "대표" : "대표 지정"}</button>
