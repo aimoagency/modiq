@@ -61,6 +61,7 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
     const link = document.createElement("link");
     link.id = "pretendard-font";
     link.rel = "stylesheet";
+    link.media = "print"; link.onload = () => { link.media = "all"; }; // 비차단 로드
     link.href = "/fonts/pretendard-subset.css";
     document.head.appendChild(link);
   }
