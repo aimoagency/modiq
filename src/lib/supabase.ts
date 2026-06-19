@@ -10,11 +10,28 @@ export const setAuthTokens = (a: string | null, r: string | null) => { accessTok
 export const getAuthTokens = () => ({ access_token: accessToken, refresh_token: refreshToken });
 export const setOnAuthFail = (cb: () => void) => { onAuthFail = cb; };
 
+// ── fetch + 타임아웃 ──
+// 네트워크가 응답 없이 멈추면 fetch는 무한 대기 → 로딩 스켈레톤이 영영 안 풀린다.
+// AbortController로 상한을 둬 초과 시 reject시키고, 호출부 finally(loadData 등)에서 로딩을 해제하게 한다.
+const FETCH_TIMEOUT_MS = 15000;
+const fetchT = async (url: string, init: RequestInit = {}, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> => {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (e: any) {
+    if (e?.name === "AbortError") throw new Error("네트워크 응답이 지연되어 요청을 취소했습니다. 잠시 후 다시 시도해주세요.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 // refresh_token으로 세션 갱신 (성공 시 새 토큰 반환, 실패 시 null)
 export const refreshSession = async (): Promise<any | null> => {
   if (!refreshToken) return null;
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    const res = await fetchT(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: "POST",
       headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -27,7 +44,7 @@ export const refreshSession = async (): Promise<any | null> => {
 };
 
 export const sb = async (table: string, method = "GET", body: any = null, query = "", _retry = false): Promise<any> => {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+  const res = await fetchT(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
     method,
     headers: {
       apikey: SUPABASE_KEY,
@@ -93,7 +110,7 @@ export const sbUpload = async (path: string, blob: Blob, _retry = false): Promis
 };
 
 export const sbAuth = async (endpoint: string, body: any): Promise<any> => {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
+  const res = await fetchT(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
     method: "POST",
     headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify(body),
