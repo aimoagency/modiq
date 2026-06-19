@@ -4,9 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Modiq</title>
-    <!-- 동적 서브셋(자가호스팅, font-display:optional): 조각만 받아 가볍고, 교체 깜빡임 없음 -->
+    <!-- 폰트 CSS는 비차단 로드(media=print→onload all): 렌더를 막지 않아 메트릭 정합 폴백이 즉시 그려짐 → 첫 페인트 깜빡임 없음 -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link id="pretendard-font" rel="stylesheet" href="/fonts/pretendard-subset.css" />
+    <link id="pretendard-font" rel="stylesheet" href="/fonts/pretendard-subset.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/fonts/pretendard-subset.css" /></noscript>
   </head>
   <body>
     <div id="root"></div>
