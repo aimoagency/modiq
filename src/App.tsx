@@ -2978,15 +2978,16 @@ async function sharePdf(){
               <span>경력 <span style={{ color:C.muted }}>(작품·활동 이력)</span></span>
               <span style={{ color:C.blue, fontSize:11 }}>{mCareerOpen?"접기 ▲":"펼치기 ▼"}</span>
             </button>
-            {mCareerOpen&&(
-              <textarea
-                value={mCareer}
-                onChange={e=>{ setMCareer(e.target.value); const t=e.currentTarget; t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }}
-                ref={el=>{ if(el){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } }}
-                placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
-                style={{ ...inp, marginTop:6, marginBottom:0, minHeight:56, resize:"none", overflow:"hidden", lineHeight:1.5 }}
-              />
-            )}
+            {/* 접힘=1줄 미리보기(내용 있음을 예측), 펼침/클릭=내용만큼 자동확장 */}
+            <textarea
+              value={mCareer}
+              rows={1}
+              onFocus={()=>{ if(!mCareerOpen) setMCareerOpen(true); }}
+              onChange={e=>{ setMCareer(e.target.value); if(mCareerOpen){ const t=e.currentTarget; t.style.height="auto"; t.style.height=t.scrollHeight+"px"; } }}
+              ref={el=>{ if(el){ if(mCareerOpen){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } else { el.style.height=""; } } }}
+              placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
+              style={{ ...inp, marginTop:6, marginBottom:0, resize:"none", overflow:"hidden", lineHeight:1.5, cursor:"text" }}
+            />
           </div>
 
           {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
