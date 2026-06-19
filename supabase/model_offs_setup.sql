@@ -17,5 +17,17 @@ create table if not exists model_offs (
 create index if not exists idx_model_offs_agency on model_offs(agency_id);
 create index if not exists idx_model_offs_model  on model_offs(model_id);
 
--- ※ RLS 정책은 기존 테이블(holidays 등)과 동일하게 소속 에이전시 단위로 적용하세요.
---   (holidays 정책을 복사해 model_offs로 동일하게 생성하면 됩니다.)
+-- ── RLS: 소속 에이전시 단위 접근 (packages/holidays와 동일 패턴) ──
+-- 전제: supabase_setup.sql 의 my_agency_ids() 헬퍼가 먼저 적용돼 있어야 함.
+alter table model_offs enable row level security;
+
+drop policy if exists "model_offs_agency_all" on model_offs;
+create policy "model_offs_agency_all" on model_offs for all to authenticated
+  using      (agency_id in (select my_agency_ids()))
+  with check (agency_id in (select my_agency_ids()));
+
+-- ═══════════════════════════════════════════════════════════════
+-- 롤백 (문제 시 아래만 실행)
+-- drop policy if exists "model_offs_agency_all" on model_offs;
+-- alter table model_offs disable row level security;
+-- ═══════════════════════════════════════════════════════════════
