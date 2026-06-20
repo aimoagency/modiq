@@ -15,7 +15,10 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
   const [cTo, setCTo] = useState("");
   const [tab, setTab] = useState<"customer"|"model">("customer");
   const [sel, setSel] = useState<{ type:"model"|"customer"; id:string; name:string } | null>(null); // 선택된 모델/고객사
-  const period = preset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(preset);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const period = preset==="custom"   ? { from: cFrom||undefined, to: cTo||undefined }
+               : preset==="upcoming" ? { from: todayStr, to: undefined as string|undefined } // 예정 매출: 오늘 이후 촬영일(미래 확정건)
+               : periodRange(preset);
 
   // 기간 + 매출인정 상태 필터
   const inPeriod = (b:any) => {
@@ -74,7 +77,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
 
       {/* 기간 필터 (칩) */}
       <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {([["month","이번 달"],["lastmonth","지난 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
+        {([["month","이번 달"],["lastmonth","지난 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["upcoming","예정"],["custom","기간 설정"]] as const).map(([k,l])=>(
           <button key={k} onClick={()=>setPreset(k)} style={{ padding:"6px 16px", borderRadius:20, border:`1px solid ${preset===k?C.blue:C.border}`, background:preset===k?C.blue+"22":"transparent", color:preset===k?C.blue:C.muted, fontSize:13, fontWeight:preset===k?700:500, cursor:"pointer" }}>{l}</button>
         ))}
         {preset==="custom"&&(
@@ -85,6 +88,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
           </span>
         )}
       </div>
+      {preset==="upcoming" && <p style={{ margin:"-4px 0 14px", fontSize:12, color:C.muted }}>📅 오늘 이후 촬영 예정인 확정 섭외의 <b style={{ color:C.textSub }}>예정 매출</b>입니다. 실제 매출은 촬영·입금 후 해당 월에 반영됩니다.</p>}
 
       {/* 매출 요약 카드 */}
       <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(5,minmax(0,1fr))", gap:12, marginBottom:18 }}>
@@ -114,7 +118,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
         </p>
         {sel && <button onClick={()=>setSel(null)} style={{ padding:"4px 12px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer" }}>✕ 전체 보기</button>}
       </div>
-      {listed.length===0 ? <p style={{ color:C.muted }}>이 기간에 매출이 없습니다.</p> : (
+      {listed.length===0 ? <p style={{ color:C.muted }}>{preset==="upcoming"?"예정된(미래 촬영일) 확정 섭외가 없습니다.":"이 기간에 매출이 없습니다."}</p> : (
         <div style={{ display:"grid", gap:6, gridTemplateColumns:"minmax(0,1fr)" }}>
           {listed.map(b=>(
             <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
