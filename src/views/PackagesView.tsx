@@ -141,7 +141,9 @@ export default function PackagesView({ packages, setPackages, models, customers,
     if (draft.items.length === 0) { alert("모델을 1명 이상 추가하세요."); return; }
     setSaving(true);
     try {
-      const row: Pkg = { ...draft, title: draft.title.trim() };
+      // item_count는 DB 생성 컬럼(jsonb_array_length(items)) → payload에서 제외(포함 시 428C9 에러)
+      const { item_count, ...clean } = { ...draft, title: draft.title.trim() } as any;
+      const row: Pkg = clean;
       if (isNew) {
         await sb("packages", "POST", row);
         setPackages(prev => [row, ...prev]);
