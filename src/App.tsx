@@ -2939,7 +2939,7 @@ async function sharePdf(){
               <input style={inp} type="email" value={mEmail} onChange={e=>setMEmail(e.target.value)} />
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>성별 *<span style={{ fontSize:10, color:C.muted }}> · ID 생성</span></label>
               <select style={inp} value={mGender} onChange={e=>setMGender(e.target.value)}>
