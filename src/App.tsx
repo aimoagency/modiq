@@ -311,7 +311,6 @@ export default function App() {
   const [mPayMethod,   setMPayMethod]   = useState("");   // 'bank'|'payoneer'|'wise'|'cash'
   const [mPayDetail,   setMPayDetail]   = useState<any>({});
   const [mTaxRate,     setMTaxRate]     = useState<number>(0);
-  const [mRateOverride, setMRateOverride] = useState(false); // 원천징수율 직접지정(조세조약 등 예외). 기본=비자 자동(잠금)
   const [showForeignModal, setShowForeignModal] = useState(false);
   const [mInstagram,   setMInstagram]   = useState("");
   const [mDrive,       setMDrive]       = useState("");
@@ -613,7 +612,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMRateOverride(false); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -647,7 +646,6 @@ export default function App() {
     { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMCareerOpen(!!m.career); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMAddress(m.address||""); setMNationalId(""); setShowIdInput(false);
-    { const _vd = m.visa_type==="E6"?3.3:20; setMRateOverride(!!m.is_foreigner && Number(m.tax_rate)>0 && Number(m.tax_rate)!==_vd); }
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
     setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
@@ -672,20 +670,9 @@ export default function App() {
 
   // 식별번호(주민/외국인등록/여권) 보안 저장 — 별도 RPC(암호화·대표/정산권한자 전용). 평문은 저장 후 비움.
   const saveModelNationalId = async (modelId: string): Promise<boolean> => {
+    const v = mNationalId.trim();
+    if (!v) return false;
     const idType = !mIsForeign ? "rrn" : (mHasAlienCard ? "arc" : "passport");
-    // 주민/외국인등록번호: 앞6(ssn6, 생년월일) 자동 + 뒷7만 입력받아 결합 / 여권: 전체 입력
-    let v: string;
-    if (idType === "passport") {
-      v = mNationalId.trim();
-      if (!v) return false;
-    } else {
-      const back = mNationalId.replace(/\D/g, "");
-      if (!back) return false;
-      const front = (mSSN || "").replace(/\D/g, "");
-      if (front.length < 6) { alert("앞 6자리(생년월일)를 먼저 입력하세요."); return false; }
-      if (back.length < 7)  { alert("뒷자리 7자리를 입력하세요."); return false; }
-      v = front.slice(0, 6) + back.slice(0, 7);
-    }
     try {
       const masked = await sb("rpc/set_model_national_id", "POST", { p_model_id: modelId, p_id_type: idType, p_id_plain: v });
       setModels(prev => prev.map(m => m.id===modelId ? { ...m, national_id_masked: masked, national_id_type: idType } : m));
@@ -2922,25 +2909,14 @@ async function sharePdf(){
             </div>
           </div>
 
-          {/* 내국인 / 외국인 — 맨 처음 선택 (ID·세무 입력 흐름 결정) */}
-          <div style={{ marginBottom:12 }}>
-            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>구분 *</label>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-              <button type="button" onClick={()=>{ setMIsForeign(false); setMTaxType(t=>t==="company"?"company":"freelancer"); }} style={{ padding:"7px 16px", borderRadius:20, border:`1px solid ${!mIsForeign?C.blue:C.border}`, background:!mIsForeign?C.blue+"22":"transparent", color:!mIsForeign?C.blue:C.muted, fontSize:13, fontWeight:!mIsForeign?700:500, cursor:"pointer" }}>내국인</button>
-              <button type="button" onClick={()=>{ setMIsForeign(true); setMTaxType("foreigner"); if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); }} style={{ padding:"7px 16px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:13, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인</button>
-              {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 · 3.3%":mVisaType==="C4"?"C-4 · 20%":mVisaType==="OTHER"?"기타 · 20%":"비자 미선택"}</span>}
-              {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.blue}`, background:"transparent", color:C.blue, fontSize:11, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 ✎</button>}
-            </div>
-          </div>
-
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델명 *</label>
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{mIsForeign?"생년월일 6자리 (YYMMDD) *":"주민번호 앞 6자리 *"}</label>
-              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} placeholder="예: 901231" />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주민번호 앞 6자리 *</label>
+              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3042,6 +3018,15 @@ async function sharePdf(){
             />
           </div>
 
+          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
+          <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
+              {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
+            </div>
+            {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
+          </div>
+
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>모델료 <span style={{ color:C.red, fontWeight:700 }}>*필수</span> <span style={{ fontWeight:500, color:C.muted }}>(섭외 시간 기준 자동 적용 — 5h까지 Half, 6h~ Day)</span></p>
@@ -3116,15 +3101,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({!mIsForeign?"내국인":mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  {idType!=="passport" ? (
-                    <span style={{ display:"flex", gap:6, alignItems:"center" }}>
-                      <span style={{ ...inp, marginBottom:0, width:78, textAlign:"center", color:C.textSub, background:C.card, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{(mSSN||"").slice(0,6)||"앞6자리"}</span>
-                      <span style={{ color:C.muted, fontWeight:700 }}>-</span>
-                      <input style={{ ...inp, marginBottom:0, width:130, letterSpacing:1 }} type="password" inputMode="numeric" value={mNationalId} onChange={e=>setMNationalId(e.target.value.replace(/\D/g,"").slice(0,7))} placeholder="뒷자리 7" autoComplete="off" />
-                    </span>
-                  ) : (
-                    <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
-                  )}
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
@@ -3203,14 +3180,14 @@ async function sharePdf(){
       {showForeignModal && (
         <Modal onClose={()=>setShowForeignModal(false)}>
           <h3 style={{ marginTop:0, color:C.text }}><Plane size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 외국인 비자 · 정산 정보</h3>
-          <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>비자 유형을 선택하면 원천징수율·기본 지급방식이 자동 설정·잠금됩니다. 이 세율이 외국인 원천징수 계산에 그대로 적용됩니다. (조세조약 등 예외만 '직접 지정')</p>
+          <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>비자 유형을 선택하면 세율·기본 지급방식이 자동 설정됩니다. (세율은 정보용 — 정산 계산은 정산·세무 설정 사용)</p>
 
           {/* 비자 유형 */}
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>비자 유형 *</label>
           <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
             {([["E6","E-6 연예흥행","원천 3.3% · 국내계좌"],["C4","C-4 단기취업","원천 20% · 해외송금"],["OTHER","기타 비자","원천 20% · 수기"]] as const).map(([k,l,d])=>(
               <button key={k} type="button" onClick={()=>{
-                setMVisaType(k); setMRateOverride(false);
+                setMVisaType(k);
                 if(k==="E6"){ setMTaxRate(3.3); setMPayMethod(p=>p||"bank"); }
                 else if(k==="C4"){ setMTaxRate(20); setMHasAlienCard(false); setMPayMethod(p=>p||"payoneer"); }
                 else { setMTaxRate(20); setMPayMethod(p=>p||"bank"); }
@@ -3232,18 +3209,8 @@ async function sharePdf(){
               <input style={{ ...inp, marginBottom:0 }} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:5 }}>
-                <span>원천징수율 (%)</span>
-                <button type="button" onClick={()=>{ if(mRateOverride){ setMRateOverride(false); setMTaxRate(mVisaType==="E6"?3.3:20); } else setMRateOverride(true); }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:C.blue, fontSize:10, fontWeight:600 }}>{mRateOverride?"비자 자동으로":"직접 지정"}</button>
-              </label>
-              {mRateOverride ? (
-                <input style={{ ...inp, marginBottom:0 }} type="number" step="0.1" value={mTaxRate||""} onChange={e=>setMTaxRate(Number(e.target.value)||0)} placeholder="조세조약 등 예외율" autoFocus />
-              ) : (
-                <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", justifyContent:"space-between", color:mVisaType?C.text:C.muted, background:C.card }}>
-                  <span>{mVisaType?`${mTaxRate}%`:"비자 선택"}</span>
-                  <span style={{ fontSize:10, color:C.muted }}>🔒 비자 자동</span>
-                </div>
-              )}
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>원천징수율 (%)</label>
+              <input style={{ ...inp, marginBottom:0 }} type="number" step="0.1" value={mTaxRate||""} onChange={e=>setMTaxRate(Number(e.target.value)||0)} />
             </div>
           </div>
 
