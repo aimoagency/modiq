@@ -491,21 +491,30 @@ export default function App() {
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
-    try {
-      const [m, c, b, p, mb] = await Promise.all([
-        sb("models",        "GET", null, `?agency_id=eq.${agencyId}&order=created_at.desc`),
-        sb("customers",     "GET", null, `?agency_id=eq.${agencyId}&order=created_at.desc`),
-        sb("bookings",      "GET", null, `?agency_id=eq.${agencyId}&order=shoot_date.desc`),
-        sb("projects",      "GET", null, `?agency_id=eq.${agencyId}&order=created_at.desc`),
-        sb("agency_members","GET", null, `?agency_id=eq.${agencyId}`),
-      ]);
-      setModels(m||[]); setCustomers(c||[]); setBookings(b||[]); setProjects(p||[]); setMembers(mb||[]);
-      saveDataCache(agencyId, {
-        models:slimForCache(m||[]), customers:slimForCache(c||[]), bookings:slimForCache(b||[]),
-        projects:slimForCache(p||[]), members:slimForCache(mb||[]),
-      });
-    } catch (e) { console.error("로드 실패", e); }
-    finally { setSyncing(false); }
+    // 점진적 렌더: 각 쿼리가 도착하는 즉시 화면에 반영한다(한꺼번에 기다리지 않음).
+    // 대시보드는 bookings/models/customers가 모두 비었을 때만 스켈레톤을 띄우므로,
+    // 이 중 하나라도 먼저 도착하면 스켈레톤이 바로 풀리고 나머지는 채워지며 그려진다.
+    // members는 대시보드 첫 표시에 불필요하므로 다른 데이터를 막지 않는다.
+    const fetched: Record<string, any[]> = {};
+    let allOk = true;
+    const load1 = async (table: string, query: string, setter: (rows:any[])=>void) => {
+      try { const rows = await sb(table,"GET",null,query); fetched[table] = rows||[]; setter(rows||[]); }
+      catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); }
+    };
+    await Promise.all([
+      load1("models",         `?agency_id=eq.${agencyId}&order=created_at.desc`, setModels),
+      load1("customers",      `?agency_id=eq.${agencyId}&order=created_at.desc`, setCustomers),
+      load1("bookings",       `?agency_id=eq.${agencyId}&order=shoot_date.desc`, setBookings),
+      load1("projects",       `?agency_id=eq.${agencyId}&order=created_at.desc`, setProjects),
+      load1("agency_members", `?agency_id=eq.${agencyId}`, setMembers),
+    ]);
+    setSyncing(false);
+    // 캐시는 전부 성공했을 때만 저장(부분 실패 시 기존 캐시 보존)
+    if (allOk) saveDataCache(agencyId, {
+      models:slimForCache(fetched.models||[]), customers:slimForCache(fetched.customers||[]),
+      bookings:slimForCache(fetched.bookings||[]), projects:slimForCache(fetched.projects||[]),
+      members:slimForCache(fetched.agency_members||[]),
+    });
     try {
       const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
       setModelOffs(mo||[]);
