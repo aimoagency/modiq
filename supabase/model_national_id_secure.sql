@@ -61,8 +61,12 @@ declare v_agency text; v_key text; v_masked text;
 begin
   if p_id_type not in ('rrn','arc','passport') then raise exception 'invalid id_type'; end if;
   if coalesce(trim(p_id_plain),'') = '' then raise exception 'empty id'; end if;
-  select m.agency_id into v_agency from models m join agencies a on a.id=m.agency_id
-   where m.id=p_model_id and a.owner_id::text = auth.uid()::text;
+  -- 권한: 대표(owner) OR 정산·매출 권한 담당자(can_view_finance)
+  select m.agency_id into v_agency from models m
+   where m.id = p_model_id and (
+     exists (select 1 from agencies a where a.id=m.agency_id and a.owner_id::text = auth.uid()::text)
+     or exists (select 1 from agency_members mem where mem.agency_id=m.agency_id and mem.user_id::text = auth.uid()::text and mem.can_view_finance = true)
+   );
   if v_agency is null then raise exception 'not authorized'; end if;
   select decrypted_secret into v_key from vault.decrypted_secrets where name='model_id_enc_key';
   v_masked := public._mask_national_id(p_id_type, p_id_plain);
@@ -79,8 +83,12 @@ create or replace function public.get_model_national_id(p_model_id text)
 returns text language plpgsql security definer set search_path = public, extensions as $$
 declare v_agency text; v_key text; v_plain text;
 begin
-  select m.agency_id into v_agency from models m join agencies a on a.id=m.agency_id
-   where m.id=p_model_id and a.owner_id::text = auth.uid()::text;
+  -- 권한: 대표(owner) OR 정산·매출 권한 담당자(can_view_finance)
+  select m.agency_id into v_agency from models m
+   where m.id = p_model_id and (
+     exists (select 1 from agencies a where a.id=m.agency_id and a.owner_id::text = auth.uid()::text)
+     or exists (select 1 from agency_members mem where mem.agency_id=m.agency_id and mem.user_id::text = auth.uid()::text and mem.can_view_finance = true)
+   );
   if v_agency is null then raise exception 'not authorized'; end if;
   select decrypted_secret into v_key from vault.decrypted_secrets where name='model_id_enc_key';
   select extensions.pgp_sym_decrypt(id_enc,v_key) into v_plain from model_secure_id where model_id=p_model_id;
