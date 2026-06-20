@@ -90,6 +90,8 @@ export default function App() {
   const [authMode,    setAuthMode]    = useState<AuthMode>("login");
   // 첫 렌더부터 저장된 세션을 동기적으로 복원 → 로그인 화면 깜빡임 없이 즉시 대시보드 표시(토큰 검증은 백그라운드)
   const _savedSession = (() => { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); return s?.tokens?.refresh_token ? s : null; } catch { return null; } })();
+  // 저장된 세션의 에이전시 데이터 캐시를 첫 렌더부터 동기 주입 → 대시보드 숫자 0 깜빡임 방지(이후 백그라운드 최신화)
+  const _cachedData = (() => { try { const agId = _savedSession?.agencyData?.id; if (!agId) return null; const c = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || "null"); return (c && c.agencyId === agId) ? c : null; } catch { return null; } })();
   const [session,     setSession]     = useState<any>(_savedSession?.user || null);
   const [agency,      setAgency]      = useState<any>(_savedSession?.agencyData || null);
   const [myRole,      setMyRole]      = useState<"owner"|"member">(_savedSession?.role || "member");
@@ -99,12 +101,12 @@ export default function App() {
   const [bizNo,       setBizNo]       = useState("");
   const [authError,   setAuthError]   = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false); // 서버 데이터 동기화 중 (스켈레톤 표시용)
+  const [syncing, setSyncing] = useState(!!_savedSession); // 세션 있으면 첫 동기화 전까지 스켈레톤(데이터 비었을 때 0 대신)
 
-  const [models,    setModels]    = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [bookings,  setBookings]  = useState<any[]>([]);
-  const [projects,  setProjects]  = useState<any[]>([]);
+  const [models,    setModels]    = useState<any[]>(_cachedData?.models || []);
+  const [customers, setCustomers] = useState<any[]>(_cachedData?.customers || []);
+  const [bookings,  setBookings]  = useState<any[]>(_cachedData?.bookings || []);
+  const [projects,  setProjects]  = useState<any[]>(_cachedData?.projects || []);
   const [modelOffs,   setModelOffs]   = useState<any[]>([]); // 모델별 휴무 기간
   const [packages,    setPackages]    = useState<Pkg[]>([]); // 모델 사진 패키지
   const [selectedProjectId, setSelectedProjectId] = useState<string|null>(null); // 프로젝트 상세
@@ -112,7 +114,7 @@ export default function App() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [theme, setTheme] = useState<string>(()=>{ try { return localStorage.getItem("modiq_theme")||"dark"; } catch { return "dark"; } });
   useEffect(()=>{ document.documentElement.classList.toggle("light", theme==="light"); try { localStorage.setItem("modiq_theme", theme); } catch {} }, [theme]);
-  const [members,   setMembers]   = useState<any[]>([]);
+  const [members,   setMembers]   = useState<any[]>(_cachedData?.members || []);
 
   const [page, setPage] = useState<Page>("dashboard");
   // 캘린더를 벗어나면 pre-선택(모델/날짜)을 비워, 메뉴로 재진입 시 항상 "전체"로 복귀
