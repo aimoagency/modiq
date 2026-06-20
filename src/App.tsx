@@ -2689,9 +2689,9 @@ async function sharePdf(){
             </>}
           </div>
           {/* 신체 · 프로필 (컴카드·패키지에 쓰이는 정보) */}
-          {(()=>{ const m=selectedModel; const three=[m.bust,m.waist,m.hip].filter(Boolean).join("-"); const rows:[string,any][]=[
+          {(()=>{ const m=selectedModel; const three=[m.bust,m.waist,m.hip].map((v:any)=>{const n=Number(v);return n>0?String(Math.round(n/2.54)):"";}).filter(Boolean).join("-"); const rows:[string,any][]=[
               ...(m.height?[["키",`${m.height}cm`]] as [string,any][]:[]),
-              ...(three?[["3사이즈",three]] as [string,any][]:[]),
+              ...(three?[["3사이즈(inch)",three]] as [string,any][]:[]),
               ...(m.shoe?[["신발",`${m.shoe}mm`]] as [string,any][]:[]),
               ...(m.hair_length?[["머리",m.hair_length]] as [string,any][]:[]),
               ...(m.hair_color?[["머리색",m.hair_color]] as [string,any][]:[]),
