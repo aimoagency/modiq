@@ -154,13 +154,13 @@ export default function SettlementStatementModal({
 
   return (
     <Modal onClose={onClose} maxW={1100}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <h3 style={{ margin: 0, color: C.text }}>📑 정산 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>({rows.length}건)</span></h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {modelF !== "ALL" && <button onClick={() => setWhOpen(true)} disabled={rows.length === 0} style={{ ...btnS(C.blue, rows.length === 0) }}>🧾 원천징수 내역서</button>}
-          {canViewFinance && <button onClick={downloadTaxAgent} disabled={rows.length === 0 || taxBusy} style={{ ...btnS(C.red, rows.length === 0 || taxBusy) }}>{taxBusy ? "복호화 중…" : "🔒 세무사용 (주민번호 포함)"}</button>}
-          <button onClick={download} disabled={rows.length === 0} style={{ ...btnS(C.green, rows.length === 0) }}>⬇ 엑셀 다운로드</button>
-        </div>
+      {/* 제목 — 우상단 닫기(X) 버튼과 겹치지 않도록 오른쪽 여백 확보 */}
+      <h3 style={{ margin: "0 0 12px", paddingRight: 44, color: C.text }}>📑 정산 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>({rows.length}건)</span></h3>
+      {/* 액션 버튼 — 제목 아래 별도 줄(데스크탑·모바일 공통). 닫기 X와 겹치지 않음 */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        {modelF !== "ALL" && <button onClick={() => setWhOpen(true)} disabled={rows.length === 0} style={{ ...btnS(C.blue, rows.length === 0) }}>🧾 원천징수 내역서</button>}
+        {canViewFinance && <button onClick={downloadTaxAgent} disabled={rows.length === 0 || taxBusy} style={{ ...btnS(C.red, rows.length === 0 || taxBusy) }}>{taxBusy ? "복호화 중…" : "🔒 세무사용 (주민번호 포함)"}</button>}
+        <button onClick={download} disabled={rows.length === 0} style={{ ...btnS(C.green, rows.length === 0) }}>⬇ 엑셀 다운로드</button>
       </div>
 
       {/* 기간·모델 필터 */}
@@ -241,7 +241,7 @@ export default function SettlementStatementModal({
       {/* 원천징수 내역서 미리보기 · 발송 */}
       {whOpen && selModel && (
         <Modal onClose={() => setWhOpen(false)} maxW={720}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap", paddingRight: 44 }}>
             <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 원천징수 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {selModel.name}</span></h3>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => printStatementHtml(whHtml)} style={{ ...btnS(C.blue) }}>🖨 인쇄 / PDF 저장</button>
