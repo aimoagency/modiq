@@ -22,6 +22,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
   const [hMin, setHMin] = useState("");     const [hMax, setHMax] = useState("");
   const [shMin, setShMin] = useState("");   const [shMax, setShMax] = useState("");
   const [feeMin, setFeeMin] = useState(""); const [feeMax, setFeeMax] = useState(""); // 만원/일
+  const [carMin, setCarMin] = useState(""); const [carMax, setCarMax] = useState(""); // 경력(년)
 
   const isForeign = (m: any) => m.nationality_type === "외국인";
   const feeOf = (m: any) => Number(m.fee_day || m.rate || 0);
@@ -37,8 +38,9 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
     const smin = num(shMin), smax = num(shMax);
     const fmin = feeMin ? Number(feeMin) * 10000 : null;
     const fmax = feeMax ? Number(feeMax) * 10000 : null;
+    const cmin = num(carMin), cmax = num(carMax);
     return models.filter(m => {
-      if (s && !((m.name || "").toLowerCase().includes(s) || (m.specialty || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)))) return false;
+      if (s && !((m.name || "").toLowerCase().includes(s) || (m.specialty || "").toLowerCase().includes(s) || (m.country || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)))) return false;
       if (genderF.length && !genderF.includes(m.gender)) return false;
       if (natF.length) { const f = isForeign(m) ? "외국인" : "국내"; if (!natF.includes(f)) return false; }
       if (fieldF.length && !(Array.isArray(m.fields) && fieldF.some(f => m.fields.includes(f)))) return false;
@@ -54,12 +56,15 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
       const fee = feeOf(m);
       if (fmin != null && (fee === 0 || fee < fmin)) return false;
       if (fmax != null && (fee === 0 || fee > fmax)) return false;
+      const car = Number(m.career_years || 0);
+      if (cmin != null && (car === 0 || car < cmin)) return false;
+      if (cmax != null && (car === 0 || car > cmax)) return false;
       return true;
     });
-  }, [models, q, genderF, natF, fieldF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax]);
+  }, [models, q, genderF, natF, fieldF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax, carMin, carMax]);
 
-  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setFieldF([]); setAgeMin(""); setAgeMax(""); setHMin(""); setHMax(""); setShMin(""); setShMax(""); setFeeMin(""); setFeeMax(""); };
-  const active = genderF.length + natF.length + fieldF.length + [q, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax].filter(Boolean).length;
+  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setFieldF([]); setAgeMin(""); setAgeMax(""); setHMin(""); setHMax(""); setShMin(""); setShMax(""); setFeeMin(""); setFeeMax(""); setCarMin(""); setCarMax(""); };
+  const active = genderF.length + natF.length + fieldF.length + [q, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax, carMin, carMax].filter(Boolean).length;
 
   const chip = (on: boolean): CSSProperties => ({ padding: "5px 12px", borderRadius: 16, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "22" : "transparent", color: on ? C.blue : C.muted, fontSize: 12, fontWeight: on ? 700 : 500, cursor: "pointer" });
   const rng: CSSProperties = { ...inp, marginBottom: 0, width: 60, padding: "5px 8px", fontSize: 12, textAlign: "center" };
@@ -110,6 +115,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
           <div><p style={sec}>신장</p><Range a={hMin} sa={setHMin} b={hMax} sb={setHMax} unit="cm" /></div>
           <div><p style={sec}>신발</p><Range a={shMin} sa={setShMin} b={shMax} sb={setShMax} unit="mm" /></div>
           <div><p style={sec}>모델료/일</p><Range a={feeMin} sa={setFeeMin} b={feeMax} sb={setFeeMax} unit="만" /></div>
+          <div><p style={sec}>경력</p><Range a={carMin} sa={setCarMin} b={carMax} sb={setCarMax} unit="년" /></div>
         </div>
       </div>
 
@@ -122,7 +128,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
           {results.map(m => {
             const age = ageFromSSN6(m.ssn6);
             const gLabel = (GENDERS.find(([c]) => c === m.gender) || [, ""])[1];
-            const sub = [gLabel, age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", isForeign(m) ? "외국인" : ""].filter(Boolean).join(" · ");
+            const sub = [gLabel, age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", m.country || (isForeign(m) ? "외국인" : ""), (m.career_years != null && m.career_years !== "") ? `경력 ${m.career_years}년` : ""].filter(Boolean).join(" · ");
             const fee = feeOf(m);
             const cover = thumbOf(m);
             return (
