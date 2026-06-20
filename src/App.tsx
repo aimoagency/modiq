@@ -3351,7 +3351,7 @@ async function sharePdf(){
 
       {/* ════ 모달: 정산 내역서 (월별/기간별 + 엑셀) ════ */}
       {showStatement && (
-        <SettlementStatementModal bookings={bookings} models={models} customers={customers} isMobile={isMobile} onClose={()=>setShowStatement(false)} />
+        <SettlementStatementModal bookings={bookings} models={models} customers={customers} agency={agency} isMobile={isMobile} onClose={()=>setShowStatement(false)} />
       )}
 
       {/* ════ 모달: 컴카드 (모델 DB 상세에서 열기) ════ */}
