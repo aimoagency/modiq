@@ -3027,7 +3027,7 @@ async function sharePdf(){
               onFocus={()=>{ if(!mCareerOpen) setMCareerOpen(true); }}
               onChange={e=>{ setMCareer(e.target.value); if(mCareerOpen){ const t=e.currentTarget; t.style.height="auto"; t.style.height=t.scrollHeight+"px"; } }}
               ref={el=>{ if(el){ if(mCareerOpen){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } else { el.style.height=""; } } }}
-              placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
+              placeholder=""
               style={{ ...inp, marginTop:6, marginBottom:0, resize:"none", overflow:"hidden", lineHeight:1.5, cursor:"text" }}
             />
           </div>

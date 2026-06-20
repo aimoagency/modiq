@@ -51,6 +51,7 @@ const infoRows = (m: any): [string, string][] => {
     if (m.visa_type) rows.push(["비자타입", m.visa_type]);
   }
   if (age !== null) rows.push(["나이", `${age}세`]);
+  if (m.career_years != null && m.career_years !== "") rows.push(["경력년차", `${m.career_years}년`]);
   if (m.height) rows.push(["키", `${m.height}cm`]);
   if (m.shoe) rows.push(["신발", `${m.shoe}mm`]);
   if (three) rows.push(["3사이즈", three]);
