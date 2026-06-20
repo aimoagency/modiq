@@ -109,7 +109,8 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   // 하단 바: 왼쪽 큰 이름 + 가운데 2줄(국적/나이 · 신체사이즈) + 오른쪽 에이전시 로고
   const age = ageFromSSN6(model.ssn6);
   const genderEn = model.gender === "F" ? "Female" : model.gender === "M" ? "Male" : "";
-  const bwh = [model.bust, model.waist, model.hip].filter(Boolean).join("-");
+  const cmToIn = (v: any) => { const n = Number(v); return n > 0 ? String(Math.round(n / 2.54)) : ""; };
+  const bwh = [model.bust, model.waist, model.hip].map(cmToIn).filter(Boolean).join("-"); // 3사이즈는 inch로 표기(저장은 cm 그대로)
   // 영문 이름은 퍼스트네임만 (예: "BARBARE GIGUASHVILI" → "BARBARE"). 한글 이름은 그대로.
   const _nm = (model.name || "").trim();
   const isLatinName = /[A-Za-z]/.test(_nm) && !/[가-힣]/.test(_nm);
@@ -187,7 +188,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
               </div>
               <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {model.height && fld("Height", `${model.height}cm`)}
-                {bwh && fld("Size", bwh)}
+                {bwh && fld("Size(in)", bwh)}
                 {model.shoe && fld("Shoe", `${model.shoe}mm`)}
               </div>
             </div>
