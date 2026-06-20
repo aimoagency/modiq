@@ -12,7 +12,7 @@ import SearchInput from "./SearchInput";
 import { thumbUrl } from "../lib/supabase";
 
 // 범위 기본값(프리필) — 변경 안 하면 이 값 기준, 단 값 미입력 모델은 통과
-const DEF = { ageMin: "1", ageMax: "99", hMin: "100", hMax: "200", shMin: "180", shMax: "310", feeMin: "0", feeMax: "500" };
+const DEF = { ageMin: "1", ageMax: "99", hMin: "100", hMax: "200", shMin: "180", shMax: "310", feeMin: "0", feeMax: "500", carMin: "0", carMax: "30" };
 
 export default function ModelBrowser({ models, isMobile = false, onSelect, selectedId, multi = false, pickedIds, addedIds, onAddPicked, onSelectAll }: {
   models: any[];
@@ -36,6 +36,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
   const [hMin, setHMin] = useState(DEF.hMin);       const [hMax, setHMax] = useState(DEF.hMax);
   const [shMin, setShMin] = useState(DEF.shMin);    const [shMax, setShMax] = useState(DEF.shMax);
   const [feeMin, setFeeMin] = useState(DEF.feeMin); const [feeMax, setFeeMax] = useState(DEF.feeMax);
+  const [carMin, setCarMin] = useState(DEF.carMin); const [carMax, setCarMax] = useState(DEF.carMax);
 
   // 외국인 = is_foreigner 플래그 또는 국적이 대한민국이 아닌 모든 국가
   const isForeign = (m: any) => !!m.is_foreigner || (!!m.country && m.country !== "대한민국");
@@ -48,6 +49,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
     const aMin = num(ageMin), aMax = num(ageMax), hmin = num(hMin), hmax = num(hMax), smin = num(shMin), smax = num(shMax);
     const fmin = feeMin === "" ? null : Number(feeMin) * 10000;
     const fmax = feeMax === "" ? null : Number(feeMax) * 10000;
+    const cmin = num(carMin), cmax = num(carMax);
     return models.filter(m => {
       if (s && !((m.name || "").toLowerCase().includes(s) || (m.specialty || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)))) return false;
       if (genderF.length && !genderF.includes(m.gender)) return false;
@@ -68,12 +70,15 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       const fee = feeOf(m);
       if (fee > 0 && fmin != null && fee < fmin) return false;
       if (fee > 0 && fmax != null && fee > fmax) return false;
+      const car = m.career_years == null ? null : Number(m.career_years);
+      if (car != null && cmin != null && car < cmin) return false;
+      if (car != null && cmax != null && car > cmax) return false;
       return true;
     });
-  }, [models, q, genderF, natF, catF, fieldF, hairF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax]);
+  }, [models, q, genderF, natF, catF, fieldF, hairF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax, carMin, carMax]);
 
-  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setCatF([]); setFieldF([]); setHairF([]); setAgeMin(DEF.ageMin); setAgeMax(DEF.ageMax); setHMin(DEF.hMin); setHMax(DEF.hMax); setShMin(DEF.shMin); setShMax(DEF.shMax); setFeeMin(DEF.feeMin); setFeeMax(DEF.feeMax); };
-  const rangesChanged = (ageMin !== DEF.ageMin || ageMax !== DEF.ageMax ? 1 : 0) + (hMin !== DEF.hMin || hMax !== DEF.hMax ? 1 : 0) + (shMin !== DEF.shMin || shMax !== DEF.shMax ? 1 : 0) + (feeMin !== DEF.feeMin || feeMax !== DEF.feeMax ? 1 : 0);
+  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setCatF([]); setFieldF([]); setHairF([]); setAgeMin(DEF.ageMin); setAgeMax(DEF.ageMax); setHMin(DEF.hMin); setHMax(DEF.hMax); setShMin(DEF.shMin); setShMax(DEF.shMax); setFeeMin(DEF.feeMin); setFeeMax(DEF.feeMax); setCarMin(DEF.carMin); setCarMax(DEF.carMax); };
+  const rangesChanged = (ageMin !== DEF.ageMin || ageMax !== DEF.ageMax ? 1 : 0) + (hMin !== DEF.hMin || hMax !== DEF.hMax ? 1 : 0) + (shMin !== DEF.shMin || shMax !== DEF.shMax ? 1 : 0) + (feeMin !== DEF.feeMin || feeMax !== DEF.feeMax ? 1 : 0) + (carMin !== DEF.carMin || carMax !== DEF.carMax ? 1 : 0);
   const active = genderF.length + natF.length + catF.length + fieldF.length + hairF.length + (q.trim() ? 1 : 0) + rangesChanged;
 
   const chip = (on: boolean): CSSProperties => ({ minWidth: 46, textAlign: "center", padding: "4px 10px", borderRadius: 14, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "22" : "transparent", color: on ? C.blue : C.muted, fontSize: 11.5, fontWeight: on ? 700 : 500, cursor: "pointer", boxSizing: "border-box" });
@@ -104,6 +109,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{MODEL_FIELDS.map(f => <span key={f} onClick={() => toggle(fieldF, setFieldF, f)} style={chip(fieldF.includes(f))}>{f}</span>)}</div>
       <p style={sec}>머리 길이</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{HAIR_LENGTHS.map(h => <span key={h} onClick={() => toggle(hairF, setHairF, h)} style={chip(hairF.includes(h))}>{h}</span>)}</div>
+      <p style={sec}>경력년차</p><Range a={carMin} sa={setCarMin} b={carMax} sb={setCarMax} u="년" />
       <p style={sec}>나이</p><Range a={ageMin} sa={setAgeMin} b={ageMax} sb={setAgeMax} u="세" />
       <p style={sec}>신장</p><Range a={hMin} sa={setHMin} b={hMax} sb={setHMax} u="cm" />
       <p style={sec}>신발</p><Range a={shMin} sa={setShMin} b={shMax} sb={setShMax} u="mm" />
@@ -136,7 +142,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
           const pick = !!pickedIds?.has(m.id);
           const on = pick || selectedId === m.id;
           const age = ageFromSSN6(m.ssn6);
-          const sub = [age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", isForeign(m) ? "외국인" : ""].filter(Boolean).join(" · ");
+          const sub = [age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", isForeign(m) ? "외국인" : "", (m.career_years != null && m.career_years !== "") ? `경력 ${m.career_years}년` : ""].filter(Boolean).join(" · ");
           const cover = (Array.isArray(m.photos) && m.photos[0]) || m.thumb_url || "";
           return (
             <div key={m.id} onClick={() => { if (multi && added) return; onSelect(m); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "18" : C.card, cursor: multi && added ? "default" : "pointer", opacity: multi && added ? 0.5 : 1 }}>
