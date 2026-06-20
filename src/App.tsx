@@ -2689,8 +2689,8 @@ async function sharePdf(){
                     <span style={{ color:C.blue, fontSize:11 }}>{showCareer?"접기 ▲":"펼치기 ▼"}</span>
                   </button>
                   {showCareer
-                    ? <div style={{ whiteSpace:"pre-wrap", fontSize:13, color:C.text, lineHeight:1.6, marginTop:6 }}>{m.career}</div>
-                    : <div style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:6 }}>{m.career}</div>}
+                    ? <div style={{ whiteSpace:"pre-wrap", fontSize:13, color:C.text, fontWeight:700, lineHeight:1.6, marginTop:6 }}>{m.career}</div>
+                    : <div style={{ fontSize:13, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:6 }}>{m.career}</div>}
                 </>)}
               </div>
             );
