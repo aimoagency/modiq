@@ -418,14 +418,16 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                     </div>
                   ))}
                 </div>
-                {/* 경력 — 정보 리스트 맨 아래 펼침 메뉴 */}
+                {/* 경력 — 정보/수정 화면과 동일 스타일: 라벨 얇게(muted), 내용 볼드(접힘=1줄 미리보기) */}
                 {sel.career && (
                   <div style={{ marginTop: 10 }}>
-                    <button type="button" onClick={() => setCareerOpen(v => !v)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "8px 10px", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", color: C.text, fontSize: 12.5, fontWeight: 700 }}>
-                      <span>경력 (작품·활동 이력)</span>
-                      <span style={{ color: C.muted, fontSize: 11 }}>{careerOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+                    <button type="button" onClick={() => setCareerOpen(v => !v)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 0, background: "transparent", border: "none", cursor: "pointer", color: C.muted, fontSize: 11, textAlign: "left" }}>
+                      <span>경력 <span style={{ color: C.muted }}>(작품·활동 이력)</span></span>
+                      <span style={{ color: C.blue, fontSize: 11 }}>{careerOpen ? "접기 ▲" : "펼치기 ▼"}</span>
                     </button>
-                    {careerOpen && <div style={{ marginTop: 6, padding: 10, background: C.card2, borderRadius: 8, whiteSpace: "pre-wrap", fontSize: 12.5, color: C.text, lineHeight: 1.6 }}>{sel.career}</div>}
+                    {careerOpen
+                      ? <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: C.text, fontWeight: 700, lineHeight: 1.6, marginTop: 6 }}>{sel.career}</div>
+                      : <div style={{ fontSize: 13, color: C.text, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 6 }}>{sel.career}</div>}
                   </div>
                 )}
               </div>
