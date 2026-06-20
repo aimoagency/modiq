@@ -311,6 +311,7 @@ export default function App() {
   const [mPayMethod,   setMPayMethod]   = useState("");   // 'bank'|'payoneer'|'wise'|'cash'
   const [mPayDetail,   setMPayDetail]   = useState<any>({});
   const [mTaxRate,     setMTaxRate]     = useState<number>(0);
+  const [mRateOverride, setMRateOverride] = useState(false); // 원천징수율 직접지정(조세조약 등 예외). 기본=비자 자동(잠금)
   const [showForeignModal, setShowForeignModal] = useState(false);
   const [mInstagram,   setMInstagram]   = useState("");
   const [mDrive,       setMDrive]       = useState("");
@@ -612,7 +613,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMRateOverride(false); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -646,6 +647,7 @@ export default function App() {
     { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMCareerOpen(!!m.career); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
     setMAddress(m.address||""); setMNationalId(""); setShowIdInput(false);
+    { const _vd = m.visa_type==="E6"?3.3:20; setMRateOverride(!!m.is_foreigner && Number(m.tax_rate)>0 && Number(m.tax_rate)!==_vd); }
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
     setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
@@ -3199,14 +3201,14 @@ async function sharePdf(){
       {showForeignModal && (
         <Modal onClose={()=>setShowForeignModal(false)}>
           <h3 style={{ marginTop:0, color:C.text }}><Plane size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 외국인 비자 · 정산 정보</h3>
-          <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>비자 유형을 선택하면 세율·기본 지급방식이 자동 설정됩니다. (세율은 정보용 — 정산 계산은 정산·세무 설정 사용)</p>
+          <p style={{ margin:"0 0 14px", fontSize:12, color:C.muted }}>비자 유형을 선택하면 원천징수율·기본 지급방식이 자동 설정·잠금됩니다. 이 세율이 외국인 원천징수 계산에 그대로 적용됩니다. (조세조약 등 예외만 '직접 지정')</p>
 
           {/* 비자 유형 */}
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:6 }}>비자 유형 *</label>
           <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
             {([["E6","E-6 연예흥행","원천 3.3% · 국내계좌"],["C4","C-4 단기취업","원천 20% · 해외송금"],["OTHER","기타 비자","원천 20% · 수기"]] as const).map(([k,l,d])=>(
               <button key={k} type="button" onClick={()=>{
-                setMVisaType(k);
+                setMVisaType(k); setMRateOverride(false);
                 if(k==="E6"){ setMTaxRate(3.3); setMPayMethod(p=>p||"bank"); }
                 else if(k==="C4"){ setMTaxRate(20); setMHasAlienCard(false); setMPayMethod(p=>p||"payoneer"); }
                 else { setMTaxRate(20); setMPayMethod(p=>p||"bank"); }
@@ -3228,8 +3230,18 @@ async function sharePdf(){
               <input style={{ ...inp, marginBottom:0 }} type="date" value={mExit} onChange={e=>setMExit(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>원천징수율 (%)</label>
-              <input style={{ ...inp, marginBottom:0 }} type="number" step="0.1" value={mTaxRate||""} onChange={e=>setMTaxRate(Number(e.target.value)||0)} />
+              <label style={{ fontSize:11, color:C.muted, display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:5 }}>
+                <span>원천징수율 (%)</span>
+                <button type="button" onClick={()=>{ if(mRateOverride){ setMRateOverride(false); setMTaxRate(mVisaType==="E6"?3.3:20); } else setMRateOverride(true); }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:C.blue, fontSize:10, fontWeight:600 }}>{mRateOverride?"비자 자동으로":"직접 지정"}</button>
+              </label>
+              {mRateOverride ? (
+                <input style={{ ...inp, marginBottom:0 }} type="number" step="0.1" value={mTaxRate||""} onChange={e=>setMTaxRate(Number(e.target.value)||0)} placeholder="조세조약 등 예외율" autoFocus />
+              ) : (
+                <div style={{ ...inp, marginBottom:0, display:"flex", alignItems:"center", justifyContent:"space-between", color:mVisaType?C.text:C.muted, background:C.card }}>
+                  <span>{mVisaType?`${mTaxRate}%`:"비자 선택"}</span>
+                  <span style={{ fontSize:10, color:C.muted }}>🔒 비자 자동</span>
+                </div>
+              )}
             </div>
           </div>
 
