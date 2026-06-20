@@ -2,12 +2,13 @@
 
 ## 브랜치 / 머지 워크플로우 (중요)
 - 작업은 작업 브랜치(`claude/*`)에서 진행한다.
-- **변경을 완료하면 매번 지시받지 않아도 자동으로 다음을 수행한다:**
+- **변경을 완료하면 매번 지시받지 않아도 자동으로 운영까지 머지한다:**
   1. typecheck/build 검증
   2. 작업 브랜치에 커밋·푸시
-  3. **작업 브랜치 → `feature/package` 로 PR 생성 후 머지** (기본값)
-- **`master`(운영) 머지는 자동으로 하지 않는다.** 사용자가 "master까지 / 운영에 올려줘" 라고 **명시적으로 요청할 때만** `feature/package → master` PR을 만들어 머지한다.
-- 즉 기본 흐름: `claude/* → feature/package` (자동), `feature/package → master` (요청 시).
+  3. **작업 브랜치 → `feature/package` PR 머지**
+  4. **`feature/package` → `master`(운영) PR 머지**  ← 기본값(자동)
+- 즉 기본 흐름: `claude/* → feature/package → master` 까지 **자동**.
+- 예외: 사용자가 "feature까지만 / master는 보류" 라고 하면 그때만 master 머지를 멈춘다.
 
 ## 머지 방식
 - 기존 이력과 동일하게 **merge commit** 방식(squash/rebase 아님).
