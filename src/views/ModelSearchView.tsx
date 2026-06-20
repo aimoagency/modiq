@@ -111,7 +111,7 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
         </div>
 
         <div style={{ marginTop: 14 }}>
-          <p style={sec}>경력</p>
+          <p style={sec}>경력년차</p>
           <Range a={carMin} sa={setCarMin} b={carMax} sb={setCarMax} unit="년" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0,1fr))", gap: 14, marginTop: 14 }}>

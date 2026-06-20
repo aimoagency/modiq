@@ -2694,7 +2694,7 @@ async function sharePdf(){
               ...(m.height?[["키",`${m.height}cm`]] as [string,any][]:[]),
               ...(three?[["3사이즈(inch)",three]] as [string,any][]:[]),
               ...(m.shoe?[["신발",`${m.shoe}mm`]] as [string,any][]:[]),
-              ...(m.career_years!=null&&m.career_years!==""?[["경력",`${m.career_years}년`]] as [string,any][]:[]),
+              ...(m.career_years!=null&&m.career_years!==""?[["경력년차",`${m.career_years}년`]] as [string,any][]:[]),
               ...(m.hair_length?[["머리",m.hair_length]] as [string,any][]:[]),
               ...(m.hair_color?[["머리색",m.hair_color]] as [string,any][]:[]),
               ...(m.eye_color?[["눈동자",m.eye_color]] as [string,any][]:[]),
@@ -2715,7 +2715,7 @@ async function sharePdf(){
                 {/* 경력 — 신체·프로필 박스 안에 포함(수정 화면과 동일 위치). 접힘=1줄 미리보기 */}
                 {m.career&&(<>
                   <button onClick={()=>setShowCareer(v=>!v)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", margin:"12px 0 0", padding:0, background:"transparent", border:"none", cursor:"pointer", color:C.muted, fontSize:11, textAlign:"left" }}>
-                    <span>경력 <span style={{ color:C.muted }}>(작품·활동 이력)</span></span>
+                    <span>활동이력 <span style={{ color:C.muted }}>(작품·활동)</span></span>
                     <span style={{ color:C.blue, fontSize:11 }}>{showCareer?"접기 ▲":"펼치기 ▼"}</span>
                   </button>
                   {showCareer
@@ -2955,7 +2955,7 @@ async function sharePdf(){
               </select>
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>경력 <span style={{ color:C.muted }}>(년·소수 가능)</span></label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>경력년차 <span style={{ color:C.muted }}>(소수 가능)</span></label>
               <input style={inp} type="text" inputMode="decimal" placeholder="예: 2.5" value={mCareerYears} onChange={e=>setMCareerYears(e.target.value.replace(/[^0-9.]/g,""))} />
             </div>
             <div>
@@ -3017,7 +3017,7 @@ async function sharePdf(){
             <input style={{ ...inp, marginBottom:0 }} placeholder="노래, 외국어, 수영" value={mSpecialty} onChange={e=>setMSpecialty(e.target.value)} />
             {/* 경력 — 펼침/접기. 펼치면 입력량에 따라 아래로 커지는 자동확장 입력창 */}
             <button type="button" onClick={()=>setMCareerOpen(v=>!v)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", margin:"12px 0 5px", padding:0, background:"transparent", border:"none", cursor:"pointer", color:C.muted, fontSize:11, textAlign:"left" }}>
-              <span>경력 <span style={{ color:C.muted }}>(작품·활동 이력)</span></span>
+              <span>활동이력 <span style={{ color:C.muted }}>(작품·활동)</span></span>
               <span style={{ color:C.blue, fontSize:11 }}>{mCareerOpen?"접기 ▲":"펼치기 ▼"}</span>
             </button>
             {/* 접힘=1줄 미리보기(내용 있음을 예측), 펼침/클릭=내용만큼 자동확장 */}
