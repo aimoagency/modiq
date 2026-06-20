@@ -503,24 +503,24 @@ export default function App() {
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
-    // 점진적 렌더: 각 쿼리가 도착하는 즉시 화면에 반영한다(한꺼번에 기다리지 않음).
-    // 대시보드는 bookings/models/customers가 모두 비었을 때만 스켈레톤을 띄우므로,
-    // 이 중 하나라도 먼저 도착하면 스켈레톤이 바로 풀리고 나머지는 채워지며 그려진다.
-    // members는 대시보드 첫 표시에 불필요하므로 다른 데이터를 막지 않는다.
+    // 대시보드 필수 데이터(섭외·모델·고객사·프로젝트)는 함께 받아 '한 번에' 반영 → 부분 0 깜빡임 방지.
+    // 담당자(members) 등 비필수는 그 뒤 백그라운드로 점진적 로딩(대시보드 표시를 막지 않음).
     const fetched: Record<string, any[]> = {};
     let allOk = true;
-    const load1 = async (table: string, query: string, setter: (rows:any[])=>void) => {
-      try { const rows = await sb(table,"GET",null,query); fetched[table] = rows||[]; setter(rows||[]); }
-      catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); }
+    const fetch1 = async (table: string, query: string): Promise<any[]|null> => {
+      try { const rows = await sb(table,"GET",null,query); fetched[table] = rows||[]; return rows||[]; }
+      catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); return null; }
     };
-    await Promise.all([
-      load1("models",         `?agency_id=eq.${agencyId}&order=created_at.desc`, setModels),
-      load1("customers",      `?agency_id=eq.${agencyId}&order=created_at.desc`, setCustomers),
-      load1("bookings",       `?agency_id=eq.${agencyId}&order=shoot_date.desc`, setBookings),
-      load1("projects",       `?agency_id=eq.${agencyId}&order=created_at.desc`, setProjects),
-      load1("agency_members", `?agency_id=eq.${agencyId}`, setMembers),
+    const [mm, cc, bb, pp] = await Promise.all([
+      fetch1("models",    `?agency_id=eq.${agencyId}&order=created_at.desc`),
+      fetch1("customers", `?agency_id=eq.${agencyId}&order=created_at.desc`),
+      fetch1("bookings",  `?agency_id=eq.${agencyId}&order=shoot_date.desc`),
+      fetch1("projects",  `?agency_id=eq.${agencyId}&order=created_at.desc`),
     ]);
-    setSyncing(false);
+    if (mm) setModels(mm); if (cc) setCustomers(cc); if (bb) setBookings(bb); if (pp) setProjects(pp);
+    setSyncing(false); // 대시보드 데이터 준비 완료 → 스켈레톤 해제(나머지는 이어서 점진적)
+    const mb = await fetch1("agency_members", `?agency_id=eq.${agencyId}`);
+    if (mb) setMembers(mb);
     // 캐시는 전부 성공했을 때만 저장(부분 실패 시 기존 캐시 보존)
     if (allOk) saveDataCache(agencyId, {
       models:slimForCache(fetched.models||[]), customers:slimForCache(fetched.customers||[]),
