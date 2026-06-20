@@ -183,14 +183,20 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
             <div style={{ flexShrink: 0, minWidth: 0 }}>
               <div style={{ fontSize: 40, fontWeight: 600, color: "#1a1d27", lineHeight: 1.05, whiteSpace: "nowrap" }}>{displayName}</div>
             </div>
-            {/* 가운데: 이름 제외 상세를 한 줄로 (국적·성별=값만, 나머지=라벨+값) */}
-            <div style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {model.country && val(model.country, "country")}
-              {age !== null && fld("age", String(age))}
-              {genderEn && val(genderEn, "gender")}
-              {model.height && fld("height", `${model.height}cm`)}
-              {bwh && fld("size", bwh)}
-              {model.shoe && fld("shoe", `${model.shoe}mm`)}
+            {/* 가운데: 이름 제외 상세 두 줄 — ①국적·age·성별·hair·tatu  ②height·size·shoe */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {model.country && val(model.country, "country")}
+                {age !== null && fld("age", String(age))}
+                {genderEn && val(genderEn, "gender")}
+                {model.hair_color && fld("hair", model.hair_color)}
+                {fld("tatu", model.tattoo ? "Y" : "N")}
+              </div>
+              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {model.height && fld("height", `${model.height}cm`)}
+                {bwh && fld("size", bwh)}
+                {model.shoe && fld("shoe", `${model.shoe}mm`)}
+              </div>
             </div>
             {/* 오른쪽: 에이전시 로고 (기본=설정의 회사 로고, 카드 아래에서 삽입/삭제. 크기 30%↓) */}
             {(logoSrc || agency.name) && (
