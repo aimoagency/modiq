@@ -1,4 +1,4 @@
-# Modiq (v1.0.0 · MVP 최종)
+# Modiq (v1.1.0 · 세무·원천징수)
 
 탤런트(모델) 관리 OS — 에이전시 운영 SaaS. React + TypeScript + Vite, 백엔드는 Supabase.
 
