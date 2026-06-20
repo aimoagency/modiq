@@ -117,10 +117,14 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   const displayName = (isLatinName && _nm.includes(" ") ? _nm.split(/\s+/)[0] : _nm) || "-";
   // 정보 항목: 영문 안내 라벨(작고·밝게) + 결과값(볼드)으로 구분 표기
   const fld = (label: string, value: string) => (
-    <span key={label} style={{ marginRight: 18, whiteSpace: "nowrap" }}>
+    <span key={label} style={{ marginRight: 16, whiteSpace: "nowrap" }}>
       <span style={{ fontSize: 11, fontWeight: 400, color: "#aab2bf" }}>{label} </span>
       <span style={{ fontSize: 15, fontWeight: 800, color: "#1a1d27" }}>{value}</span>
     </span>
+  );
+  // 국적·성별은 라벨 없이 값만(볼드)
+  const val = (value: string, key: string) => (
+    <span key={key} style={{ marginRight: 16, whiteSpace: "nowrap", fontSize: 15, fontWeight: 800, color: "#1a1d27" }}>{value}</span>
   );
 
   const download = async () => {
@@ -179,18 +183,14 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
             <div style={{ flexShrink: 0, minWidth: 0 }}>
               <div style={{ fontSize: 40, fontWeight: 600, color: "#1a1d27", lineHeight: 1.05, whiteSpace: "nowrap" }}>{displayName}</div>
             </div>
-            {/* 가운데: 영문 라벨(작고 밝게) + 값(볼드), 두 줄 */}
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {model.country && fld("Nationality", model.country)}
-                {age !== null && fld("Age", String(age))}
-                {genderEn && fld("Gender", genderEn)}
-              </div>
-              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {model.height && fld("Height", `${model.height}cm`)}
-                {bwh && fld("Size(in)", bwh)}
-                {model.shoe && fld("Shoe", `${model.shoe}mm`)}
-              </div>
+            {/* 가운데: 이름 제외 상세를 한 줄로 (국적·성별=값만, 나머지=라벨+값) */}
+            <div style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {model.country && val(model.country, "country")}
+              {age !== null && fld("age", String(age))}
+              {genderEn && val(genderEn, "gender")}
+              {model.height && fld("height", `${model.height}cm`)}
+              {bwh && fld("size", bwh)}
+              {model.shoe && fld("shoe", `${model.shoe}mm`)}
             </div>
             {/* 오른쪽: 에이전시 로고 (기본=설정의 회사 로고, 카드 아래에서 삽입/삭제. 크기 30%↓) */}
             {(logoSrc || agency.name) && (
