@@ -670,9 +670,20 @@ export default function App() {
 
   // 식별번호(주민/외국인등록/여권) 보안 저장 — 별도 RPC(암호화·대표/정산권한자 전용). 평문은 저장 후 비움.
   const saveModelNationalId = async (modelId: string): Promise<boolean> => {
-    const v = mNationalId.trim();
-    if (!v) return false;
     const idType = !mIsForeign ? "rrn" : (mHasAlienCard ? "arc" : "passport");
+    // 주민/외국인등록번호: 앞6(ssn6, 생년월일) 자동 + 뒷7만 입력받아 결합 / 여권: 전체 입력
+    let v: string;
+    if (idType === "passport") {
+      v = mNationalId.trim();
+      if (!v) return false;
+    } else {
+      const back = mNationalId.replace(/\D/g, "");
+      if (!back) return false;
+      const front = (mSSN || "").replace(/\D/g, "");
+      if (front.length < 6) { alert("앞 6자리(생년월일)를 먼저 입력하세요."); return false; }
+      if (back.length < 7)  { alert("뒷자리 7자리를 입력하세요."); return false; }
+      v = front.slice(0, 6) + back.slice(0, 7);
+    }
     try {
       const masked = await sb("rpc/set_model_national_id", "POST", { p_model_id: modelId, p_id_type: idType, p_id_plain: v });
       setModels(prev => prev.map(m => m.id===modelId ? { ...m, national_id_masked: masked, national_id_type: idType } : m));
@@ -3101,7 +3112,15 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({!mIsForeign?"내국인":mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
+                  {idType!=="passport" ? (
+                    <span style={{ display:"flex", gap:6, alignItems:"center" }}>
+                      <span style={{ ...inp, marginBottom:0, width:78, textAlign:"center", color:C.textSub, background:C.card, display:"inline-flex", alignItems:"center", justifyContent:"center" }}>{(mSSN||"").slice(0,6)||"앞6자리"}</span>
+                      <span style={{ color:C.muted, fontWeight:700 }}>-</span>
+                      <input style={{ ...inp, marginBottom:0, width:130, letterSpacing:1 }} type="password" inputMode="numeric" value={mNationalId} onChange={e=>setMNationalId(e.target.value.replace(/\D/g,"").slice(0,7))} placeholder="뒷자리 7" autoComplete="off" />
+                    </span>
+                  ) : (
+                    <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
+                  )}
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
