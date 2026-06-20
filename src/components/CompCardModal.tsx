@@ -108,14 +108,19 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
 
   // 하단 바: 왼쪽 큰 이름 + 가운데 2줄(국적/나이 · 신체사이즈) + 오른쪽 에이전시 로고
   const age = ageFromSSN6(model.ssn6);
-  const genderTxt = model.gender === "F" ? "여성" : model.gender === "M" ? "남성" : "";
+  const genderEn = model.gender === "F" ? "Female" : model.gender === "M" ? "Male" : "";
   const bwh = [model.bust, model.waist, model.hip].filter(Boolean).join("-");
-  const infoLine1 = [model.country && `국적 ${model.country}`, age !== null && `나이 ${age}`, genderTxt && `성별 ${genderTxt}`].filter(Boolean).join("    ·    ");
-  const infoLine2 = [model.height && `키 ${model.height}cm`, bwh && `${bwh}`, model.shoe && `신발 ${model.shoe}mm`].filter(Boolean).join("    ·    ");
   // 영문 이름은 퍼스트네임만 (예: "BARBARE GIGUASHVILI" → "BARBARE"). 한글 이름은 그대로.
   const _nm = (model.name || "").trim();
   const isLatinName = /[A-Za-z]/.test(_nm) && !/[가-힣]/.test(_nm);
   const displayName = (isLatinName && _nm.includes(" ") ? _nm.split(/\s+/)[0] : _nm) || "-";
+  // 정보 항목: 영문 안내 라벨(작고·밝게) + 결과값(볼드)으로 구분 표기
+  const fld = (label: string, value: string) => (
+    <span key={label} style={{ marginRight: 18, whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: 11, fontWeight: 400, color: "#aab2bf" }}>{label} </span>
+      <span style={{ fontSize: 15, fontWeight: 800, color: "#1a1d27" }}>{value}</span>
+    </span>
+  );
 
   const download = async () => {
     if (!ref.current) return;
@@ -173,10 +178,18 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
             <div style={{ flexShrink: 0, minWidth: 0 }}>
               <div style={{ fontSize: 40, fontWeight: 600, color: "#1a1d27", lineHeight: 1.05, whiteSpace: "nowrap" }}>{displayName}</div>
             </div>
-            {/* 가운데: 국적/나이 · 신체사이즈 (두 줄, 작고 얇게) */}
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-              <div style={{ fontSize: 13, fontWeight: 400, color: "#3a3f4a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{infoLine1 || "-"}</div>
-              <div style={{ fontSize: 13, fontWeight: 400, color: "#3a3f4a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{infoLine2 || "-"}</div>
+            {/* 가운데: 영문 라벨(작고 밝게) + 값(볼드), 두 줄 */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {model.country && fld("Nationality", model.country)}
+                {age !== null && fld("Age", String(age))}
+                {genderEn && fld("Gender", genderEn)}
+              </div>
+              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {model.height && fld("Height", `${model.height}cm`)}
+                {bwh && fld("Size", bwh)}
+                {model.shoe && fld("Shoe", `${model.shoe}mm`)}
+              </div>
             </div>
             {/* 오른쪽: 에이전시 로고 (기본=설정의 회사 로고, 카드 아래에서 삽입/삭제. 크기 30%↓) */}
             {(logoSrc || agency.name) && (
