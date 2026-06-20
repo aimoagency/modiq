@@ -2672,7 +2672,7 @@ async function sharePdf(){
               ["언더웨어", m.underwear_ok?"가능":"불가"],
               ...(m.instagram_followers?[["인스타 팔로워",Number(m.instagram_followers).toLocaleString()]] as [string,any][]:[]),
             ];
-            const hasAny = rows.length>2 || (Array.isArray(m.fields)&&m.fields.length) || m.specialty;
+            const hasAny = rows.length>2 || (Array.isArray(m.fields)&&m.fields.length) || m.specialty || m.career;
             if(!hasAny) return null;
             return (
               <div style={{ background:C.card2, borderRadius:8, padding:"12px 14px", marginBottom:14 }}>
@@ -2682,6 +2682,16 @@ async function sharePdf(){
                 </div>
                 {Array.isArray(m.fields)&&m.fields.length>0&&<div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:6 }}>{m.fields.map((f:string)=><span key={f} style={{ background:C.card, color:C.textSub, fontSize:11, padding:"3px 9px", borderRadius:10, border:`1px solid ${C.border}` }}>{f}</span>)}</div>}
                 {m.specialty&&<p style={{ margin:"8px 0 0", fontSize:12, color:C.textSub }}>특기: {m.specialty}</p>}
+                {/* 경력 — 신체·프로필 박스 안에 포함(수정 화면과 동일 위치). 접힘=1줄 미리보기 */}
+                {m.career&&(<>
+                  <button onClick={()=>setShowCareer(v=>!v)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", margin:"12px 0 0", padding:0, background:"transparent", border:"none", cursor:"pointer", color:C.muted, fontSize:11, textAlign:"left" }}>
+                    <span>경력 <span style={{ color:C.muted }}>(작품·활동 이력)</span></span>
+                    <span style={{ color:C.blue, fontSize:11 }}>{showCareer?"접기 ▲":"펼치기 ▼"}</span>
+                  </button>
+                  {showCareer
+                    ? <div style={{ whiteSpace:"pre-wrap", fontSize:13, color:C.text, lineHeight:1.6, marginTop:6 }}>{m.career}</div>
+                    : <div style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:6 }}>{m.career}</div>}
+                </>)}
               </div>
             );
           })()}
@@ -2693,18 +2703,6 @@ async function sharePdf(){
             {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
             {selectedModel.bank_info&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.card2, color:C.textSub, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}><Banknote size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedModel.bank_info}</span>}
           </div>
-          {/* 경력 — 연락처 아래 펼침/접기 */}
-          {selectedModel.career&&(
-            <div style={{ marginBottom:14 }}>
-              <button onClick={()=>setShowCareer(v=>!v)} style={{ display:"flex", alignItems:"center", gap:6, width:"100%", justifyContent:"space-between", background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", cursor:"pointer", color:C.text, fontSize:13, fontWeight:700 }}>
-                <span><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 경력 보기</span>
-                <span style={{ color:C.muted, fontSize:12 }}>{showCareer?"접기 ▲":"펼치기 ▼"}</span>
-              </button>
-              {showCareer
-                ? <div style={{ background:C.card2, borderRadius:8, padding:12, marginTop:6, whiteSpace:"pre-wrap", fontSize:13, color:C.text, lineHeight:1.6 }}>{selectedModel.career}</div>
-                : <div style={{ marginTop:6, fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{selectedModel.career}</div>}
-            </div>
-          )}
           {selectedModel.memo&&<div style={{ background:C.card2, borderRadius:8, padding:12, marginBottom:14 }}><p style={{ margin:0, fontSize:12, color:C.muted }}>메모</p><p style={{ margin:"4px 0 0", fontSize:13, color:C.text }}>{selectedModel.memo}</p></div>}
           {/* 섭외 이력 + 모델별 정산 요약 */}
           {(()=>{
