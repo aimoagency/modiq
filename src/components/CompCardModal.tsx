@@ -26,7 +26,7 @@ type Drag = { type: "g" | "s"; val: string | number } | null;
 
 export default function CompCardModal({ model, agency, onClose, onSave }: {
   model: any;
-  agency: { id: string; name: string };
+  agency: { id: string; name: string; logo_url?: string };
   onClose: () => void;
   onSave?: (compcard: (string | null)[]) => void | Promise<void>;   // 컴카드 슬롯 지정 영구 저장
 }) {
@@ -91,22 +91,12 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
     setDrag(null);
   };
 
-  const info = useMemo(() => {
-    const age = ageFromSSN6(model.ssn6);
-    return [
-      // 순서: 이름 → 국적 → 나이 → 신체정보(성별·키·가슴·허리·엉덩이·신발·머리색)
-      ["이름(아이디)", model.name || "-"],
-      ["국적", model.country || "-"],
-      ["나이", age !== null ? String(age) : "-"],
-      ["성별", (model.gender === "F" ? "여성" : model.gender === "M" ? "남성" : "") || "-"],
-      ["키 cm", model.height || "-"],
-      ["가슴 cm", model.bust || "-"],
-      ["허리 cm", model.waist || "-"],
-      ["엉덩이 cm", model.hip || "-"],
-      ["신발 mm", model.shoe || "-"],
-      ["머리색", model.hair_color || "-"],
-    ] as [string, string][];
-  }, [model]);
+  // 하단 바: 왼쪽 큰 이름 + 가운데 2줄(국적/나이 · 신체사이즈) + 오른쪽 에이전시 로고
+  const age = ageFromSSN6(model.ssn6);
+  const genderTxt = model.gender === "F" ? "여성" : model.gender === "M" ? "남성" : "";
+  const bwh = [model.bust, model.waist, model.hip].filter(Boolean).join("-");
+  const infoLine1 = [model.country && `국적 ${model.country}`, age !== null && `나이 ${age}`, genderTxt && `성별 ${genderTxt}`].filter(Boolean).join("    ·    ");
+  const infoLine2 = [model.height && `키 ${model.height}cm`, bwh && `${bwh}`, model.shoe && `신발 ${model.shoe}mm`].filter(Boolean).join("    ·    ");
 
   const download = async () => {
     if (!ref.current) return;
@@ -158,14 +148,25 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
               <Slot i={4} style={{ borderRadius: 4 }} />
             </div>
           </div>
-          {/* 하단 정보 바 — 고정 px(카드와 함께 비례 축소) */}
-          <div style={{ display: "flex", borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 6 }}>
-            {info.map(([label, val], k) => (
-              <div key={k} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderLeft: k === 0 ? "none" : "1px solid #f0f2f5" }}>
-                <div style={{ fontSize: k === 0 ? 12 : 10, color: "#9aa2af", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
-                <div style={{ fontSize: k === 0 ? 17 : 12, fontWeight: 800, color: "#1a1d27", marginTop: 3, whiteSpace: "nowrap" }}>{val}</div>
+          {/* 하단 정보 바 — 왼쪽 큰 이름 + 가운데 2줄(국적/나이 · 신체) + 오른쪽 에이전시 로고 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 22, borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 12 }}>
+            {/* 왼쪽: 이름 (크게 — 기존 대비 약 3배) */}
+            <div style={{ flexShrink: 0, minWidth: 0 }}>
+              <div style={{ fontSize: 51, fontWeight: 800, color: "#1a1d27", lineHeight: 1.02, whiteSpace: "nowrap" }}>{model.name || "-"}</div>
+            </div>
+            {/* 가운데: 국적/나이 · 신체사이즈 (두 줄) */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1d27", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{infoLine1 || "-"}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1d27", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{infoLine2 || "-"}</div>
+            </div>
+            {/* 오른쪽: 에이전시 로고 (설정의 회사 로고. 없으면 회사명) */}
+            {(agency.logo_url || agency.name) && (
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", maxWidth: 230 }}>
+                {agency.logo_url
+                  ? <img src={agency.logo_url} alt="" style={{ maxHeight: 60, maxWidth: 210, objectFit: "contain" }} />
+                  : <span style={{ fontSize: 18, fontWeight: 800, color: "#1a1d27", whiteSpace: "nowrap" }}>{agency.name}</span>}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
