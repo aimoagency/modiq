@@ -8,21 +8,24 @@ import {
   modelGross, modelWithholding, modelPayout, agencyMargin, modelTaxType, bookingSession,
 } from "../lib/utils";
 import { sendEmail } from "../lib/email";
+import { sb } from "../lib/supabase";
 import { buildWithholdingStatementHtml, printStatementHtml, type WhRow } from "../lib/withholdingStatement";
 
 const taxLabel = (m: any) => modelTaxType(m) === "foreigner" ? "외국인" : modelTaxType(m) === "company" ? "소속사" : "프리랜서";
+const idKindLabel = (t?: string) => t === "rrn" ? "주민등록번호" : t === "arc" ? "외국인등록번호" : t === "passport" ? "여권번호" : "";
 const won = (n: number) => Number(n || 0).toLocaleString("ko-KR");
 
 export default function SettlementStatementModal({
-  bookings, models, customers, agency, onClose, isMobile = false,
+  bookings, models, customers, agency, canViewFinance = true, onClose, isMobile = false,
 }: {
-  bookings: any[]; models: any[]; customers: any[]; agency?: any; onClose: () => void; isMobile?: boolean;
+  bookings: any[]; models: any[]; customers: any[]; agency?: any; canViewFinance?: boolean; onClose: () => void; isMobile?: boolean;
 }) {
   const [preset, setPreset] = useState("month");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [modelF, setModelF] = useState("ALL");
   const [whOpen, setWhOpen] = useState(false); // 원천징수 내역서 미리보기/발송
+  const [taxBusy, setTaxBusy] = useState(false); // 세무사용 복호화 export 진행중
 
   const range = preset === "custom" ? { from: from || undefined, to: to || undefined } : periodRange(preset);
 
@@ -43,7 +46,7 @@ export default function SettlementStatementModal({
         const gross = modelGross(b, m);
         const payout = modelPayout(b, m);
         return {
-          date: b.shoot_date || "", id: b.id,
+          date: b.shoot_date || "", id: b.id, modelId: b.model_id,
           model: m?.name || "?", customer: c?.name || "?", project: b.project_name || "",
           tax: taxLabel(m), session: bookingSession(b) === "half" ? "Half" : "Day",
           supply: supplyTotal(b), vat: vatAmount(b), charge: clientCharge(b),
@@ -107,6 +110,44 @@ export default function SettlementStatementModal({
     await exportAoaXlsx(aoa, `정산내역서_${label}.xlsx`, "정산내역서", widths);
   };
 
+  // ── 세무사 제출용: 소득자 식별번호(전체) 포함 지급명세 ──
+  // 전체번호는 get_model_national_id RPC로 복호화(대표·정산권한자만, 호출마다 감사로그 기록).
+  const downloadTaxAgent = async () => {
+    if (!canViewFinance || rows.length === 0 || taxBusy) return;
+    if (!confirm("⚠ 세무사 제출용 파일에는 모델의 주민·외국인등록·여권번호 '전체'가 포함됩니다.\n다운로드 이력은 보안 감사 로그(secure_id_access_log)에 기록됩니다.\n\n계속하시겠습니까?")) return;
+    setTaxBusy(true);
+    try {
+      // 등록된(마스킹값 있는) 모델만 전체번호 복호화 — 감사로그 최소화
+      const uniq = [...new Set(rows.map((r) => r.modelId))];
+      const idMap = new Map<string, string>();
+      await Promise.all(uniq.map(async (id) => {
+        const m = models.find((x) => x.id === id);
+        if (!m?.national_id_masked) return;
+        try {
+          const plain = await sb("rpc/get_model_national_id", "POST", { p_model_id: id });
+          if (plain) idMap.set(id, String(plain));
+        } catch { /* 권한 없음 등 — 공란 처리 */ }
+      }));
+      const head = ["촬영일", "모델", "식별번호종류", "식별번호(전체)", "주소", "고객사/프로젝트", "세무유형", "지급액(기준액)", "원천징수세액", "실지급액", "지급일", "지급상태"];
+      const body = rows.map((r) => {
+        const m = models.find((x) => x.id === r.modelId);
+        return [
+          r.date, r.model, idKindLabel(m?.national_id_type), idMap.get(r.modelId) || "",
+          m?.address || "", [r.customer, r.project].filter(Boolean).join(" / "), r.tax,
+          r.gross, r.withholding, r.payout, r.modelPaidDate, r.modelPaid ? "지급" : "미지급",
+        ];
+      });
+      const totalRow = ["합계", "", "", "", "", "", "", tot.gross, tot.withholding, tot.payout, "", ""];
+      const aoa = [head, ...body, totalRow];
+      const widths = [11, 9, 13, 17, 22, 18, 8, 13, 12, 12, 11, 9];
+      const label = (range.from || "전체") + "_" + (range.to || "현재");
+      const mLabel = modelF !== "ALL" ? `_${selModel?.name || ""}` : "";
+      await exportAoaXlsx(aoa, `지급명세서_세무사용${mLabel}_${label}.xlsx`, "지급명세서", widths);
+    } finally {
+      setTaxBusy(false);
+    }
+  };
+
   const th: any = { padding: "7px 8px", borderBottom: `1px solid ${C.border}`, color: C.muted, textAlign: "left", whiteSpace: "nowrap", fontWeight: 700, position: "sticky", top: 0, background: C.card2 };
   const td: any = { padding: "6px 8px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap", color: C.text };
   const numTd: any = { ...td, textAlign: "right" };
@@ -117,6 +158,7 @@ export default function SettlementStatementModal({
         <h3 style={{ margin: 0, color: C.text }}>📑 정산 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>({rows.length}건)</span></h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {modelF !== "ALL" && <button onClick={() => setWhOpen(true)} disabled={rows.length === 0} style={{ ...btnS(C.blue, rows.length === 0) }}>🧾 원천징수 내역서</button>}
+          {canViewFinance && <button onClick={downloadTaxAgent} disabled={rows.length === 0 || taxBusy} style={{ ...btnS(C.red, rows.length === 0 || taxBusy) }}>{taxBusy ? "복호화 중…" : "🔒 세무사용 (주민번호 포함)"}</button>}
           <button onClick={download} disabled={rows.length === 0} style={{ ...btnS(C.green, rows.length === 0) }}>⬇ 엑셀 다운로드</button>
         </div>
       </div>
@@ -194,6 +236,7 @@ export default function SettlementStatementModal({
         </table>
       </div>
       <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0" }}>화면은 핵심 항목만 표시합니다. 엑셀에는 계약ID·부가세·입금일·계산서발행일·원천징수·마진 등 전체 컬럼이 포함됩니다.{modelF === "ALL" ? " · 모델을 선택하면 원천징수 내역서를 발송할 수 있습니다." : ""}</p>
+      {canViewFinance && <p style={{ fontSize: 11, color: C.red, margin: "4px 0 0" }}>🔒 <b>세무사용</b> 파일은 모델 식별번호 전체가 포함된 민감정보입니다 — 다운로드 시 감사 로그가 기록되며 세무 신고 외 용도로 사용하지 마세요.</p>}
 
       {/* 원천징수 내역서 미리보기 · 발송 */}
       {whOpen && selModel && (
