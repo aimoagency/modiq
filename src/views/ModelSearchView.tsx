@@ -110,12 +110,15 @@ export default function ModelSearchView({ models, isMobile = false, onPick }: {
           {MODEL_FIELDS.map(f => <span key={f} onClick={() => toggle(fieldF, setFieldF, f)} style={chip(fieldF.includes(f))}>{f}</span>)}
         </div>
 
+        <div style={{ marginTop: 14 }}>
+          <p style={sec}>경력</p>
+          <Range a={carMin} sa={setCarMin} b={carMax} sb={setCarMax} unit="년" />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0,1fr))", gap: 14, marginTop: 14 }}>
           <div><p style={sec}>나이</p><Range a={ageMin} sa={setAgeMin} b={ageMax} sb={setAgeMax} unit="세" /></div>
           <div><p style={sec}>신장</p><Range a={hMin} sa={setHMin} b={hMax} sb={setHMax} unit="cm" /></div>
           <div><p style={sec}>신발</p><Range a={shMin} sa={setShMin} b={shMax} sb={setShMax} unit="mm" /></div>
           <div><p style={sec}>모델료/일</p><Range a={feeMin} sa={setFeeMin} b={feeMax} sb={setFeeMax} unit="만" /></div>
-          <div><p style={sec}>경력</p><Range a={carMin} sa={setCarMin} b={carMax} sb={setCarMax} unit="년" /></div>
         </div>
       </div>
 
