@@ -2922,14 +2922,25 @@ async function sharePdf(){
             </div>
           </div>
 
+          {/* 내국인 / 외국인 — 맨 처음 선택 (ID·세무 입력 흐름 결정) */}
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>구분 *</label>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+              <button type="button" onClick={()=>{ setMIsForeign(false); setMTaxType(t=>t==="company"?"company":"freelancer"); }} style={{ padding:"7px 16px", borderRadius:20, border:`1px solid ${!mIsForeign?C.blue:C.border}`, background:!mIsForeign?C.blue+"22":"transparent", color:!mIsForeign?C.blue:C.muted, fontSize:13, fontWeight:!mIsForeign?700:500, cursor:"pointer" }}>내국인</button>
+              <button type="button" onClick={()=>{ setMIsForeign(true); setMTaxType("foreigner"); if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); }} style={{ padding:"7px 16px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:13, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인</button>
+              {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 · 3.3%":mVisaType==="C4"?"C-4 · 20%":mVisaType==="OTHER"?"기타 · 20%":"비자 미선택"}</span>}
+              {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"5px 12px", borderRadius:7, border:`1px solid ${C.blue}`, background:"transparent", color:C.blue, fontSize:11, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 ✎</button>}
+            </div>
+          </div>
+
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>모델명 *</label>
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주민번호 앞 6자리 *</label>
-              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{mIsForeign?"생년월일 6자리 (YYMMDD) *":"주민번호 앞 6자리 *"}</label>
+              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} placeholder="예: 901231" />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3029,15 +3040,6 @@ async function sharePdf(){
               placeholder={"MBC 드라마 '사랑이 뭐길래' 주연\n2024 OO 브랜드 광고 모델\n…"}
               style={{ ...inp, marginTop:6, marginBottom:0, resize:"none", overflow:"hidden", lineHeight:1.5, cursor:"text" }}
             />
-          </div>
-
-          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
-          <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
-              {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
-            </div>
-            {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
           </div>
 
           {/* ── 모델료 (Day / Half day / Hour) ── */}
