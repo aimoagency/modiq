@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.0.0";
 export const SESSION_KEY = "modiq_session_v6";
 export const DATA_CACHE_KEY = "modiq_data_cache_v1";
 export type AuthMode = "login"|"signup";
