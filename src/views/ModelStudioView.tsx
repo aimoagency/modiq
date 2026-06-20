@@ -422,7 +422,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 {sel.career && (
                   <div style={{ marginTop: 10 }}>
                     <button type="button" onClick={() => setCareerOpen(v => !v)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 0, background: "transparent", border: "none", cursor: "pointer", color: C.muted, fontSize: 11, textAlign: "left" }}>
-                      <span>경력 <span style={{ color: C.muted }}>(작품·활동 이력)</span></span>
+                      <span>활동이력 <span style={{ color: C.muted }}>(작품·활동)</span></span>
                       <span style={{ color: C.blue, fontSize: 11 }}>{careerOpen ? "접기 ▲" : "펼치기 ▼"}</span>
                     </button>
                     {careerOpen
