@@ -1538,9 +1538,10 @@ async function sharePdf(){
   const settlementData = useMemo(()=>bookings.filter(b=>["COMPLETED","SETTLED"].includes(b.status) && BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract && bookingTotal(b)>0),[bookings]);
   const filteredSettlement = useMemo(()=>{
     return settlementData.filter(b=>{
-      if (settlementTab==="PENDING"){ if(b.status!=="COMPLETED"||b.is_paid) return false; }
-      if (settlementTab==="SETTLED"){ if(!(b.status==="SETTLED"||b.is_paid)) return false; }
-      if (settlementTab==="UNPAID") { if(!(b.status==="SETTLED"&&!b.is_paid)) return false; }
+      // 정산대기 = 촬영완료 & (고객입금·모델지급 둘 다 완료가 아님) / 정산완료 = 둘 다 완료 or 상태 정산완료 / 미입금잔금 = 고객 미입금
+      if (settlementTab==="PENDING"){ if(b.status!=="COMPLETED" || (b.is_paid && b.model_paid)) return false; }
+      if (settlementTab==="SETTLED"){ if(!(b.status==="SETTLED" || (b.is_paid && b.model_paid))) return false; }
+      if (settlementTab==="UNPAID") { if(b.is_paid) return false; }
       if (settlementMonth!=="ALL"&&!b.shoot_date?.startsWith(settlementMonth)) return false;
       if (settlementModel!=="ALL"&&b.model_id!==settlementModel) return false;
       if (settlementClient!=="ALL"&&b.customer_id!==settlementClient) return false;
