@@ -293,6 +293,9 @@ export default function App() {
   // ── 모델 폼 ──
   const [mName,      setMName]      = useState("");
   const [mSSN,       setMSSN]       = useState("");
+  const [mAddress,    setMAddress]    = useState("");   // 모델 주소 (세무신고용)
+  const [mNationalId, setMNationalId] = useState("");   // 식별번호 평문 (저장 후 즉시 비움)
+  const [showIdInput, setShowIdInput] = useState(false); // 마스킹 대신 입력칸 표시
   const [mPhone,     setMPhone]     = useState("");
   const [mEmail,     setMEmail]     = useState("");
   const [mCategory,  setMCategory]  = useState("");
@@ -609,7 +612,7 @@ export default function App() {
   };
 
   // ── 모델 추가 ──
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -622,10 +625,11 @@ export default function App() {
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_id:agency.id };
     try {
       await sb("models","POST",nm);
       setModels([nm,...models]);
+      if (mNationalId.trim() && canViewFinance) await saveModelNationalId(newModelId);
       resetModelForm(); setShowModelForm(false);
     } catch (e) { alert("모델 추가 실패: "+String(e)); }
   };
@@ -641,6 +645,7 @@ export default function App() {
     setMKakao(m.kakao_id||""); setMThumb(m.thumb_url||""); setMAimoUrl(m.aimo_url||""); setMMemo(m.memo||"");
     { const _b=m.bank_info||""; setMBank(_b); const _sp=_b.indexOf(" "); setMBankName(_sp>=0?_b.slice(0,_sp):(_b&&!/\d/.test(_b)?_b:"")); setMBankAcct(_sp>=0?_b.slice(_sp+1):(/\d/.test(_b)?_b:"")); }
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(m.bust||""); setMWaist(m.waist||""); setMHip(m.hip||""); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMCareerOpen(!!m.career); setMFollowers(m.instagram_followers||""); setMSizeUnit("cm");
+    setMAddress(m.address||""); setMNationalId(""); setShowIdInput(false);
     setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
     setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
@@ -648,7 +653,7 @@ export default function App() {
   };
 
   const [modelBaseline, setModelBaseline] = useState("");
-  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers }); };
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress }); };
   useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
@@ -657,9 +662,24 @@ export default function App() {
     try {
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
+      if (mNationalId.trim() && canViewFinance) await saveModelNationalId(selectedModel.id);
       setMEditMode(false); setSelectedModel(null); resetModelForm();
       alert("저장되었습니다.");
     } catch (e) { alert("수정 실패: "+String(e)); }
+  };
+
+  // 식별번호(주민/외국인등록/여권) 보안 저장 — 별도 RPC(암호화·대표/정산권한자 전용). 평문은 저장 후 비움.
+  const saveModelNationalId = async (modelId: string): Promise<boolean> => {
+    const v = mNationalId.trim();
+    if (!v) return false;
+    const idType = !mIsForeign ? "rrn" : (mHasAlienCard ? "arc" : "passport");
+    try {
+      const masked = await sb("rpc/set_model_national_id", "POST", { p_model_id: modelId, p_id_type: idType, p_id_plain: v });
+      setModels(prev => prev.map(m => m.id===modelId ? { ...m, national_id_masked: masked, national_id_type: idType } : m));
+      setSelectedModel((p:any)=> (p && p.id===modelId) ? { ...p, national_id_masked: masked, national_id_type: idType } : p);
+      setMNationalId(""); setShowIdInput(false);
+      return true;
+    } catch (e) { alert("식별번호 저장 실패(권한·형식 확인): " + String(e)); return false; }
   };
 
   const handleDeleteModel = async () => {
@@ -3062,6 +3082,39 @@ async function sharePdf(){
               ))}
             </div>
           </div>
+
+          {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── */}
+          {canViewFinance && (()=>{
+            const idType = !mIsForeign ? "rrn" : (mHasAlienCard ? "arc" : "passport");
+            const idLabel = idType==="rrn" ? "주민등록번호" : idType==="arc" ? "외국인등록번호" : "여권번호";
+            const idPh = idType==="passport" ? "예: M12345678" : "13자리 (- 없이)";
+            const masked = selectedModel?.national_id_masked;
+            const showInput = !masked || showIdInput || !mEditMode;
+            return (
+            <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"0 0 14px", background:C.card2 }}>
+              <p style={{ margin:"0 0 3px", fontSize:12, fontWeight:700, color:C.text }}>세무 신고용 정보 <span style={{ fontWeight:500, color:C.muted }}>(원천징수·지급명세서)</span></p>
+              <p style={{ margin:"0 0 10px", fontSize:11, color:C.muted }}>🔒 식별번호는 암호화 저장되고 화면엔 마스킹만 표시됩니다 · 대표·정산권한자 전용</p>
+              <div style={{ marginBottom:10 }}>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주소</label>
+                <input style={{ ...inp, marginBottom:0 }} value={mAddress} onChange={e=>setMAddress(e.target.value)} placeholder="모델 주소 (지급명세서용)" />
+              </div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({!mIsForeign?"내국인":mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
+              {showInput ? (
+                <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
+                  {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
+                  {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
+                </span>
+              ) : (
+                <span style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                  <span style={{ fontFamily:"monospace", fontSize:14, color:C.text, background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 12px" }}>{masked}</span>
+                  <button type="button" onClick={()=>{ setShowIdInput(true); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"7px 12px" }}>변경</button>
+                </span>
+              )}
+              {!mEditMode && <p style={{ margin:"5px 0 0", fontSize:10, color:C.muted }}>모델 추가 시 함께 암호화 저장됩니다.</p>}
+            </div>
+            );
+          })()}
 
           {/* 링크 — 브랜드 아이콘 */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
