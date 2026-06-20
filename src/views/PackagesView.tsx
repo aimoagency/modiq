@@ -90,9 +90,20 @@ export default function PackagesView({ packages, setPackages, models, customers,
     share_token: genShareToken(), is_public: true,
   });
 
+  // 로고는 회사 로고(CompanyView.onLogoFile)와 동일 방식: 캔버스 리사이즈 후 PNG로 저장 → 투명 배경 유지.
+  // (사진용 resizeImage는 JPEG로 변환해 PNG 투명 영역이 검게 나오므로 로고엔 쓰지 않음)
   const setLogo = (files: FileList | null) => {
-    const f = files?.[0]; if (!f) return;
-    resizeImage(f, data => upd({ brand_logo: data }));
+    const f = files?.[0]; if (!f || !f.type.startsWith("image/")) return;
+    const img = new Image(); const url = URL.createObjectURL(f);
+    img.onload = () => {
+      const max = 240; const sc = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+      cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
+      upd({ brand_logo: cv.toDataURL("image/png") });
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   };
 
   const startNew = () => { setDraft(newDraft()); setIsNew(true); };
