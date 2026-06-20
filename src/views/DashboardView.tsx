@@ -40,9 +40,10 @@ export default function DashboardView({ bookings, models, customers, projects, s
   onOpenCalendarDate?: (date:string)=>void;
   isMobile?: boolean; canViewFinance?: boolean; loading?: boolean;
 }) {
-  // 로딩 중 필수 데이터(섭외·모델·고객사) 중 하나라도 아직 안 온 동안은 0 대신 스켈레톤 유지
-  // (진행형 렌더로 일부만 도착했을 때 0이 깜빡이는 것 방지. 로딩이 끝나면 빈 값도 그대로 표시=빈 에이전시 정상)
-  if (loading && (bookings.length===0 || models.length===0 || customers.length===0)) {
+  // 진짜 콜드 스타트(캐시·데이터가 전혀 없음)일 때만 스켈레톤 — 0 깜빡임 방지.
+  // 캐시/부분 데이터가 하나라도 있으면 그대로 내용 표시 → "내용→빈화면→내용" 깜빡임 없음.
+  // (필수 4종을 한 번에 set + setSyncing(false) 동시 반영하므로 부분 0 깜빡임도 없음.)
+  if (loading && bookings.length===0 && models.length===0 && customers.length===0) {
     return <DashboardSkeleton isMobile={isMobile} canViewFinance={canViewFinance} />;
   }
   // 날짜 클릭 → 캘린더의 해당 날짜를 선택 상태로 열기(우측 패널 오픈). 미전달 시 일반 이동.
