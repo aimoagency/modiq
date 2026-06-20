@@ -444,12 +444,12 @@ export default function App() {
         // 1) 세션·캐시를 즉시 적용해 화면과 숫자를 바로 표시 (네트워크 응답 대기 없음)
         setSession(user); setAgency(agencyData); setMyRole(role);
         restoreDataCache(agencyData.id);
-        // 2) 토큰 검증과 최신 데이터 조회를 병렬 실행 (왕복 1회 단축)
-        const [fresh] = await Promise.all([
-          refreshSession(),       // 서버 검증 + 토큰 갱신
-          loadData(agencyData.id), // 최신 데이터 (기존 access token 사용)
-        ]);
+        // 2) 토큰을 먼저 갱신해 신선한 access token을 확보한 뒤 데이터 조회.
+        //    (병렬 실행 시 만료된 access token으로 쿼리가 401 → 쿼리마다 refresh가 동시 폭주하는
+        //     레이스가 발생해 간헐적으로 로딩이 풀리지 않거나 로그인 화면으로 튕겼다. 순차 실행으로 제거.)
+        const fresh = await refreshSession();       // 서버 검증 + 토큰 갱신
         if (!fresh) { localStorage.removeItem(SESSION_KEY); window.location.reload(); return; }
+        await loadData(agencyData.id);              // 갱신된 토큰으로 최신 데이터 조회
         localStorage.setItem(SESSION_KEY, JSON.stringify({ user, agencyData, role, tokens:getAuthTokens() }));
       } catch { localStorage.removeItem(SESSION_KEY); }
     })();
