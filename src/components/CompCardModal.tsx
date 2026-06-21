@@ -170,9 +170,10 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
 
   return createPortal(
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1500, padding: 16, overflowY: "auto" }}>
-      <CloseButton onClose={onClose} fixed />
       {/* A4 가로 컴카드 — 고정 크기 카드를 화면 폭에 맞춰 균일 축소(scale). 웹/모바일 레이아웃 동일 */}
-      <div ref={wrapRef} onClick={e => e.stopPropagation()} style={{ width: "min(92vw, 1000px)", height: BASE_H * scale }}>
+      {/* 닫기 버튼은 화면 끝(fixed)이 아니라 '컴카드 오른쪽 위'에 배치 — 웹에서 카드가 가운데 정렬돼도 잘 보이게 */}
+      <div ref={wrapRef} onClick={e => e.stopPropagation()} style={{ position: "relative", width: "min(92vw, 1000px)", height: BASE_H * scale }}>
+        <CloseButton onClose={onClose} />
         <div ref={ref}
           style={{ width: BASE_W, height: BASE_H, transform: `scale(${scale})`, transformOrigin: "top left", background: "#fff", display: "flex", flexDirection: "column", padding: 20, boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,.4)", borderRadius: 6 }}>
           {/* 사진 영역: 왼쪽 메인 + 오른쪽 2×2 */}
