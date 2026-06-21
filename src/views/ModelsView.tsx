@@ -5,6 +5,7 @@ import { periodRange } from "../lib/utils";
 import { visaDday, ageFromSSN6 } from "../lib/utils";
 import { User, Phone, Coins, Plane } from "../components/icons";
 import SearchInput from "../components/SearchInput";
+import { useVisibleCount } from "../lib/useVisibleCount";
 
 export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowModelForm, setSelectedModel, setMEditMode, bookings, isMobile = false, onBulkAdd, legacyIdCount = 0, onMigrateIds }: {
   filteredModels: any[]; modelQ: string; setModelQ: (v:string)=>void;
@@ -21,6 +22,8 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
+  // 점진 렌더 — 1000명+ 목록을 한 번에 다 그리지 않음(스크롤 시 추가)
+  const { visible, hasMore, sentinelRef } = useVisibleCount(filteredModels, 60);
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -53,7 +56,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
       {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb /> :
        filteredModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
-          {filteredModels.map(m=>{
+          {visible.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
             const age = ageFromSSN6(m.ssn6);
             const ddayColor = dday==="만료" ? C.red : dday.startsWith("D-") && parseInt(dday.slice(2)) <= 7 ? C.orange : C.yellow;
@@ -61,7 +64,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
               <div key={m.id} onClick={()=>{ setSelectedModel(m); setMEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:5 }}>
                   {m.thumb_url
-                    ? <img src={m.thumb_url} alt={m.name} style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+                    ? <img src={m.thumb_url} alt={m.name} loading="lazy" decoding="async" style={{ width:32, height:32, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                     : <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:13, flexShrink:0 }}>{m.name?m.name[0]:"?"}</div>
                   }
                   <strong style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flexShrink:1 }}>{m.name}</strong>
@@ -88,7 +91,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
               >
                 {/* 원형 썸네일 */}
                 {m.thumb_url
-                  ? <img src={m.thumb_url} alt={m.name} style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:`1px solid ${C.border}` }} />
+                  ? <img src={m.thumb_url} alt={m.name} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:`1px solid ${C.border}` }} />
                   : <div style={{ width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:14, flexShrink:0 }}>{m.name?m.name[0]:"?"}</div>
                 }
                 {/* 이름 */}
@@ -109,6 +112,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
               </div>
             );
           })}
+          {hasMore && <div ref={sentinelRef} style={{ height:1 }} />}
         </div>
       )}
     </div>
