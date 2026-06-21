@@ -471,6 +471,7 @@ export default function App() {
   // 초기화
   // ──────────────────────────────────────────────
   useEffect(() => {
+    try { sessionStorage.removeItem("modiq_boot_retry"); } catch {} // 마운트 성공 → 부팅 로드실패 안전장치 플래그 해제
     setOnAuthFail(()=>{ localStorage.removeItem(SESSION_KEY); window.location.reload(); });
     const saved = localStorage.getItem(SESSION_KEY);
     if (!saved) return;
