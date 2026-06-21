@@ -1740,7 +1740,8 @@ async function sharePdf(){
   // ══════════════════════════════════════════════
   if (!session||!agency) {
     return (
-      <div style={{ minHeight:"100vh", width:"100vw", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      // 전역 #root zoom(모바일 1.07/데스크톱 1.14)을 상쇄해 로그인은 실제 뷰포트 기준 정중앙 정렬(100vw 오버플로로 인한 어긋남 방지)
+      <div style={{ minHeight:"100vh", width:"100%", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", zoom: isMobile ? 0.935 : 0.877 }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:40, width:"90%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:22 }}>
             <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</h1>
