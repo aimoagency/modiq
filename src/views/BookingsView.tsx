@@ -66,7 +66,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
         const Card=(b:any)=> isMobile ? (
             <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                <TypeIcon type={b.booking_type} size={13}/>
+                {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ color:bt.color, display:"inline-flex", flexShrink:0 }}><TypeIcon type={b.booking_type} size={13}/></span>; })()}
                 {(()=>{ const m=models.find((mm:any)=>mm.id===b.model_id); return m?.thumb_url
                   ? <img src={m.thumb_url} alt="" style={{ width:24, height:24, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                   : <span style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:10, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>; })()}
