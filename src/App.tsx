@@ -47,7 +47,7 @@ const PackagePublicView = lazy(() => import("./views/PackagePublicView"));
 const CalendarAddView = lazy(() => import("./views/CalendarAddView"));
 const CalSubscribeView = lazy(() => import("./views/CalSubscribeView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
-import { sendCalEmail } from "./lib/email";
+import { sendCalEmail, sendCancelEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
 import type { Pkg } from "./lib/packages";
 import { useBackClose, topBack } from "./lib/backstack";
@@ -972,7 +972,7 @@ export default function App() {
         }
         // 구글 캘린더 자동 동기화: 확정 전환(생성·외국인 메일) / 일시·장소 변경(갱신) / 취소(삭제)
         if ((statusChanged || whenLocChanged) && finalStatus!=="HOLD") {
-          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mail: statusChanged && finalStatus==="CONFIRMED" });
+          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mail: statusChanged && (finalStatus==="CONFIRMED"||finalStatus==="CANCELLED") });
         }
       }
       setSelectedBooking((p:any)=>p?{...p,...updates}:p);
@@ -1118,7 +1118,7 @@ export default function App() {
   // 구글 미연동·모델 이메일 없음·메일함수 미배포 시 안전하게 no-op(앱 흐름 방해 X).
   const syncBookingToCalendar = async (tb: any, tm: any, tc: any, opts: { mail?: boolean } = {}) => {
     if (!agency?.id || !tb) return;
-    // 취소: 구글 일정 있으면 삭제
+    // 취소: 구글 일정 있으면 삭제 + (opts.mail 시) 모델에게 취소 안내 메일 자동 발송
     if (tb.status === "CANCELLED") {
       if (tb.gcal_event_id) {
         try {
@@ -1126,6 +1126,13 @@ export default function App() {
           await sb("bookings", "PATCH", { gcal_event_id: null }, `?id=eq.${tb.id}`);
           setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, gcal_event_id: null } : x));
           setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: null } : s);
+        } catch {}
+      }
+      // 확정·취소 두 경우 모두 자동 메일(사용자 합의). 취소는 .ics/캘린더 추가 없이 취소 안내만.
+      if (opts.mail && tm?.email) {
+        try {
+          const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+          await sendCancelEmail(tm.email, ev2, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
         } catch {}
       }
       return;
@@ -1179,7 +1186,7 @@ export default function App() {
           const tm = models.find(m=>m.id===tb.model_id);
           const tc = customers.find(c=>c.id===tb.customer_id);
           sendAlimtalkBoth(tm?.phone||"", tc?.phone||"", status==="CONFIRMED"?"CONFIRM":"CANCEL", { modelName:tm?.name||"모델", booking:tb, clientName:tc?.name||"고객사", managerName:tb.manager||"담당자", senderLabel:agency?.name||"에이전시", contactPhone:agency?.contact_phone||agency?.rep_phone||"" });
-          syncBookingToCalendar(tb, tm, tc, { mail: status==="CONFIRMED" }); // 구글 자동 동기화 + 확정 시 안내 메일(전체)
+          syncBookingToCalendar(tb, tm, tc, { mail: status==="CONFIRMED"||status==="CANCELLED" }); // 구글 자동 동기화 + 확정/취소 시 자동 메일(합의)
         }
       }
     } catch (e) { alert("상태 변경 실패: "+String(e)); }
