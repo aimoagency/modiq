@@ -31,6 +31,28 @@
 - 매출(RevenueView)은 **확정/완료/정산 상태 + 계약형 + 금액>0 + 촬영일이 선택 기간 내**일 때만 잡힘. 미래월 건은 해당 월/기간을 봐야 보임(버그 아님).
 - ⚠️ 임시 컨테이너라 **커밋·푸시 안 한 수정은 세션 종료 시 유실**된다. 화면 수정은 반드시 커밋·푸시까지 완료할 것.
 
+## 대시보드 로딩 / 첫 화면 (🔒 보호 영역 — 임의 수정·되돌리기 금지)
+> 아래는 사용자가 반복 제기한 문제와 그 해결 구조다. **이 5개 기둥은 서로 맞물려 깜빡임을 막으므로 하나라도 풀면 재발한다.** 성능/로딩 관련 수정이 필요하면 먼저 이 기둥들을 깨지 않는지 확인하고, 콜드스타트·캐시·로그인·새로고침 4가지 흐름을 모두 점검한 뒤 진행한다.
+
+**제기된 증상(재발 방지 대상)**
+1. 대시보드 숫자가 모두 **0이었다가 바뀜**(0 깜빡임).
+2. **로그인 직후** 로딩 중 글자가 전부 안 보임(화면 전체 스켈레톤).
+3. 사이트를 **열자마자 흰 화면**이 한 번 깜빡임.
+
+**해결 구조(5개 기둥 · 위치)**
+1. **캐시 동기 주입** — `App.tsx`: `_cachedData`를 첫 렌더에 동기 주입하고 `models/customers/bookings/projects/members` 초기값을 캐시로 둔다. `syncing` 초기값 = `!!_savedSession`.
+2. **loadData 일괄 반영** — `App.tsx loadData`: 필수 4종(models·customers·bookings·projects)을 `Promise.all`로 받아 **한 번에 set + `setSyncing(false)` 동시 반영**(부분 0 방지). `agency_members` 등 비필수는 그 뒤 점진 로딩.
+3. **스켈레톤 가드 = `&&`** — `DashboardView`: `loading && bookings·models·customers가 모두 빈 경우`에만 스켈레톤. (`||` 금지) 또한 스켈레톤도 **제목·라벨은 실제 텍스트로 노출**하고 숫자/목록 값 자리만 shimmer.
+4. **로그인 캐시 복원** — `App.tsx handleLogin`(대표/멤버 분기 모두): `loadData` 직전에 `restoreDataCache(agencyData.id)` 호출(세션복원 effect와 동일하게).
+5. **부팅 스플래시 + 즉시 배경** — `index.html`: `<head>` 인라인 `<style>`로 배경색을 첫 페인트부터 적용, 인라인 `<script>`로 저장 테마를 번들 전에 적용, `#root` 안에 modiq 부팅 스플래시. (React `createRoot`가 마운트 시 자동 교체)
+
+**절대 금지 안티패턴**
+- 스켈레톤 가드를 `||`로 바꾸기(내용→빈화면 깜빡임 재발).
+- `loadData`에서 필수 4종을 **따로따로** set 하기(부분 0 깜빡임).
+- 스켈레톤을 라벨까지 포함한 **전체 shimmer**로 되돌리기.
+- `index.html`의 인라인 배경/테마 스크립트/부팅 스플래시 제거.
+- `handleLogin`의 `restoreDataCache` 호출 제거.
+
 ## 프로젝트 개요
 - React + Vite + TypeScript SPA, Supabase(REST + RLS + 엣지함수) 백엔드.
 - 배포: Vercel(웹) + Netlify(모바일), 운영 브랜치 = `master`.

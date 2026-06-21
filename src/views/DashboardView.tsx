@@ -56,9 +56,11 @@ export default function DashboardView({ bookings, models, customers, projects, s
   onOpenCalendarDate?: (date:string)=>void;
   isMobile?: boolean; canViewFinance?: boolean; loading?: boolean;
 }) {
+  // 🔒 보호 영역(CLAUDE.md "대시보드 로딩/첫 화면" 참조) — 임의 수정 금지.
   // 진짜 콜드 스타트(캐시·데이터가 전혀 없음)일 때만 스켈레톤 — 0 깜빡임 방지.
   // 캐시/부분 데이터가 하나라도 있으면 그대로 내용 표시 → "내용→빈화면→내용" 깜빡임 없음.
   // (필수 4종을 한 번에 set + setSyncing(false) 동시 반영하므로 부분 0 깜빡임도 없음.)
+  // ⚠️ 이 조건을 `||`로 바꾸면 깜빡임 재발.
   if (loading && bookings.length===0 && models.length===0 && customers.length===0) {
     return <DashboardSkeleton isMobile={isMobile} canViewFinance={canViewFinance} />;
   }
