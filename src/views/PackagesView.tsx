@@ -114,9 +114,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
     const m = models.find((x: any) => x.id === it.model_id);
     if (!m) return it; // 삭제된 모델 → 기존 스냅샷 유지
     const age = ageFromSSN6(m.ssn6);
-    const lk = Array.isArray(m.liked_photos) ? m.liked_photos : [];
+    // 포트폴리오 갤러리 순서(m.photos) 그대로 사용 — 좋아요(liked) 우선정렬 없이 갤러리와 1:1 일치
     const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
-    const live = lk.length ? [...all.filter((p: string) => lk.includes(p)), ...all.filter((p: string) => !lk.includes(p))] : all;
     const manual = (it.photos || []).filter((p: string) => typeof p === "string" && p.startsWith("data:"));
     return {
       ...it,
@@ -125,7 +124,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
       hair_color: m.hair_color || "", tattoo: !!m.tattoo,
       followers: m.instagram_followers || "", instagram_url: m.instagram_url || "",
-      photos: [...live, ...manual].slice(0, 30),
+      photos: [...all, ...manual].slice(0, 30),
     };
   };
   const startEdit = (p: Pkg) => {
@@ -153,7 +152,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       hair_color: m.hair_color || "", tattoo: !!m.tattoo,
       followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
-      photos: (() => { const lk = Array.isArray(m.liked_photos) ? m.liked_photos : []; const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []); return (lk.length ? [...all.filter((p: string) => lk.includes(p)), ...all.filter((p: string) => !lk.includes(p))] : all).slice(0, 30); })(),
+      photos: (Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : [])).slice(0, 30), // 포트폴리오 갤러리 순서 그대로
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
