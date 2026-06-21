@@ -39,7 +39,7 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><ClipboardList size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 섭외 ({filteredBookings.length}건)</h1>
         <button onClick={openAddPicker} style={btnS(C.blue)}>+ 섭외 추가</button>
       </div>
-      <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
+      <div style={{ width:"100%", boxSizing:"border-box", background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:14, marginBottom:14, display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"2fr 1fr 1fr 1fr", gap:10 }}>
         <div style={{ position:"relative", minWidth:0 }}>
           <Search size={15} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", color:C.muted, pointerEvents:"none" }} />
           <input style={{ ...inp, marginBottom:0, paddingLeft:34 }} placeholder={`${ph}▌`} value={bookingQ} onChange={e=>setBookingQ(e.target.value)} />

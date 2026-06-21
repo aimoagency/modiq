@@ -91,10 +91,10 @@ export default function DashboardView({ bookings, models, customers, projects, s
             <span style={{ fontSize:12, color:C.blue, fontWeight:600 }}>매출 현황 전체 보기 →</span>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:12 }}>
-            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.green }}>{fmt(real)}</p></div>
-            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.yellow }}>{fmt(expected)}</p></div>
-            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.red }}>{fmt(unpaid)}</p></div>
-            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>매출총이익</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:800, color:C.blue }}>{fmt(margin)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>실매출 (입금)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:400, color:C.green }}>{fmt(real)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>예상매출 (확정 포함)</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:400, color:C.yellow }}>{fmt(expected)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>미수금</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:400, color:C.red }}>{fmt(unpaid)}</p></div>
+            <div><p style={{ margin:0, fontSize:11, color:C.muted }}>매출총이익</p><p style={{ margin:"5px 0 0", fontSize:20, fontWeight:400, color:C.blue }}>{fmt(margin)}</p></div>
           </div>
         </div>
       );
@@ -162,7 +162,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
           {statCards.map(item=>(
             <div key={item.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:isMobile?"10px 8px":"16px 18px" }}>
               <p style={{ fontSize:isMobile?10:11, color:C.muted, margin:0, lineHeight:1.25, wordBreak:"keep-all" }}>{item.label}</p>
-              <p style={{ fontSize:isMobile?17:24, fontWeight:800, margin:isMobile?"4px 0 0":"6px 0 0", color:item.color }}>{item.value}</p>
+              <p style={{ fontSize:isMobile?17:24, fontWeight:400, margin:isMobile?"4px 0 0":"6px 0 0", color:item.color }}>{item.value}</p>
             </div>
           ))}
         </div>
