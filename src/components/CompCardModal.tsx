@@ -49,21 +49,8 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
     return s;
   });
   const [drag, setDrag] = useState<Drag>(null);
-  // 오른쪽 에이전시 로고 — 기본은 설정의 회사 로고, 이 컴카드에서 삽입/삭제 가능(회사 로고와 동일 PNG 방식)
-  const [logoSrc, setLogoSrc] = useState<string>(agency.logo_url || "");
-  const onLogoFile = (files: FileList | null) => {
-    const f = files?.[0]; if (!f || !f.type.startsWith("image/")) return;
-    const img = new Image(); const url = URL.createObjectURL(f);
-    img.onload = () => {
-      const max = 240; const sc = Math.min(1, max / Math.max(img.width, img.height));
-      const cv = document.createElement("canvas");
-      cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
-      cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
-      setLogoSrc(cv.toDataURL("image/png"));
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  };
+  // 오른쪽 에이전시 로고 — 설정의 회사 로고를 모든 컴카드에 공통(일괄) 적용. 개별 삽입/삭제는 제거.
+  const logoSrc = agency.logo_url || "";
 
   // A4 가로 고정 크기(px) — 모든 내부 글자·여백은 이 크기 기준으로 디자인.
   // 화면 폭에 맞춰 카드 전체를 transform:scale로 균일 축소 → 웹/모바일 레이아웃이 동일하게 보임.
@@ -208,16 +195,6 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
             )}
           </div>
         </div>
-      </div>
-
-      {/* 오른쪽 에이전시 로고 — 삽입 / 삭제 */}
-      <div onClick={e => e.stopPropagation()} style={{ width: "min(92vw, 1000px)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-        <span style={{ fontSize: 12, color: "#9aa2af", marginRight: 2 }}>오른쪽 로고</span>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 999, border: "1px solid #ffffff66", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-          ＋ {logoSrc ? "로고 변경" : "로고 삽입"}
-          <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { onLogoFile(e.target.files); e.currentTarget.value = ""; }} />
-        </label>
-        {logoSrc && <button onClick={() => setLogoSrc("")} style={{ padding: "7px 14px", borderRadius: 999, border: "1px solid #ffffff66", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>로고 삭제</button>}
       </div>
 
       {/* 갤러리 스트립 (클릭=자동채움, 드래그=슬롯에 배치) */}
