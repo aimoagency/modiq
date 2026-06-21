@@ -107,7 +107,33 @@ export default function PackagesView({ packages, setPackages, models, customers,
   };
 
   const startNew = () => { setDraft(newDraft()); setIsNew(true); };
-  const startEdit = (p: Pkg) => { setDraft({ show_brand: true, brand_name: agency.name || "", brand_logo: "", ...JSON.parse(JSON.stringify(p)) }); setIsNew(false); };
+  // 기존 패키지를 편집으로 열 때, model_id가 있는 항목은 '현재 포트폴리오'의 사진·정보로 새로고침
+  // → 포트폴리오에서 사진을 바꾸면 패키지에도 반영됨. (패키지에서 직접 올린 사진(data:)은 보존)
+  const refreshItemFromModel = (it: PackageItem): PackageItem => {
+    if (!it.model_id) return it;
+    const m = models.find((x: any) => x.id === it.model_id);
+    if (!m) return it; // 삭제된 모델 → 기존 스냅샷 유지
+    const age = ageFromSSN6(m.ssn6);
+    const lk = Array.isArray(m.liked_photos) ? m.liked_photos : [];
+    const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
+    const live = lk.length ? [...all.filter((p: string) => lk.includes(p)), ...all.filter((p: string) => !lk.includes(p))] : all;
+    const manual = (it.photos || []).filter((p: string) => typeof p === "string" && p.startsWith("data:"));
+    return {
+      ...it,
+      name: m.name || it.name, category: m.category || "", gender: m.gender || "",
+      country: m.country || "", age: age !== null ? String(age) : "",
+      height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
+      hair_color: m.hair_color || "", tattoo: !!m.tattoo,
+      followers: m.instagram_followers || "", instagram_url: m.instagram_url || "",
+      photos: [...live, ...manual].slice(0, 30),
+    };
+  };
+  const startEdit = (p: Pkg) => {
+    const cloned = JSON.parse(JSON.stringify(p));
+    cloned.items = (cloned.items || []).map(refreshItemFromModel);
+    setDraft({ show_brand: true, brand_name: agency.name || "", brand_logo: "", ...cloned });
+    setIsNew(false);
+  };
   const closeBuilder = () => { setDraft(null); setModelPick(false); setPickQ(""); };
 
   const upd = (patch: Partial<Pkg>) => setDraft(d => d ? { ...d, ...patch } : d);
@@ -124,6 +150,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
       country: m.country || "", age: age !== null ? String(age) : "",
       height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
+      hair_color: m.hair_color || "", tattoo: !!m.tattoo,
       followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
       photos: (() => { const lk = Array.isArray(m.liked_photos) ? m.liked_photos : []; const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []); return (lk.length ? [...all.filter((p: string) => lk.includes(p)), ...all.filter((p: string) => !lk.includes(p))] : all).slice(0, 30); })(),
