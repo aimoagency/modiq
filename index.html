@@ -41,21 +41,18 @@
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- 🔒 보호 영역 보강 — 로드 실패 안전장치: 앱이 끝내 마운트되지 않아 부팅 스플래시가
-         사라지지 않으면(메인 번들 로드/실행 실패) 1회 자동 새로고침, 그래도 안 되면 탭하여 재시도.
-         (기존 스플래시/스크립트는 변경하지 않고 추가만 함. 정상 마운트 시 App에서 플래그를 비움) -->
+    <!-- 🔒 보호 영역 보강 — 로드 실패 안전장치(수동): 15초 후에도 부팅 스플래시가 남아있으면
+         (메인 번들 로드/실행 실패) '탭하여 새로고침' 안내만 표시. 자동 새로고침은 하지 않음
+         (느린 로딩 중 불필요한 reload로 스플래시가 다시 뜨는 것을 방지). 기존 스플래시/스크립트는 변경 없이 추가만. -->
     <script>
       (function () {
-        var K = 'modiq_boot_retry';
         setTimeout(function () {
           var r = document.getElementById('root'); if (!r) return;
           var boot = r.querySelector('.modiq-boot'); if (!boot) return; // 정상 마운트되면 스플래시가 사라짐 → 종료
-          var tried = false; try { tried = sessionStorage.getItem(K) === '1'; } catch (e) {}
-          if (!tried) { try { sessionStorage.setItem(K, '1'); } catch (e) {} location.reload(); return; }
           var s = boot.querySelector('.sub'); if (s) s.textContent = '불러오지 못했어요 · 탭하여 새로고침';
           boot.style.cursor = 'pointer';
-          boot.addEventListener('click', function () { try { sessionStorage.removeItem(K); } catch (e) {} location.reload(); });
-        }, 12000);
+          boot.addEventListener('click', function () { location.reload(); });
+        }, 15000);
       })();
     </script>
   </body>
