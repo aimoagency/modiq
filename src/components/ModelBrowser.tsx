@@ -10,6 +10,7 @@ import { GENDERS, MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS } from "../consta
 import { ageFromSSN6 } from "../lib/utils";
 import SearchInput from "./SearchInput";
 import { thumbUrl } from "../lib/supabase";
+import { useVisibleCount } from "../lib/useVisibleCount";
 
 // 범위 기본값(프리필) — 변경 안 하면 이 값 기준, 단 값 미입력 모델은 통과
 const DEF = { ageMin: "1", ageMax: "99", hMin: "100", hMax: "200", shMin: "180", shMax: "310", feeMin: "0", feeMax: "500", carMin: "0", carMax: "30" };
@@ -120,6 +121,8 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
 
   const selectable = multi ? results.filter(m => !addedIds?.has(m.id)) : [];
   const allPicked = selectable.length > 0 && selectable.every(m => pickedIds?.has(m.id));
+  // 점진 렌더 — 1000명+에서도 한 번에 다 그리지 않음(스크롤 시 추가 로드)
+  const { visible, hasMore, sentinelRef } = useVisibleCount(results, 60);
 
   return (
     <div style={{ width: isMobile ? "100%" : 312, flexShrink: 0, ...(isMobile ? {} : { borderRight: `1px solid ${C.border}`, paddingRight: 16 }) }}>
@@ -137,7 +140,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       <p style={{ fontSize: 12, color: C.muted, margin: "12px 0 8px" }}>결과 <strong style={{ color: C.text }}>{results.length}</strong>명</p>
       <div style={{ display: "grid", gap: 6, ...(isMobile ? {} : { maxHeight: "calc(100vh - 360px)", overflowY: "auto" }) }}>
         {results.length === 0 && <p style={{ fontSize: 12, color: C.muted }}>조건에 맞는 모델이 없습니다.</p>}
-        {results.map(m => {
+        {visible.map(m => {
           const added = !!addedIds?.has(m.id);
           const pick = !!pickedIds?.has(m.id);
           const on = pick || selectedId === m.id;
@@ -159,6 +162,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
             </div>
           );
         })}
+        {hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
       </div>
     </div>
   );
