@@ -19,7 +19,10 @@
       html.light { background:#f7f8fa; }
       body { margin:0; }
       #root { min-height:100vh; }
-      .modiq-boot { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:#0f1117; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; }
+      /* 부팅 스플래시: 0.45s 지연 후에만 나타남 → 빠른(캐시) 로딩/새로고침에선 보이지 않고,
+         그 사이엔 배경색만 보여 흰 화면 깜빡임은 그대로 방지(콜드스타트 보호 유지). 느린 로딩에서만 페이드인. */
+      .modiq-boot { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:#0f1117; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; opacity:0; animation:modiqBootReveal 0.18s ease-out 0.45s forwards; }
+      @keyframes modiqBootReveal { to { opacity:1; } }
       html.light .modiq-boot { background:#f7f8fa; }
       .modiq-boot .wm { font-size:34px; font-weight:800; letter-spacing:-1px; color:#f0f2f5; line-height:1; }
       html.light .modiq-boot .wm { color:#111827; }
@@ -29,7 +32,7 @@
       html.light .modiq-boot .bar { background:#e2e5ea; }
       .modiq-boot .bar i { display:block; width:38%; height:100%; border-radius:3px; background:#A8FF00; animation:modiqBoot 1.05s ease-in-out infinite; }
       @keyframes modiqBoot { 0% { transform:translateX(-110%); } 100% { transform:translateX(330%); } }
-      @media (prefers-reduced-motion: reduce) { .modiq-boot .bar i { animation:none; width:100%; opacity:.6; } }
+      @media (prefers-reduced-motion: reduce) { .modiq-boot { animation:none; opacity:1; } .modiq-boot .bar i { animation:none; width:100%; opacity:.6; } }
     </style>
   </head>
   <body>
