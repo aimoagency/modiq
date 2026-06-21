@@ -95,7 +95,7 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
         {cards.map(c=>(
           <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", ...(isMobile&&c.label==="매출총이익"?{ gridColumn:"1 / -1" }:{}) }}>
             <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:isMobile?(c.label==="매출총이익"?20:16):22, fontWeight:800, color:c.color, whiteSpace:"nowrap", textAlign:"right" }}>{Number(c.value||0).toLocaleString("ko-KR")}<span style={{ fontSize:isMobile?12:14, fontWeight:700, marginLeft:1, opacity:0.8 }}>원</span></p>
+            <p style={{ margin:"8px 0 0", fontSize:isMobile?(c.label==="매출총이익"?20:16):22, fontWeight:400, color:c.color, whiteSpace:"nowrap", textAlign:"right" }}>{Number(c.value||0).toLocaleString("ko-KR")}<span style={{ fontSize:isMobile?12:14, fontWeight:400, marginLeft:1, opacity:0.8 }}>원</span></p>
           </div>
         ))}
       </div>
@@ -108,8 +108,8 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
       </div>
       <p style={{ margin:"0 0 8px", fontSize:12, color:C.muted }}>아래 순위에서 {tab==="customer"?"고객사":"모델"}를 클릭하면 해당 매출 내역만 모아 보고 엑셀로 받을 수 있어요.</p>
       {tab==="customer"
-        ? <RevenueRanking items={customers} bookings={bookings} idKey="customer_id" basis="expected" period={period} onSelect={(c:any)=>setSel({ type:"customer", id:c.id, name:c.name })} />
-        : <RevenueRanking items={models} bookings={bookings} idKey="model_id" basis="expected" period={period} onSelect={(m:any)=>setSel({ type:"model", id:m.id, name:m.name })} showThumb />}
+        ? <RevenueRanking items={customers} bookings={bookings} idKey="customer_id" basis="expected" period={period} onSelect={(c:any)=>setSel({ type:"customer", id:c.id, name:c.name })} isMobile={isMobile} />
+        : <RevenueRanking items={models} bookings={bookings} idKey="model_id" basis="expected" period={period} onSelect={(m:any)=>setSel({ type:"model", id:m.id, name:m.name })} showThumb isMobile={isMobile} />}
 
       {/* 건별 매출 내역 */}
       <div style={{ display:"flex", alignItems:"center", gap:10, margin:"22px 0 10px", flexWrap:"wrap" }}>

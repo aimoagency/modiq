@@ -46,7 +46,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
           </span>
         )}
       </div>
-      {sortMode==="rev" ? <RevenueRanking items={filteredCustomers} bookings={bookings} idKey="customer_id" basis={revBasis} period={period} onSelect={(c)=>{ setSelectedCustomer(c); setCEditMode(false); }} /> :
+      {sortMode==="rev" ? <RevenueRanking items={filteredCustomers} bookings={bookings} idKey="customer_id" basis={revBasis} period={period} onSelect={(c)=>{ setSelectedCustomer(c); setCEditMode(false); }} isMobile={isMobile} /> :
        filteredCustomers.length===0 ? <p style={{ color:C.muted }}>고객사가 없습니다.</p> : (
         <div style={{ display:"grid", gap:6 }}>
           {filteredCustomers.map(c=>(

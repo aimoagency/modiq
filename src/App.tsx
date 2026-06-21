@@ -2079,9 +2079,9 @@ async function sharePdf(){
               <div style={{ background:C.card2, borderRadius:8, padding:"10px 12px", marginBottom:10 }}>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영 일정</label>
                 <input style={{ ...inp, marginBottom:8, padding:"6px 10px", fontSize:12 }} type="date" value={selectedBooking.shoot_date||""} onChange={e=>setSelectedBooking((p:any)=>({...p,shoot_date:e.target.value}))} />
-                <div style={{ display:"flex", alignItems:"flex-end", gap:16, flexWrap:"wrap" }}>
+                <div style={{ display:"flex", alignItems:isMobile?"stretch":"flex-end", flexDirection:isMobile?"column":"row", gap:isMobile?8:16, flexWrap:"wrap" }}>
                   <TimePicker label="시작" value={selectedBooking.start_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,start_time:v}))} />
-                  <span style={{ color:C.muted, fontSize:13, paddingBottom:6 }}>~</span>
+                  {!isMobile&&<span style={{ color:C.muted, fontSize:13, paddingBottom:6 }}>~</span>}
                   <TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} />
                 </div>
               </div>
@@ -2251,10 +2251,10 @@ async function sharePdf(){
                   <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                     <div style={{ display:"flex", gap:6 }}>
                       <input value={bocReason} onChange={e=>setBocReason(e.target.value)} placeholder="사유 (예: 시간오버 2h, 영상 추가)"
-                        style={{ flex:1, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none" }} />
+                        style={{ flex:1, minWidth:0, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none" }} />
                       <input type="text" value={bocAmount?bocAmount.toLocaleString("ko-KR"):""}
                         onChange={e=>{ const v=e.target.value.replace(/,/g,""); if(!isNaN(Number(v))) setBocAmount(Number(v)); }} placeholder="금액"
-                        style={{ width:100, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none", textAlign:"right" }} />
+                        style={{ width:90, flexShrink:0, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:13, outline:"none", textAlign:"right" }} />
                     </div>
                     <div style={{ display:"flex", gap:6 }}>
                       <button onClick={()=>{ if(!bocReason.trim()||bocAmount<=0) return alert("사유와 금액을 입력하세요"); setSelectedBooking((p:any)=>({...p, overcharges:[...(p.overcharges||[]),{reason:bocReason.trim(),amount:bocAmount}]})); setBocReason(""); setBocAmount(0); setShowBocInput(false); }}
@@ -2358,7 +2358,7 @@ async function sharePdf(){
               <input value={bMsgText} onChange={e=>setBMsgText(e.target.value)}
                 onKeyDown={async e=>{ if(e.key==="Enter"&&bMsgText.trim()){ const msg={sender:"에이전시",text:bMsgText,at:new Date().toISOString().slice(0,10)}; const msgs=[...(selectedBooking.messages||[]),msg]; await sb("bookings","PATCH",{messages:msgs},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,messages:msgs}:b)); setSelectedBooking((p:any)=>({...p,messages:msgs})); setBMsgText(""); }}}
                 placeholder="메모 또는 전달사항..."
-                style={{ flex:1, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:12, outline:"none" }} />
+                style={{ flex:1, minWidth:0, background:"var(--c-card2)", border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 10px", color:C.text, fontSize:12, outline:"none" }} />
               <button onClick={async()=>{ if(!bMsgText.trim())return; const msg={sender:"에이전시",text:bMsgText,at:new Date().toISOString().slice(0,10)}; const msgs=[...(selectedBooking.messages||[]),msg]; await sb("bookings","PATCH",{messages:msgs},`?id=eq.${selectedBooking.id}`); setBookings(bookings.map(b=>b.id===selectedBooking.id?{...b,messages:msgs}:b)); setSelectedBooking((p:any)=>({...p,messages:msgs})); setBMsgText(""); }} style={{ ...btnS(C.purple), padding:"7px 14px", fontSize:12, whiteSpace:"nowrap", flexShrink:0 }}>기록</button>
             </div>
           </div>
