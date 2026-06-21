@@ -203,7 +203,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                 <span style={{ width:8, height:8, borderRadius:"50%", background:PINK, animation:"modiqBlink 1.2s ease-in-out infinite", flexShrink:0 }} />
                 <p style={{ margin:0, fontSize:15, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>신규 문의</p>
               </div>
-              <p style={{ margin:"3px 0 0", fontSize:12, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"} · 미처리 리드를 놓치지 마세요</p>
+              <p style={{ margin:"3px 0 0", fontSize:12, color:C.textSub }}>{todayCnt>0?`오늘 ${todayCnt}건 신규 도착`:"오늘 신규 없음"}{isMobile ? <br/> : " · "}미처리 리드를 놓치지 마세요</p>
             </div>
           </div>
 
