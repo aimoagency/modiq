@@ -482,7 +482,8 @@ export default function App() {
         // 2) 토큰을 먼저 갱신해 신선한 access token을 확보한 뒤 데이터 조회.
         //    (병렬 실행 시 만료된 access token으로 쿼리가 401 → 쿼리마다 refresh가 동시 폭주하는
         //     레이스가 발생해 간헐적으로 로딩이 풀리지 않거나 로그인 화면으로 튕겼다. 순차 실행으로 제거.)
-        const fresh = await refreshSession();       // 서버 검증 + 토큰 갱신
+        let fresh = await refreshSession();       // 서버 검증 + 토큰 갱신
+        if (!fresh) { await new Promise(s=>setTimeout(s,500)); fresh = await refreshSession(); } // 일시 실패(네트워크/토큰회전) 1회 재시도 → 로그인 튕김 방지
         if (!fresh) { localStorage.removeItem(SESSION_KEY); window.location.reload(); return; }
         await loadData(agencyData.id);              // 갱신된 토큰으로 최신 데이터 조회
         localStorage.setItem(SESSION_KEY, JSON.stringify({ user, agencyData, role, tokens:getAuthTokens() }));
