@@ -117,6 +117,22 @@ export const sbUpload = async (path: string, blob: Blob, _retry = false): Promis
   return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURI(path)}`;
 };
 
+// 모델 썸네일을 Storage에 저장하고 공개 URL을 반환(행에 base64를 박지 않음 → 대량 모델에서도 조회 경량).
+// - 이미 http URL이면 재업로드 없이 그대로, 빈값이면 "" 반환.
+// - data:URL(base64)이면 Storage 업로드 후 URL 반환. 업로드 실패 시 입력값(base64) 그대로 반환(폴백 → 기존 동작 보존).
+export const persistThumb = async (data: string, agencyId: string, modelId: string): Promise<string> => {
+  if (!data) return "";
+  if (/^https?:\/\//i.test(data)) return data;
+  if (!/^data:image\//i.test(data)) return data;
+  try {
+    const seg = (s: string) => String(s).replace(/[^A-Za-z0-9._-]/g, "_");
+    const path = `${seg(agencyId)}/${seg(modelId)}/thumb_${Date.now()}.jpg`;
+    return await sbUpload(path, dataURLtoBlob(data));
+  } catch {
+    return data; // 폴백: base64 그대로(동작은 함, 용량만 큼)
+  }
+};
+
 export const sbAuth = async (endpoint: string, body: any): Promise<any> => {
   const res = await fetchT(`${SUPABASE_URL}/auth/v1/${endpoint}`, {
     method: "POST",
