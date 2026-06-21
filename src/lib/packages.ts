@@ -20,6 +20,8 @@ export type PackageItem = {
   waist?: string;
   hip?: string;
   shoe?: string;
+  hair_color?: string;      // 머리색 (컴카드 하단 정보)
+  tattoo?: boolean;         // 타투 유무 (컴카드 하단 정보)
   followers?: string;       // 인스타 팔로워 수 (썸네일 아래 표시, URL 대신)
   instagram_url?: string;
   caption?: string;         // 자유 메모 (특기 등)
@@ -210,6 +212,7 @@ export function modelToCompCard(m: any, agency: { id: string; name: string }): P
     model_id: m.id, name: m.name || "", category: m.category || "", gender: m.gender || "",
     country: m.country || "", age: age !== null ? String(age) : "",
     height: m.height || "", bust: m.bust || "", waist: m.waist || "", hip: m.hip || "", shoe: m.shoe || "",
+    hair_color: m.hair_color || "", tattoo: !!m.tattoo,
     followers: m.instagram_followers || "",
     caption: [Array.isArray(m.fields) ? m.fields.join("/") : "", m.specialty].filter(Boolean).join(" · "),
     photos,
@@ -259,29 +262,42 @@ export function compCardInnerHtml(it: PackageItem, brandName = ""): string {
   // html2canvas는 <img object-fit:cover>를 무시해 이미지를 눌러버림 → background-size:cover로 그려야 비율 유지됨
   const cell = (i: number) =>
     ph[i]
-      ? `<div style="border-radius:3px;background:#e9edf2 url('${ph[i]}') center/cover no-repeat"></div>`
-      : `<div style="background:#f2f4f7;border:1.5px dashed #cfd5dd;border-radius:3px"></div>`;
-  const info: [string, string][] = [
-    ["이름", it.name || "-"], ["나이", it.age ? `${it.age}세` : "-"], ["성별", (it.gender === "F" ? "여성" : it.gender === "M" ? "남성" : "") || "-"],
-    ["키 cm", it.height || "-"], ["가슴", it.bust || "-"], ["허리", it.waist || "-"],
-    ["엉덩이", it.hip || "-"], ["신발 mm", it.shoe || "-"], ["국적", it.country || "-"],
-  ];
-  const cells = info.map(([k, v], idx) =>
-    `<div style="flex:1;text-align:center;padding:6px 2px;${idx === 0 ? "" : "border-left:1px solid #f0f2f5;"}">
-       <div style="font-size:11px;color:#9aa2af;font-weight:600;white-space:nowrap">${esc(k)}</div>
-       <div style="font-size:15px;font-weight:800;color:#1a1d27;margin-top:2px">${esc(v)}</div>
-     </div>`).join("");
+      ? `<div style="border-radius:4px;background:#e9edf2 url('${ph[i]}') center/cover no-repeat"></div>`
+      : `<div style="background:#f2f4f7;border:1.5px dashed #cfd5dd;border-radius:4px"></div>`;
+  // CompCardModal과 동일한 하단 정보바: 좌 이름 / 중앙(고정) 상세 2줄 / 우 브랜드
+  const nm = (it.name || "").trim();
+  const isLatin = /[A-Za-z]/.test(nm) && !/[가-힣]/.test(nm);
+  const displayName = (isLatin && nm.includes(" ") ? nm.split(/\s+/)[0] : nm) || "-";
+  const genderEn = it.gender === "F" ? "Female" : it.gender === "M" ? "Male" : "";
+  const cmToIn = (v: any) => { const n = Number(v); return n > 0 ? String(Math.round(n / 2.54)) : ""; };
+  const bwh = [it.bust, it.waist, it.hip].map(cmToIn).filter(Boolean).join("-"); // 3사이즈 inch
+  const fld = (label: string, value: string) =>
+    `<span style="margin-right:16px;white-space:nowrap"><span style="font-size:11px;font-weight:400;color:#aab2bf">${esc(label)} </span><span style="font-size:15px;font-weight:800;color:#1a1d27">${esc(value)}</span></span>`;
+  const val = (value: string) =>
+    `<span style="margin-right:16px;white-space:nowrap;font-size:15px;font-weight:800;color:#1a1d27">${esc(value)}</span>`;
+  const line1 = [
+    it.country ? val(it.country) : "",
+    it.age ? fld("age", String(it.age)) : "",
+    genderEn ? val(genderEn) : "",
+    it.hair_color ? fld("hair", it.hair_color) : "",
+    (it.tattoo !== undefined) ? fld("tatu", it.tattoo ? "Y" : "N") : "",
+  ].join("");
+  const line2 = [
+    it.height ? fld("height", `${it.height}cm`) : "",
+    bwh ? fld("size", bwh) : "",
+    it.shoe ? fld("shoe", `${it.shoe}mm`) : "",
+  ].join("");
   return `
-    <div style="width:100%;height:100%;background:#fff;display:flex;flex-direction:column;padding:14px;box-sizing:border-box;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;color:#1a1d27">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #e6e9ef">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.5px">${esc(brandName)}</div>
-        <div style="font-size:10px;color:#9aa2af">talent comp card</div>
+    <div style="width:100%;height:100%;background:#fff;display:flex;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;color:#1a1d27">
+      <div style="display:flex;gap:8px;flex:1;min-height:0">
+        <div style="flex:1.12;border-radius:4px;background:#e9edf2${ph[0] ? ` url('${ph[0]}') center/cover no-repeat` : ""}"></div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px">${cell(1)}${cell(2)}${cell(3)}${cell(4)}</div>
       </div>
-      <div style="display:flex;gap:6px;flex:1;min-height:0;padding:10px 0">
-        <div style="flex:1.12;border-radius:3px;background:#e9edf2${ph[0] ? ` url('${ph[0]}') center/cover no-repeat` : ""}"></div>
-        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px">${cell(1)}${cell(2)}${cell(3)}${cell(4)}</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:22px;border-top:1px solid #e6e9ef;margin-top:10px;padding-top:12px">
+        <div style="min-width:0;overflow:hidden"><div style="font-size:40px;font-weight:600;color:#1a1d27;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(displayName)}</div></div>
+        <div style="min-width:0;display:flex;flex-direction:column;gap:6px;text-align:center"><div style="white-space:nowrap">${line1}</div><div style="white-space:nowrap">${line2}</div></div>
+        <div style="min-width:0;display:flex;align-items:center;justify-content:flex-end">${brandName ? `<span style="font-size:15px;font-weight:700;color:#1a1d27;white-space:nowrap">${esc(brandName)}</span>` : ""}</div>
       </div>
-      <div style="display:flex;border-top:1px solid #e6e9ef;padding-top:4px">${cells}</div>
     </div>`;
 }
 
