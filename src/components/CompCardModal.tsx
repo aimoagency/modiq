@@ -200,7 +200,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
                 {age !== null && fld("age", String(age))}
                 {genderEn && val(genderEn, "gender")}
                 {model.hair_color && fld("hair", model.hair_color)}
-                {fld("tatu", model.tattoo ? "Y" : "N")}
+                {fld("tattoo", model.tattoo ? "Y" : "N")}
               </div>
               <div style={{ whiteSpace: "nowrap" }}>
                 {model.height && fld("height", `${model.height}cm`)}

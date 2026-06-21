@@ -280,7 +280,7 @@ export function compCardInnerHtml(it: PackageItem, brandName = ""): string {
     it.age ? fld("age", String(it.age)) : "",
     genderEn ? val(genderEn) : "",
     it.hair_color ? fld("hair", it.hair_color) : "",
-    (it.tattoo !== undefined) ? fld("tatu", it.tattoo ? "Y" : "N") : "",
+    (it.tattoo !== undefined) ? fld("tattoo", it.tattoo ? "Y" : "N") : "",
   ].join("");
   const line2 = [
     it.height ? fld("height", `${it.height}cm`) : "",
