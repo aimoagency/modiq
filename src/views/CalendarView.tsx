@@ -339,10 +339,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                       >
                         {isConflict&&<AlertTriangle size={11} color={conflictColor!} strokeWidth={2.6} style={{ flexShrink:0 }}/>}
                         <TypeIcon type={b.booking_type} size={11}/>
-                        {m?.thumb_url
-                          ? <img src={m.thumb_url} alt="" style={{ width:14, height:14, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                          : <span style={{ fontSize:12 }}>{(m?.name||"?")[0]}</span>
-                        }
+                        {m?.thumb_url&&<img src={m.thumb_url} alt="" style={{ width:14, height:14, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />}
                         <span style={{ overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"}</span>
                       </div>
                     );
@@ -439,8 +436,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 const groups:Record<string,any[]>={}; const singles:any[]=[];
                 sorted.forEach(b=>{ if(b.project_id){ (groups[b.project_id]=groups[b.project_id]||[]).push(b); } else singles.push(b); });
                 const dayConflict = conflictByDate[selDate];
-                let n=0;
-                const Card=(b:any)=>{ n+=1; const idx=n;
+                const Card=(b:any)=>{
                   const model=models.find(m=>m.id===b.model_id); const client=customers.find(c=>c.id===b.customer_id);
                   const s=STATUS[b.status]||STATUS.INQUIRY; const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT;
                   const isConflict = dayConflict?.conflictIds.has(b.id);  // [추가]
@@ -450,7 +446,6 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                       style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", background:C.card2, borderRadius:10, border:`1px solid ${isConflict?cCol:C.border}`, cursor:"pointer", transition:"border-color 0.15s" }}
                       onMouseEnter={e=>(e.currentTarget.style.borderColor=isConflict?cCol:s.color+"80")}
                       onMouseLeave={e=>(e.currentTarget.style.borderColor=isConflict?cCol:C.border)}>
-                      <span style={{ width:20, height:20, borderRadius:"50%", background:s.color+"33", color:s.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, flexShrink:0, marginTop:2 }}>{idx}</span>
                       {model?.thumb_url
                         ? <img src={model.thumb_url} alt="" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:`2px solid ${s.color}50` }} />
                         : <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:13, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
@@ -462,7 +457,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                         </p>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:"3px 8px", marginTop:4, fontSize:13, color:C.muted }}>
                           <span style={{ color:bt.color, fontWeight:700 }}><TypeIcon type={b.booking_type} size={10}/> {bt.label}</span>
-                          {b.start_time&&<span><Clock size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtTime(b.start_time,b.end_time)}</span>}
+                          {b.start_time&&<span style={{ whiteSpace:"nowrap" }}><Clock size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtTime(b.start_time,b.end_time)}</span>}
                           {b.location&&<span><MapPin size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {b.location}</span>}
                           {b.manager&&<span><User size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {b.manager}</span>}
                         </div>

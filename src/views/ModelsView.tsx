@@ -53,7 +53,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
           </span>
         )}
       </div>
-      {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb /> :
+      {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb isMobile={isMobile} /> :
        filteredModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
