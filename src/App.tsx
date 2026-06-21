@@ -2484,7 +2484,7 @@ async function sharePdf(){
                       ? <img src={m.thumb_url} alt="" style={{ width:30, height:30, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                       : <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:12, flexShrink:0 }}>{(m?.name||"?")[0]}</div>
                     }
-                    <p style={{ flex:1, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                       <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{m?.name||"?"}</strong>
                       {b.start_time?<span> · {fmtTime(b.start_time,b.end_time)}</span>:null}
                       {b.location?<span> · {b.location}</span>:null}
