@@ -902,12 +902,12 @@ export default function App() {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 360;
+      const max = 150; // 썸네일은 작게만 보여(아바타/스튜디오 원형) 150px로 충분 → 용량 ↓
       const sc = Math.min(1, max/Math.max(img.width, img.height));
       const cv = document.createElement("canvas");
       cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
       cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
-      cb(cv.toDataURL("image/jpeg", 0.62));
+      cb(cv.toDataURL("image/jpeg", 0.6));
       URL.revokeObjectURL(url);
     };
     img.src = url;

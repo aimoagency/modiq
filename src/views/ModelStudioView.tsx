@@ -195,7 +195,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const makeThumb = (src: string, cb: (small: string) => void) => {
     const img = new Image();
     if (/^https?:/.test(src)) img.crossOrigin = "anonymous"; // Storage URL을 캔버스에 그리려면 CORS 필요
-    img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.62)); };
+    img.onload = () => { const max = 150; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.6)); }; // 썸네일은 작게만 보여 150px로 충분(용량 ↓)
     img.src = src;
   };
   const saveThumb = async (val: string) => {
