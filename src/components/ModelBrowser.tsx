@@ -9,7 +9,6 @@ import { C, inp } from "../theme";
 import { GENDERS, MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS } from "../constants";
 import { ageFromSSN6 } from "../lib/utils";
 import SearchInput from "./SearchInput";
-import { thumbUrl } from "../lib/supabase";
 import { useVisibleCount } from "../lib/useVisibleCount";
 
 // 범위 기본값(프리필) — 변경 안 하면 이 값 기준, 단 값 미입력 모델은 통과
@@ -146,11 +145,13 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
           const on = pick || selectedId === m.id;
           const age = ageFromSSN6(m.ssn6);
           const sub = [age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", isForeign(m) ? "외국인" : "", (m.career_years != null && m.career_years !== "") ? `경력 ${m.career_years}년` : ""].filter(Boolean).join(" · ");
-          const cover = (Array.isArray(m.photos) && m.photos[0]) || m.thumb_url || "";
+          // 포트폴리오 리스트 아바타는 '썸네일(thumb_url)' 기준으로 통일 → 썸네일 삭제 시 리스트도 즉시 반영.
+          // (photos[0]을 우선 쓰면 썸네일을 지워도 갤러리 첫 사진이 남아 안 지워진 것처럼 보였음)
+          const cover = m.thumb_url || "";
           return (
             <div key={m.id} onClick={() => { if (multi && added) return; onSelect(m); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "18" : C.card, cursor: multi && added ? "default" : "pointer", opacity: multi && added ? 0.5 : 1 }}>
               {cover
-                ? <img src={thumbUrl(cover)} alt="" width={32} height={32} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== cover) t.src = cover; }} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                ? <img src={cover} alt="" width={32} height={32} loading="lazy" decoding="async" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 : <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{(m.name || "?")[0]}</div>}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name || "?"}</div>
