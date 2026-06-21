@@ -51,6 +51,17 @@ export const refreshSession = async (): Promise<any | null> => {
   return refreshInFlight;
 };
 
+// 토큰 갱신을 1회 더 재시도 — 토큰 회전 레이스/네트워크 일시 오류로 한 번 실패해도
+// 곧장 로그아웃(로그인 화면 튕김)되지 않도록 함. (메뉴 이동 중 간헐적 로그인 깜빡임 완화)
+const refreshTwice = async (): Promise<any | null> => {
+  let r = await refreshSession();
+  if (!r) { await new Promise(s => setTimeout(s, 500)); r = await refreshSession(); }
+  return r;
+};
+// onAuthFail은 한 번만 실행 — 동시 다발 401이 reload를 여러 번 부르지 않도록. (reload 시 모듈 리셋)
+let authFailed = false;
+const failAuthOnce = () => { if (onAuthFail && !authFailed) { authFailed = true; onAuthFail(); } };
+
 export const sb = async (table: string, method = "GET", body: any = null, query = "", _retry = false): Promise<any> => {
   const res = await fetchT(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
     method,
@@ -64,9 +75,9 @@ export const sb = async (table: string, method = "GET", body: any = null, query 
   });
   // 토큰 만료 → 1회 갱신 후 재시도
   if (res.status === 401 && accessToken && !_retry) {
-    const r = await refreshSession();
+    const r = await refreshTwice();
     if (r) return sb(table, method, body, query, true);
-    if (onAuthFail) onAuthFail();
+    failAuthOnce();
     throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
   }
   const text = await res.text();
@@ -108,9 +119,9 @@ export const sbUpload = async (path: string, blob: Blob, _retry = false): Promis
     body: blob,
   });
   if (res.status === 401 && accessToken && !_retry) {
-    const r = await refreshSession();
+    const r = await refreshTwice();
     if (r) return sbUpload(path, blob, true);
-    if (onAuthFail) onAuthFail();
+    failAuthOnce();
     throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
   }
   if (!res.ok) throw new Error(await res.text());
