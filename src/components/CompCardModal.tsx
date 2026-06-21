@@ -6,6 +6,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useMemo, useRef, useState, useEffect } from "react";
 import type { CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { C } from "../theme";
 import CloseButton from "./CloseButton";
 import { downloadNodePdf, shareNodePng } from "../lib/packages";
@@ -127,14 +128,21 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
     <span key={key} style={{ marginRight: 16, whiteSpace: "nowrap", fontSize: 15, fontWeight: 800, color: "#1a1d27" }}>{value}</span>
   );
 
+  // 캡처(PDF·공유)용: 보이는 카드는 그대로 두고(확대 깜빡임 방지), 전역 zoom 밖(document.body)에
+  // 원본 A4 크기 클론을 만들어 캡처 → 모바일에서 카드가 커지거나 PDF가 2페이지로 쪼개지는 문제 방지.
+  const withCaptureClone = async (run: (node: HTMLElement) => Promise<void>) => {
+    const src = ref.current; if (!src) return;
+    const clone = src.cloneNode(true) as HTMLElement;
+    Object.assign(clone.style, { transform: "none", position: "fixed", left: "-100000px", top: "0", margin: "0" });
+    document.body.appendChild(clone);   // #root 밖 → 전역 zoom 영향 없음
+    try { await run(clone); } finally { clone.remove(); }
+  };
+
   const download = async () => {
-    if (!ref.current) return;
     setBusy(true);
-    const el = ref.current; const prev = el.style.transform;
-    el.style.transform = "none"; // 캡처 시 원본 A4 크기로(축소 해제)
-    try { await downloadNodePdf(el, `${model.name || "모델"}_컴카드.pdf`, "l"); }
+    try { await withCaptureClone(node => downloadNodePdf(node, `${model.name || "모델"}_컴카드.pdf`, "l")); }
     catch (e) { alert("PDF 생성 실패: " + String(e)); }
-    finally { el.style.transform = prev; setBusy(false); }
+    finally { setBusy(false); }
   };
 
   // 슬롯 렌더 (드롭 타깃 + 드래그 소스)
@@ -160,7 +168,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
     );
   };
 
-  return (
+  return createPortal(
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 1500, padding: 16, overflowY: "auto" }}>
       <CloseButton onClose={onClose} fixed />
       {/* A4 가로 컴카드 — 고정 크기 카드를 화면 폭에 맞춰 균일 축소(scale). 웹/모바일 레이아웃 동일 */}
@@ -177,35 +185,34 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
               <Slot i={4} style={{ borderRadius: 4 }} />
             </div>
           </div>
-          {/* 하단 정보 바 — 왼쪽 이름 + 가운데 2줄(국적/나이 · 신체) + 오른쪽 에이전시 로고 */}
-          <div style={{ display: "flex", alignItems: "center", gap: 22, borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 12 }}>
-            {/* 왼쪽: 이름 (영문은 퍼스트네임만) */}
-            <div style={{ flexShrink: 0, minWidth: 0 }}>
-              <div style={{ fontSize: 40, fontWeight: 600, color: "#1a1d27", lineHeight: 1.05, whiteSpace: "nowrap" }}>{displayName}</div>
+          {/* 하단 정보 바 — 좌:이름 / 중앙(고정):상세 2줄 / 우:로고.
+              3칼럼 grid(1fr auto 1fr)라 중앙 상세는 이름 길이와 무관하게 '카드 정중앙'에 고정된다. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 22, borderTop: "1px solid #e6e9ef", marginTop: 10, paddingTop: 12 }}>
+            {/* 왼쪽: 이름 (영문은 퍼스트네임만). 길어도 좌측 칼럼 안에서만 말줄임 → 중앙 정보에 영향 없음 */}
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
+              <div style={{ fontSize: 40, fontWeight: 600, color: "#1a1d27", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName}</div>
             </div>
-            {/* 가운데: 이름 제외 상세 두 줄 — ①국적·age·성별·hair·tatu  ②height·size·shoe */}
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {/* 가운데(고정): 이름 제외 상세 두 줄 — ①국적·age·성별·hair·tatu  ②height·size·shoe */}
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6, textAlign: "center" }}>
+              <div style={{ whiteSpace: "nowrap" }}>
                 {model.country && val(model.country, "country")}
                 {age !== null && fld("age", String(age))}
                 {genderEn && val(genderEn, "gender")}
                 {model.hair_color && fld("hair", model.hair_color)}
                 {fld("tatu", model.tattoo ? "Y" : "N")}
               </div>
-              <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ whiteSpace: "nowrap" }}>
                 {model.height && fld("height", `${model.height}cm`)}
                 {bwh && fld("size", bwh)}
                 {model.shoe && fld("shoe", `${model.shoe}mm`)}
               </div>
             </div>
-            {/* 오른쪽: 에이전시 로고 (기본=설정의 회사 로고, 카드 아래에서 삽입/삭제. 크기 30%↓) */}
-            {(logoSrc || agency.name) && (
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", maxWidth: 165 }}>
-                {logoSrc
-                  ? <img src={logoSrc} alt="" style={{ maxHeight: 42, maxWidth: 147, objectFit: "contain" }} />
-                  : <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1d27", whiteSpace: "nowrap" }}>{agency.name}</span>}
-              </div>
-            )}
+            {/* 오른쪽: 에이전시 로고 (기본=설정의 회사 로고) — 우측 칼럼에 고정 */}
+            <div style={{ minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+              {(logoSrc || agency.name) && (logoSrc
+                ? <img src={logoSrc} alt="" style={{ maxHeight: 42, maxWidth: 147, objectFit: "contain" }} />
+                : <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1d27", whiteSpace: "nowrap" }}>{agency.name}</span>)}
+            </div>
           </div>
         </div>
       </div>
@@ -246,13 +253,10 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
           <Download size={15} /> {busy ? "PDF 생성 중…" : "PDF 다운로드"}
         </button>
         <button onClick={async () => {
-          if (!ref.current) return;
           setBusy(true);
-          const el = ref.current; const prev = el.style.transform;
-          el.style.transform = "none";
-          try { await shareNodePng(el, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`); }
+          try { await withCaptureClone(node => shareNodePng(node, `${model.name||"모델"}_컴카드`, `${model.name||"모델"} 컴카드`)); }
           catch (e) { alert("공유 실패: " + String(e)); }
-          finally { el.style.transform = prev; setBusy(false); }
+          finally { setBusy(false); }
         }} disabled={busy} style={pill({ disabled: busy })}>
           <Link2 size={15} /> 공유하기
         </button>
@@ -260,6 +264,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
           <Save size={15} /> {savingSlots ? "저장 중…" : "컴카드 지정 저장"}
         </button>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
