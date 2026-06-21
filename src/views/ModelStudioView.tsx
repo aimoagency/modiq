@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
 import { C, inp, btnS } from "../theme";
-import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl } from "../lib/supabase";
+import { sb, sbUpload, dataURLtoBlob, STORAGE_BUCKET, thumbUrl, persistThumb } from "../lib/supabase";
 import { ageFromSSN6 } from "../lib/utils";
 import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck, Pencil } from "../components/icons";
@@ -198,10 +198,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     img.onload = () => { const max = 360; const sc = Math.min(1, max / Math.max(img.width, img.height)); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height); cb(cv.toDataURL("image/jpeg", 0.62)); };
     img.src = src;
   };
-  const saveThumb = async (url: string) => {
+  const saveThumb = async (val: string) => {
     if (!sel) return;
+    const url = await persistThumb(val, agency.id, sel.id); // base64 → Storage URL(행 경량화). 빈값/실패는 그대로.
     try { await sb("models", "PATCH", { thumb_url: url }, `?id=eq.${sel.id}`); setModels(prev => prev.map(m => m.id === sel.id ? { ...m, thumb_url: url } : m)); }
-    catch (e) { alert("대표 사진 저장 실패: " + String(e)); }
+    catch (e) { alert("썸네일 저장 실패: " + String(e)); }
   };
   const uploadThumb = (files: FileList | null) => { const f = files?.[0]; if (!f || !f.type.startsWith("image/")) return; const r = new FileReader(); r.onload = () => makeThumb(String(r.result), saveThumb); r.readAsDataURL(f); };
   // 갤러리 사진을 썸네일 영역으로 드래그앤드롭 → 그 사진을 작게 압축해 thumb_url로 저장(사진 순서는 유지)
