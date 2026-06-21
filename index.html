@@ -8,9 +8,37 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link id="pretendard-font" rel="stylesheet" href="/fonts/pretendard-subset.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="/fonts/pretendard-subset.css" /></noscript>
+    <!-- 저장된 테마를 JS 번들 로드 전에 적용 → 다크/라이트 깜빡임 방지 -->
+    <script>
+      try { if (localStorage.getItem('modiq_theme') === 'light') document.documentElement.classList.add('light'); } catch (e) {}
+    </script>
+    <!-- 첫 페인트부터 정확한 배경색 + 부팅 스플래시: JS 번들이 도착하기 전 흰 화면 깜빡임 제거 -->
+    <style>
+      html { background:#0f1117; }
+      html.light { background:#f7f8fa; }
+      body { margin:0; }
+      #root { min-height:100vh; }
+      .modiq-boot { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:#0f1117; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; }
+      html.light .modiq-boot { background:#f7f8fa; }
+      .modiq-boot .wm { font-size:34px; font-weight:800; letter-spacing:-1px; color:#f0f2f5; line-height:1; }
+      html.light .modiq-boot .wm { color:#111827; }
+      .modiq-boot .wm b { color:#A8FF00; font-weight:800; }
+      .modiq-boot .sub { font-size:10px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#A8FF00; }
+      .modiq-boot .bar { width:118px; height:3px; border-radius:3px; background:#2a2d3e; overflow:hidden; margin-top:4px; }
+      html.light .modiq-boot .bar { background:#e2e5ea; }
+      .modiq-boot .bar i { display:block; width:38%; height:100%; border-radius:3px; background:#A8FF00; animation:modiqBoot 1.05s ease-in-out infinite; }
+      @keyframes modiqBoot { 0% { transform:translateX(-110%); } 100% { transform:translateX(330%); } }
+      @media (prefers-reduced-motion: reduce) { .modiq-boot .bar i { animation:none; width:100%; opacity:.6; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="modiq-boot" aria-label="로딩 중">
+        <div class="wm"><b>m</b>odiq</div>
+        <div class="sub">talent agency OS</div>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
