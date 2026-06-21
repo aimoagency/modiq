@@ -90,6 +90,7 @@ export default function App() {
   const [authMode,    setAuthMode]    = useState<AuthMode>("login");
   // 첫 렌더부터 저장된 세션을 동기적으로 복원 → 로그인 화면 깜빡임 없이 즉시 대시보드 표시(토큰 검증은 백그라운드)
   const _savedSession = (() => { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); return s?.tokens?.refresh_token ? s : null; } catch { return null; } })();
+  // 🔒 보호 영역(CLAUDE.md "대시보드 로딩/첫 화면" 참조) — 임의 수정 금지.
   // 저장된 세션의 에이전시 데이터 캐시를 첫 렌더부터 동기 주입 → 대시보드 숫자 0 깜빡임 방지(이후 백그라운드 최신화)
   const _cachedData = (() => { try { const agId = _savedSession?.agencyData?.id; if (!agId) return null; const c = JSON.parse(localStorage.getItem(DATA_CACHE_KEY) || "null"); return (c && c.agencyId === agId) ? c : null; } catch { return null; } })();
   const [session,     setSession]     = useState<any>(_savedSession?.user || null);
@@ -503,7 +504,9 @@ export default function App() {
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
+    // 🔒 보호 영역(CLAUDE.md "대시보드 로딩/첫 화면" 참조) — 임의 수정 금지.
     // 대시보드 필수 데이터(섭외·모델·고객사·프로젝트)는 함께 받아 '한 번에' 반영 → 부분 0 깜빡임 방지.
+    // ⚠️ 필수 4종을 따로따로 set 하면 부분 0 깜빡임 재발.
     // 담당자(members) 등 비필수는 그 뒤 백그라운드로 점진적 로딩(대시보드 표시를 막지 않음).
     const fetched: Record<string, any[]> = {};
     let allOk = true;
@@ -597,7 +600,7 @@ export default function App() {
         const agencyData = agRows[0];
         setSession(user); setAgency(agencyData); setMyRole("owner");
         saveSession(user, agencyData, "owner");
-        restoreDataCache(agencyData.id); // 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지
+        restoreDataCache(agencyData.id); // 🔒 보호(CLAUDE.md 참조): 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지. 제거 금지.
         await loadData(agencyData.id);
       } else {
         const member = memberRows[0];
@@ -606,7 +609,7 @@ export default function App() {
         const role = member.role==="owner"?"owner":"member";
         setSession(user); setAgency(agencyData); setMyRole(role);
         saveSession(user, agencyData, role);
-        restoreDataCache(agencyData.id); // 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지
+        restoreDataCache(agencyData.id); // 🔒 보호(CLAUDE.md 참조): 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지. 제거 금지.
         await loadData(agencyData.id);
       }
     } catch (e: any) { setAuthError(e.message||"로그인 실패"); }
