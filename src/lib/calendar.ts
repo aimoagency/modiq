@@ -102,12 +102,12 @@ export const bookingToCalEvent = (b: any, modelName: string, clientName: string)
   const ty = TYPE_LABEL[b.booking_type || "SHOOT"] || "일정";
   const tyEn = TYPE_LABEL_EN[b.booking_type || "SHOOT"] || "Schedule";
   const desc = [
-    `유형/Type: ${ty} · ${tyEn}`,
-    b.project_name ? `프로젝트/Project: ${b.project_name}` : "",
-    `고객사/Client: ${clientName}`,
-    `모델/Model: ${modelName}`,
+    `Type: ${ty} · ${tyEn}`,
+    b.project_name ? `Project: ${b.project_name}` : "",
+    `Client: ${clientName}`,
+    `Model: ${modelName}`,
     b.location ? `위치/Location: ${b.location}` : "",
-    b.manager ? `담당/Manager: ${b.manager}` : "",
+    b.manager ? `Manager: ${b.manager}` : "",
     b.memo ? `메모/Memo: ${b.memo}` : "",
   ].filter(Boolean).join("\n");
   return {
