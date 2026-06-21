@@ -89,6 +89,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [compModel, setCompModel] = useState<any | null>(null); // 컴카드 모달 대상
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
+  const [thumbDrag, setThumbDrag] = useState(false); // 갤러리 사진을 썸네일 영역으로 드래그 중
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
   const [careerOpen, setCareerOpen] = useState(false); // 모델 정보 리스트 경력 펼침
   const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
@@ -203,8 +204,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     catch (e) { alert("대표 사진 저장 실패: " + String(e)); }
   };
   const uploadThumb = (files: FileList | null) => { const f = files?.[0]; if (!f || !f.type.startsWith("image/")) return; const r = new FileReader(); r.onload = () => makeThumb(String(r.result), saveThumb); r.readAsDataURL(f); };
-  // 갤러리 사진을 대표로 지정 → 맨 앞으로 + 작은 복사본을 thumb_url에 저장
-  const setAsCover = (i: number) => { const url = photos[i]; if (i !== 0) { const next = [...photos]; const [p] = next.splice(i, 1); next.unshift(p); savePhotos(next); } makeThumb(url, saveThumb); };
+  // 갤러리 사진을 썸네일 영역으로 드래그앤드롭 → 그 사진을 작게 압축해 thumb_url로 저장(사진 순서는 유지)
+  const dropToThumb = (i: number) => { const url = photos[i]; if (url) makeThumb(url, saveThumb); };
 
   const addPhotos = (files: FileList | null) => {
     if (!files || !sel) return;
@@ -392,16 +393,22 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 18 }}>
               {/* 프로필 카드 */}
               <div style={{ width: isMobile ? "100%" : 240, flexShrink: 0 }}>
-                <div style={{ position: "relative", width: isMobile ? 96 : "100%" }}>
+                {/* 썸네일 = 원형 아바타(고객이 '썸네일'임을 바로 인식). 갤러리 사진을 끌어다 놓으면 변경 */}
+                <div style={{ position: "relative", width: isMobile ? 96 : 168, aspectRatio: "1", margin: isMobile ? 0 : "0 auto" }}
+                  onDragOver={e => { if (dragIdx !== null) { e.preventDefault(); if (!thumbDrag) setThumbDrag(true); } }}
+                  onDragLeave={() => setThumbDrag(false)}
+                  onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); dropToThumb(dragIdx); setThumbDrag(false); setDragIdx(null); } }}
+                >
                   {sel.thumb_url
-                    ? <img key={sel.thumb_url} src={sel.thumb_url} alt="" style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, objectFit: "cover", border: `1px solid ${C.border}`, background: C.card2, display: "block" }} />
-                    : <div style={{ width: "100%", aspectRatio: isMobile ? "1" : "3/4", borderRadius: 12, background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 40 }}>{(sel.name || "?")[0]}</div>}
+                    ? <img key={sel.thumb_url} src={sel.thumb_url} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: `1px solid ${C.border}`, background: C.card2, display: "block", outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }} />
+                    : <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 40, outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }}>{(sel.name || "?")[0]}</div>}
+                  {thumbDrag && <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(59,130,246,.45)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, textAlign: "center", padding: 8, pointerEvents: "none" }}>여기에 놓아<br/>썸네일 변경</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <label style={{ flex: 1, textAlign: "center", padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{sel.thumb_url ? "대표 변경" : "＋ 대표 사진"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => uploadThumb(e.target.files)} /></label>
+                  <label style={{ flex: 1, textAlign: "center", padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{sel.thumb_url ? "썸네일 변경" : "＋ 썸네일"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => uploadThumb(e.target.files)} /></label>
                   {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.red}44`, background: "transparent", color: C.red, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>삭제</button>}
                 </div>
-                <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>아래 갤러리 사진의 "대표 지정"으로도 설정돼요.</p>
+                <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>갤러리 사진을 위 썸네일 영역으로 끌어다 놓으면 변경돼요.</p>
                 <button onClick={() => setCompModel(sel)} disabled={photos.length === 0} title={photos.length === 0 ? "사진을 먼저 등록하세요" : "컴카드 만들기"}
                   style={{ width: isMobile ? "100%" : "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
                   <CardCheck size={16} /> 컴카드 만들기
@@ -456,7 +463,6 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         style={{ position: "relative", aspectRatio: "3/4", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: C.card2, cursor: "grab", opacity: dragIdx === i ? 0.4 : 1 }}>
                         <img src={thumbUrl(p)} alt="" draggable={false} loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== p) t.src = p; }} onClick={() => setViewer(i)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in", display: "block" }} />
                         <span onClick={() => removePhoto(i)} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
-                        <button onClick={(e) => { e.stopPropagation(); setAsCover(i); }} title="이 사진을 대표로 지정" style={{ position: "absolute", bottom: 4, left: 4, right: 4, background: i === 0 ? C.blue : "rgba(0,0,0,.6)", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, padding: "3px 0", cursor: "pointer" }}>{i === 0 ? "대표" : "대표 지정"}</button>
                       </div>
                     ); })}
                     {photos.length < MAX_PHOTOS && (
