@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense, type ComponentType } from "react";
 import { C, inp, btnS } from "./theme";
 import {
   APP_VERSION, SESSION_KEY, DATA_CACHE_KEY, STATUS, BOOKING_TYPES,
@@ -28,24 +28,41 @@ import CloseButton from "./components/CloseButton";
 import TimePicker from "./components/TimePicker";
 import MultiCheck from "./components/MultiCheck";
 import MoneyInput from "./components/MoneyInput";
-const CalendarView = lazy(() => import("./views/CalendarView"));
+import ErrorBoundary from "./components/ErrorBoundary";
+// 코드 스플릿 청크 로드 실패(주로 새 배포로 옛 해시 청크 소멸) 시 1회 자동 새로고침 → 검은 화면 대신 정상 복구.
+// 직전 자동 새로고침이 10초 이내면 무한 루프로 보고 에러를 던져 ErrorBoundary가 폴백을 표시.
+function lazyRetry<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
+  return lazy(() => factory().catch((err) => {
+    try {
+      const KEY = "modiq_chunk_reload_at";
+      const last = Number(sessionStorage.getItem(KEY) || 0);
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(KEY, String(Date.now()));
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {}); // 새로고침 대기(영구 pending) → 깜빡임/에러 표시 방지
+      }
+    } catch {}
+    throw err;
+  }));
+}
+const CalendarView = lazyRetry(() => import("./views/CalendarView"));
 import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView"; // 첫 화면 — 즉시 렌더 위해 메인 번들에 포함(지연 로딩 제외)
-const BookingsView = lazy(() => import("./views/BookingsView"));
-const ModelsView = lazy(() => import("./views/ModelsView"));
-const CustomersView = lazy(() => import("./views/CustomersView"));
-const SettlementView = lazy(() => import("./views/SettlementView"));
-const MembersView = lazy(() => import("./views/MembersView"));
-const PlanView = lazy(() => import("./views/PlanView"));
-const RevenueView = lazy(() => import("./views/RevenueView"));
-const CompanyView = lazy(() => import("./views/CompanyView"));
-const PackagesView = lazy(() => import("./views/PackagesView"));
-const ModelStudioView = lazy(() => import("./views/ModelStudioView"));
-const PackagePublicView = lazy(() => import("./views/PackagePublicView"));
-const CalendarAddView = lazy(() => import("./views/CalendarAddView"));
-const CalSubscribeView = lazy(() => import("./views/CalSubscribeView"));
+const BookingsView = lazyRetry(() => import("./views/BookingsView"));
+const ModelsView = lazyRetry(() => import("./views/ModelsView"));
+const CustomersView = lazyRetry(() => import("./views/CustomersView"));
+const SettlementView = lazyRetry(() => import("./views/SettlementView"));
+const MembersView = lazyRetry(() => import("./views/MembersView"));
+const PlanView = lazyRetry(() => import("./views/PlanView"));
+const RevenueView = lazyRetry(() => import("./views/RevenueView"));
+const CompanyView = lazyRetry(() => import("./views/CompanyView"));
+const PackagesView = lazyRetry(() => import("./views/PackagesView"));
+const ModelStudioView = lazyRetry(() => import("./views/ModelStudioView"));
+const PackagePublicView = lazyRetry(() => import("./views/PackagePublicView"));
+const CalendarAddView = lazyRetry(() => import("./views/CalendarAddView"));
+const CalSubscribeView = lazyRetry(() => import("./views/CalSubscribeView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail, sendCancelEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
@@ -1837,6 +1854,7 @@ async function sharePdf(){
       <div style={{ flex:1, minWidth:0, maxWidth:"100%", marginLeft:isMobile?0:64, marginTop:isMobile?0:52, padding:isMobile?"68px 14px 88px":"32px 44px", overflowX:"hidden", overflowY:"auto", minHeight:isMobile?"100vh":"calc(100vh - 52px)" }}>
       <div style={{ maxWidth:1560, margin:"0 auto", minWidth:0 }}>
 
+        <ErrorBoundary key={page}>
         <Suspense fallback={<PageLoading/>}>
         {/* ════ 대시보드 ════ */}
         {page==="dashboard" && <DashboardView bookings={bookings} models={models} customers={customers} projects={projects} setPage={setPage} setSelectedBooking={openBookingFresh} onSelectProject={openProjectFresh} onOpenCalendarDate={(d:string)=>{ setCalInitDate(d); setPage("calendar"); }} isMobile={isMobile} canViewFinance={canViewFinance} loading={syncing} />}
@@ -1883,6 +1901,7 @@ async function sharePdf(){
         {/* ════ 요금제 ════ */}
         {page==="plan"&&<PlanView agency={agency} myRole={myRole} planBilling={planBilling} setPlanBilling={setPlanBilling} handleChangePlan={handleChangePlan} />}
         </Suspense>
+        </ErrorBoundary>
       </div>
       </div>
 
