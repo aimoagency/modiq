@@ -134,4 +134,65 @@ export const sendCalEmail = (
   });
 };
 
+// 취소 안내 메일 — 일정이 취소되었음을 모델에게 알림(.ics·캘린더 추가 버튼 없음).
+// 확정 메일(sendCalEmail)과 같은 톤/항목 순서(프로젝트→브랜드→날짜→시간→장소)를 유지하되 CANCELLED 배지·취소 문구.
+export const sendCancelEmail = (
+  to: string, ev: CalEvent, modelName = "", agencyName = "", replyTo = "",
+  meta: { project?: string; brand?: string; type?: string } = {},
+) => {
+  const project = (meta.project || "").trim();
+  const brand = (meta.brand || "").trim();
+  const ty = TYPE_BI[meta.type || "SHOOT"];
+  const headline = project || brand || ev.title;
+  const d = fmtDateBi(ev.date);
+  const timeStr = fmtTimeBi(ev.start, ev.end);
+  const RED = "#ef4444";
+  const row = (label: string, value: string) => `
+        <tr style="border-top:1px solid #f1f3f5">
+          <td style="padding:9px 0;color:#8a93a0;width:110px;vertical-align:top;font-size:13px;line-height:1.5">${label}</td>
+          <td style="padding:9px 0;color:#16181f;vertical-align:top;font-size:13px;line-height:1.5">${value}</td>
+        </tr>`;
+  const rows = [
+    project ? row("Project", esc(project)) : "",
+    brand ? row("Brand", esc(brand)) : "",
+    row("Date", esc(d.en)),
+    row("Time", esc(timeStr)),
+    ev.location ? row("Location", esc(ev.location)) : "",
+  ].filter(Boolean).join("");
+  const html = `
+    <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;color:#16181f">
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #eef0f3">
+        <div style="font-size:11px;letter-spacing:1.5px;color:${RED};font-weight:700">SCHEDULE CANCELLED · 일정 취소 안내</div>
+        <div style="margin-top:8px">${ty ? `<span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;margin-right:4px">${ty.en}</span>` : ""}<span style="display:inline-block;background:${RED};color:#fff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">CANCELLED</span></div>
+        <div style="font-size:18px;font-weight:700;margin-top:8px;text-decoration:line-through;text-decoration-color:#cfd4da">${esc(headline)}</div>
+        ${agencyName ? `<div style="font-size:12px;color:#8a93a0;margin-top:2px">from ${esc(agencyName)}</div>` : ""}
+      </div>
+      <div style="padding:14px 22px">
+        <table style="width:100%;border-collapse:collapse">${rows}</table>
+      </div>
+      <div style="padding:2px 22px 20px">
+        <p style="font-size:13px;color:#16181f;margin:0;line-height:1.7">${modelName ? esc(modelName) + "님, " : ""}위 일정이 <b style="color:${RED}">취소</b>되었습니다.<br><span style="color:#8a93a0;font-size:12px">The schedule above has been <b>cancelled</b>. Please disregard the previous notice.</span></p>
+      </div>
+    </div>`;
+  const text = [
+    `[SCHEDULE CANCELLED · 일정 취소 안내] ${headline}`,
+    ty ? `Type: ${ty.en}` : "",
+    project ? `Project: ${project}` : "",
+    brand ? `Brand: ${brand}` : "",
+    `Date: ${d.en}`,
+    `Time: ${timeStr}`,
+    ev.location ? `Location: ${ev.location}` : "",
+    ``,
+    `${modelName ? modelName + "님, " : ""}위 일정이 취소되었습니다. / The schedule above has been cancelled.`,
+  ].filter(Boolean).join("\n");
+  return sendEmail({
+    to,
+    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 취소 안내 · Cancelled — ${headline}`,
+    html,
+    text,
+    fromName: agencyName || undefined,
+    replyTo: replyTo || undefined,
+  });
+};
+
 const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
