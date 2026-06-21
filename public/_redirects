@@ -1,0 +1,2 @@
+# SPA fallback — 어떤 경로로 들어와도 index.html 반환(이미 존재하는 파일은 그대로 제공).
+/*    /index.html   200
