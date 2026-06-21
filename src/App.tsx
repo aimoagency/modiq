@@ -300,6 +300,11 @@ export default function App() {
   const [selectedSettlement, setSelectedSettlement] = useState<any>(null);
   const [modalStack, setModalStack] = useState<{type:string; id:string}[]>([]); // 모달 백스택: 닫으면 직전 상세로 복귀
   const [navHover, setNavHover] = useState(false); // 좌측 메뉴 호버 시 펼침
+  // 터치 기기(태블릿/패드 등)는 hover가 풀리지 않아, 사이드바를 탭으로 펼친 뒤 메뉴를 골라도
+  // navHover가 true로 남아 안 닫힌다. 페이지가 바뀌면 hover 불가 기기에서만 강제로 접는다.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(hover: none)").matches) setNavHover(false);
+  }, [page]);
   const [mEditMode, setMEditMode] = useState(false);
   const [modelHistAll, setModelHistAll] = useState(false);
   const [showCareer, setShowCareer] = useState(false); // 모델 상세 경력 펼침
