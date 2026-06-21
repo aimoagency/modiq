@@ -472,7 +472,8 @@ export default function App() {
   // ──────────────────────────────────────────────
   useEffect(() => {
     try { sessionStorage.removeItem("modiq_boot_retry"); } catch {} // 마운트 성공 → 부팅 로드실패 안전장치 플래그 해제
-    setOnAuthFail(()=>{ localStorage.removeItem(SESSION_KEY); window.location.reload(); });
+    // 세션 만료/무효 시 reload(부팅 스플래시 재노출) 대신, 화면 내에서 로그인 화면으로 즉시 전환
+    setOnAuthFail(()=>{ localStorage.removeItem(SESSION_KEY); setAuthTokens(null,null); setSession(null); setAgency(null); setMyRole("member"); });
     const saved = localStorage.getItem(SESSION_KEY);
     if (!saved) return;
     (async () => {
@@ -488,7 +489,7 @@ export default function App() {
         //     레이스가 발생해 간헐적으로 로딩이 풀리지 않거나 로그인 화면으로 튕겼다. 순차 실행으로 제거.)
         let fresh = await refreshSession();       // 서버 검증 + 토큰 갱신
         if (!fresh) { await new Promise(s=>setTimeout(s,500)); fresh = await refreshSession(); } // 일시 실패(네트워크/토큰회전) 1회 재시도 → 로그인 튕김 방지
-        if (!fresh) { localStorage.removeItem(SESSION_KEY); window.location.reload(); return; }
+        if (!fresh) { localStorage.removeItem(SESSION_KEY); setAuthTokens(null,null); setSession(null); setAgency(null); setMyRole("member"); return; } // reload 대신 인라인 로그인 전환(스플래시 재노출 방지)
         await loadData(agencyData.id);              // 갱신된 토큰으로 최신 데이터 조회
         localStorage.setItem(SESSION_KEY, JSON.stringify({ user, agencyData, role, tokens:getAuthTokens() }));
       } catch { localStorage.removeItem(SESSION_KEY); }
@@ -665,6 +666,10 @@ export default function App() {
     if (mIsForeign && mPayMethod === "bank" && !String(mBank || "").trim() && mPayDetail?.bank && mPayDetail?.account)
       return `${mPayDetail.bank} ${mPayDetail.account}`.trim();
     return mBank;
+  };
+  // 외국인 '국내 계좌이체' 은행/계좌 입력 → 아래 통장(bank_info) 입력칸 실시간 반영(지우면 같이 비움)
+  const syncBankInfoFromForeign = (bank: string, account: string) => {
+    setMBankName(bank); setMBankAcct(account); setMBank(`${bank} ${account}`.trim());
   };
   const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("cm"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
   // 사이즈 단위 변환 (저장은 항상 cm)
@@ -3122,7 +3127,7 @@ async function sharePdf(){
               <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
               {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
             </div>
-            {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>비자·정산 정보 입력</button>}
+            {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>{mVisaType ? "비자·정산 정보 확인" : "비자·정산 정보 입력"}</button>}
           </div>
 
           {/* ── 모델료 (Day / Half day / Hour) ── */}
@@ -3360,14 +3365,14 @@ async function sharePdf(){
               <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
                 <div>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>은행</label>
-                  <select style={{ ...inp, marginBottom:0 }} value={mPayDetail.bank||""} onChange={e=>setMPayDetail({ ...mPayDetail, bank:e.target.value })}>
+                  <select style={{ ...inp, marginBottom:0 }} value={mPayDetail.bank||""} onChange={e=>{ const bank=e.target.value; setMPayDetail({ ...mPayDetail, bank }); syncBankInfoFromForeign(bank, mPayDetail.account||""); }}>
                     <option value="">선택</option>
                     {["국민","신한","우리","하나","농협","기업","SC제일","씨티","카카오뱅크","토스뱅크","케이뱅크"].map(b=><option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>계좌번호</label>
-                  <input style={{ ...inp, marginBottom:0 }} value={mPayDetail.account||""} onChange={e=>setMPayDetail({ ...mPayDetail, account:e.target.value })} />
+                  <input style={{ ...inp, marginBottom:0 }} value={mPayDetail.account||""} onChange={e=>{ const account=e.target.value; setMPayDetail({ ...mPayDetail, account }); syncBankInfoFromForeign(mPayDetail.bank||"", account); }} />
                 </div>
                 <div>
                   <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>예금주</label>
