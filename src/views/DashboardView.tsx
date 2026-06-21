@@ -10,26 +10,42 @@ import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } fro
 function SkBox({ h=20, w="100%", r=8, mt=0 }: { h?:number; w?:number|string; r?:number; mt?:number }) {
   return <div style={{ height:h, width:w, marginTop:mt, borderRadius:r, background:`linear-gradient(90deg, ${C.card2} 25%, ${C.border} 37%, ${C.card2} 63%)`, backgroundSize:"400% 100%", animation:"modiqShimmer 1.2s ease-in-out infinite" }} />;
 }
+// 콜드 스타트(캐시 없음)에서만 표시. 라벨·제목 같은 정적 텍스트는 그대로 보이고
+// 숫자/목록 값 자리만 shimmer → "글자가 모두 안 보이는" 현상 방지.
 function DashboardSkeleton({ isMobile, canViewFinance }: { isMobile:boolean; canViewFinance:boolean }) {
   const card = { background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", marginBottom:16 };
+  const lbl = { margin:0, fontSize:11, color:C.muted } as const;
+  const statLabels = ["진행중 섭외","HOLD",...(canViewFinance?["계약금 미입금"]:[]),"등록 모델"];
   return (
     <div>
       <style>{`@keyframes modiqShimmer{0%{background-position:100% 0}100%{background-position:0 0}}`}</style>
-      <SkBox h={26} w={140} mt={2} /><div style={{ height:18 }} />
+      <h1 style={{ margin:"0 0 20px", fontSize:22, fontWeight:800, color:C.text }}>대시보드</h1>
       {canViewFinance && (
         <div style={card}>
-          <SkBox h={14} w={90} />
-          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)", gap:12, marginTop:14 }}>
-            {Array.from({length:4}).map((_,i)=><div key={i}><SkBox h={11} w={70} /><SkBox h={22} w="80%" mt={8} /></div>)}
+          <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.text }}>이번 달 매출</p>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr) minmax(0,1fr)":"repeat(4,minmax(0,1fr))", gap:12, marginTop:14 }}>
+            {["실매출 (입금)","예상매출 (확정 포함)","미수금","매출총이익"].map((l,i)=>(
+              <div key={i}><p style={lbl}>{l}</p><SkBox h={22} w="72%" mt={8} /></div>
+            ))}
           </div>
         </div>
       )}
-      {Array.from({length:3}).map((_,i)=>(
-        <div key={i} style={card}>
-          <SkBox h={14} w={120} />
-          <SkBox h={16} mt={14} /><SkBox h={16} w="85%" mt={10} /><SkBox h={16} w="70%" mt={10} />
-        </div>
-      ))}
+      {/* 통계 카드 — 라벨은 그대로, 값만 shimmer */}
+      <div style={{ display:"grid", gridTemplateColumns:`repeat(${statLabels.length},minmax(0,1fr))`, gap:isMobile?6:12, marginBottom:16 }}>
+        {statLabels.map((l,i)=>(
+          <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:isMobile?"10px 8px":"16px 18px" }}>
+            <p style={{ fontSize:isMobile?10:11, color:C.muted, margin:0, lineHeight:1.25, wordBreak:"keep-all" }}>{l}</p>
+            <SkBox h={isMobile?17:24} w="58%" mt={8} />
+          </div>
+        ))}
+      </div>
+      {/* 진행중 섭외 현황 — 제목은 그대로, 목록만 shimmer */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+        <p style={{ margin:0, fontWeight:700, fontSize:15, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> 진행중 섭외 현황</p>
+      </div>
+      <div style={{ display:"grid", gap:8 }}>
+        {Array.from({length:3}).map((_,i)=><SkBox key={i} h={54} />)}
+      </div>
     </div>
   );
 }

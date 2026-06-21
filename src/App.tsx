@@ -596,14 +596,18 @@ export default function App() {
         if (!agRows?.length) throw new Error("소속 에이전시를 찾을 수 없습니다");
         const agencyData = agRows[0];
         setSession(user); setAgency(agencyData); setMyRole("owner");
-        saveSession(user, agencyData, "owner"); await loadData(agencyData.id);
+        saveSession(user, agencyData, "owner");
+        restoreDataCache(agencyData.id); // 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지
+        await loadData(agencyData.id);
       } else {
         const member = memberRows[0];
         const agRows = await sb("agencies","GET",null,`?id=eq.${member.agency_id}`);
         const agencyData = agRows[0];
         const role = member.role==="owner"?"owner":"member";
         setSession(user); setAgency(agencyData); setMyRole(role);
-        saveSession(user, agencyData, role); await loadData(agencyData.id);
+        saveSession(user, agencyData, role);
+        restoreDataCache(agencyData.id); // 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지
+        await loadData(agencyData.id);
       }
     } catch (e: any) { setAuthError(e.message||"로그인 실패"); }
     finally { setAuthLoading(false); }
