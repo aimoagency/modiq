@@ -1,0 +1,7 @@
+# Netlify(모바일) 캐시 정책 — vercel.json(웹)과 동일하게 맞춤.
+# 해시 자산은 영구 캐시, index.html 등은 매번 재검증 → 새 빌드(부팅 스플래시·로딩 수정)가 즉시 반영.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  Cache-Control: public, max-age=0, must-revalidate
