@@ -9,7 +9,7 @@ import {
 } from "./constants";
 import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
-import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail } from "./lib/supabase";
+import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail, persistThumb } from "./lib/supabase";
 import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
@@ -670,6 +670,7 @@ export default function App() {
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
     const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
     try {
+      nm.thumb_url = await persistThumb(mThumb, agency.id, newModelId); // 썸네일 base64 → Storage URL(행 경량화)
       await sb("models","POST",nm);
       setModels([nm,...models]);
       if (mNationalId.trim() && canViewFinance) await saveModelNationalId(newModelId);
@@ -704,6 +705,7 @@ export default function App() {
     if (mIsForeign && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
     const updated = buildModelData();
     try {
+      updated.thumb_url = await persistThumb(mThumb, agency.id, selectedModel.id); // 썸네일 base64 → Storage URL(행 경량화)
       await sb("models","PATCH",updated,`?id=eq.${selectedModel.id}`);
       setModels(models.map(m => m.id===selectedModel.id ? {...m,...updated} : m));
       if (mNationalId.trim() && canViewFinance) await saveModelNationalId(selectedModel.id);
