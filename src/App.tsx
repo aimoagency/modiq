@@ -524,6 +524,11 @@ export default function App() {
     } catch { return false; }
   };
 
+  // 모델 일반 조회 컬럼 — 무거운 base64 이미지 컬럼(compcard ~2MB/8행)을 제외해 첫 로딩 속도 개선.
+  // compcard는 컴카드 생성/저장 전용이라 어디서도 표시·조회하지 않으므로 빼도 안전(편집 PATCH에도 미포함).
+  // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
+  const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url";
+
   const loadData = async (agencyId: string) => {
     setSyncing(true);
     // 🔒 보호 영역(CLAUDE.md "대시보드 로딩/첫 화면" 참조) — 임의 수정 금지.
@@ -537,7 +542,7 @@ export default function App() {
       catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); return null; }
     };
     const [mm, cc, bb, pp] = await Promise.all([
-      fetch1("models",    `?agency_id=eq.${agencyId}&order=created_at.desc`),
+      fetch1("models",    `?agency_id=eq.${agencyId}&order=created_at.desc&select=${MODEL_COLS}`),
       fetch1("customers", `?agency_id=eq.${agencyId}&order=created_at.desc`),
       fetch1("bookings",  `?agency_id=eq.${agencyId}&order=shoot_date.desc`),
       fetch1("projects",  `?agency_id=eq.${agencyId}&order=created_at.desc`),
@@ -887,6 +892,23 @@ export default function App() {
   const addRefImages = (files: FileList|null) => {
     if (!files) return;
     Array.from(files).forEach(f=>resizeImage(f, data=>setBRefImages(prev=>prev.length>=8?prev:[...prev, data])));
+  };
+  // 프로필 썸네일 압축 — 목록/아바타에 작게만 보이는 사진이라 360px·JPEG로 줄여 20~100KB 수준으로 저장.
+  // (스튜디오 '대표 변경'의 makeThumb와 동일 정책 → 행 용량/첫 로딩 부담 제거)
+  const compressThumb = (file: File, cb: (data:string)=>void) => {
+    if (!file.type.startsWith("image/")) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 360;
+      const sc = Math.min(1, max/Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width*sc); cv.height = Math.round(img.height*sc);
+      cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
+      cb(cv.toDataURL("image/jpeg", 0.62));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   };
   const addRefsToSelected = (files: FileList|null) => {
     if (!files) return;
@@ -2944,17 +2966,14 @@ async function sharePdf(){
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
                 <input type="file" accept="image/*" style={{ display:"none" }} onChange={e=>{
                   const file = e.target.files?.[0]; if(!file) return;
-                  if(file.size > 600*1024) return alert("이미지 크기는 600KB 이하만 가능합니다");
-                  const reader = new FileReader();
-                  reader.onload = ev => setMThumb(ev.target?.result as string);
-                  reader.readAsDataURL(file);
+                  compressThumb(file, data => setMThumb(data)); // 업로드 시 자동 축소·압축(20~100KB)
                   e.target.value="";
                 }} />
               </label>
             </div>
             <div>
               <p style={{ margin:0, fontSize:12, color:C.text, fontWeight:600 }}>프로필 사진</p>
-              <p style={{ margin:"2px 0 0", fontSize:11, color:C.muted }}>600KB 이하 · JPG/PNG</p>
+              <p style={{ margin:"2px 0 0", fontSize:11, color:C.muted }}>자동 압축 저장 · JPG/PNG</p>
               {mThumb&&<button type="button" onClick={()=>setMThumb("")} style={{ marginTop:4, background:"none", border:"none", color:C.red, cursor:"pointer", fontSize:11, padding:0 }}>× 삭제</button>}
             </div>
           </div>
