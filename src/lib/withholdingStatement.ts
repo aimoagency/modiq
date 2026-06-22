@@ -24,6 +24,17 @@ export const modelRateLabel = (model: any): string => {
   return "3.3%";
 };
 
+// 소득자 식별번호 라벨: 등록된 종류(national_id_type) 기준
+//  rrn=주민등록번호 / arc=외국인등록번호 / passport=여권번호
+//  미등록 시 세무유형 기본값(외국인=여권번호 / 그 외=주민등록번호)
+export const modelIdLabel = (model: any): string => {
+  const t = model?.national_id_type;
+  if (t === "rrn") return "주민등록번호";
+  if (t === "arc") return "외국인등록번호";
+  if (t === "passport") return "여권번호";
+  return modelTaxType(model) === "foreigner" ? "여권번호" : "주민등록번호";
+};
+
 export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => {
   const { agency, model, rows, range } = inp;
   const issue = inp.issueDate || new Date().toISOString().slice(0, 10);
@@ -68,7 +79,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
         <table style="width:100%;border-collapse:collapse">
           ${party("성명", esc(model?.name || "-"))}
           ${party("구분", esc(typeKr))}
-          ${party("주민등록번호", esc(model?.national_id_masked || "미등록"))}
+          ${party(modelIdLabel(model), esc(model?.national_id_masked || "미등록"))}
           ${party("주소", esc(model?.address || "-"))}
           ${party("원천징수율", esc(modelRateLabel(model)))}
         </table>
