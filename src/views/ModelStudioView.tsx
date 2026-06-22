@@ -42,7 +42,7 @@ const safeSeg = (s: string) => String(s).replace(/[^A-Za-z0-9._-]/g, "_");
 
 const infoRows = (m: any): [string, string][] => {
   const age = ageFromSSN6(m.ssn6);
-  const three = [m.bust, m.waist, m.hip].filter(Boolean).join("-");
+  const three = [m.bust, m.waist, m.hip].map((v: any) => { const n = Number(v); return n > 0 ? String(Math.round(n / 2.54)) : ""; }).filter(Boolean).join("-"); // cm→inch 표기
   const rows: [string, string][] = [];
   if (m.country) rows.push(["국적", m.country]);
   if (m.is_foreigner) {
@@ -54,7 +54,7 @@ const infoRows = (m: any): [string, string][] => {
   if (m.career_years != null && m.career_years !== "") rows.push(["경력년차", `${m.career_years}년`]);
   if (m.height) rows.push(["키", `${m.height}cm`]);
   if (m.shoe) rows.push(["신발", `${m.shoe}mm`]);
-  if (three) rows.push(["3사이즈", three]);
+  if (three) rows.push(["3사이즈(inch)", three]);
   if (m.hair_length) rows.push(["머리", m.hair_length]);
   if (m.eye_color) rows.push(["눈동자", m.eye_color]);
   rows.push(["타투", m.tattoo ? "있음" : "없음"]);
