@@ -44,7 +44,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
   const periodStr = `${range.from ? fmtD(range.from) : "전체"} ~ ${range.to ? fmtD(range.to) : "현재"}`;
 
   const party = (label: string, value: string) => `
-    <tr><td style="padding:5px 10px;color:#8a93a0;font-size:12px;width:96px;border:1px solid #e8eaed;background:#fafbfc">${label}</td>
+    <tr><td style="padding:5px 10px;color:#8a93a0;font-size:12px;width:96px;white-space:nowrap;border:1px solid #e8eaed;background:#fafbfc">${label}</td>
         <td style="padding:5px 10px;color:#16181f;font-size:12px;border:1px solid #e8eaed">${value}</td></tr>`;
 
   const bodyRows = rows.length ? rows.map(r => `
@@ -142,7 +142,7 @@ export const buildTransactionStatementHtml = (inp: TxStatementInput): string => 
   const periodStr = `${range.from ? fmtD(range.from) : "전체"} ~ ${range.to ? fmtD(range.to) : "현재"}`;
 
   const party = (label: string, value: string) => `
-    <tr><td style="padding:5px 10px;color:#8a93a0;font-size:12px;width:96px;border:1px solid #e8eaed;background:#fafbfc">${label}</td>
+    <tr><td style="padding:5px 10px;color:#8a93a0;font-size:12px;width:96px;white-space:nowrap;border:1px solid #e8eaed;background:#fafbfc">${label}</td>
         <td style="padding:5px 10px;color:#16181f;font-size:12px;border:1px solid #e8eaed">${value}</td></tr>`;
 
   const bodyRows = rows.length ? rows.map(r => `
