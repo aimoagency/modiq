@@ -152,7 +152,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
       <div style={{ overflowX: "auto", maxHeight: "50vh", overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8 }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 720, width: "100%" }}>
           <thead>
-            <tr>{["고객사", "프로젝트", "건수", "공급가", "청구(VAT)", "미수금", "상태", ""].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+            <tr>{["고객사", "프로젝트", "건수", "공급가", "청구(VAT)", "미수금", "상태", "발급"].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {groups.length === 0 ? (
@@ -166,7 +166,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
                 <td style={numTd}>{won(g.charge)}</td>
                 <td style={{ ...numTd, color: g.due > 0 ? C.red : C.muted }}>{won(g.due)}</td>
                 <td style={td}><span style={{ fontSize: 11, fontWeight: 700, color: stColor(g.status), background: stColor(g.status) + "1a", padding: "2px 7px", borderRadius: 6 }}>{g.status}</span></td>
-                <td style={td}><button onClick={() => setOpenKey(g.key)} style={{ ...btnS(C.blue), padding: "5px 10px", fontSize: 11 }}>🧾 명세서</button></td>
+                <td style={td}><button onClick={() => setOpenKey(g.key)} style={{ ...btnS(C.blue), padding: "5px 10px", fontSize: 11, whiteSpace: "nowrap" }}>🧾 명세서 발급</button></td>
               </tr>
             ))}
           </tbody>
@@ -189,7 +189,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
       {openGroup && (
         <Modal onClose={() => setOpenKey(null)} maxW={720}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap", paddingRight: 44 }}>
-            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 거래명세서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {openGroup.customer?.name || "?"}{openGroup.project ? ` / ${openGroup.project}` : ""}</span></h3>
+            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 거래명세서 발급 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {openGroup.customer?.name || "?"}{openGroup.project ? ` / ${openGroup.project}` : ""}</span></h3>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => printStatementHtml(docHtml, "거래명세서")} style={{ ...btnS(C.blue) }}>🖨 인쇄 / PDF 저장</button>
               <button onClick={sendDoc} disabled={!hasEmail} style={{ ...btnS(C.green, !hasEmail) }}>📧 이메일 발송</button>
