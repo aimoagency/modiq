@@ -59,7 +59,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
   return `
   <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:640px;margin:0 auto;background:#fff;color:#16181f;padding:24px;border:1px solid #e8eaed;border-radius:10px">
     <div style="text-align:center;border-bottom:2px solid #16181f;padding-bottom:12px;margin-bottom:16px">
-      <div style="font-size:20px;font-weight:800;letter-spacing:4px">원천징수 내역서</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:6px">원 천 징 수 내 역 서</div>
       <div style="font-size:11px;color:#8a93a0;margin-top:4px">Withholding Tax Statement · 귀속기간 ${esc(periodStr)}</div>
     </div>
 
@@ -81,7 +81,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
           ${party("구분", esc(typeKr))}
           ${party(modelIdLabel(model), esc(model?.national_id_masked || "미등록"))}
           ${party("주소", esc(model?.address || "-"))}
-          ${party("원천징수율", esc(modelRateLabel(model)))}
+          ${party("원천징수율 (TAX)", esc(modelRateLabel(model)))}
         </table>
       </div>
     </div>
@@ -110,7 +110,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
     <p style="font-size:11px;color:#8a93a0;line-height:1.7;margin:0 0 16px">
       · 위 금액은 귀하에게 지급한 소득과 원천징수세액 내역입니다.<br>
       · 본 내역서는 지급내역 확인용이며, 정식 지급명세서는 국세청 홈택스를 통해 신고됩니다.<br>
-      · 주민등록번호는 개인정보 보호를 위해 일부만 표시됩니다.
+      · 주민등록번호와 여권번호는 개인정보 보호를 위해 일부만 표시됩니다.
     </p>
 
     <div style="text-align:center;padding-top:14px;border-top:1px solid #e8eaed">
