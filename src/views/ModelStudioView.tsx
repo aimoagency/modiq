@@ -395,31 +395,34 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 18 }}>
               {/* 프로필 카드 */}
               <div style={{ width: isMobile ? "100%" : 240, flexShrink: 0 }}>
-                {/* 썸네일 = 원형 아바타(고객이 '썸네일'임을 바로 인식). 갤러리 사진을 끌어다 놓으면 변경 */}
-                <div style={{ position: "relative", width: isMobile ? 96 : 168, aspectRatio: "1", margin: isMobile ? 0 : "0 auto" }}
+                {/* 프로필 헤더 — 모델 등록 폼과 동일한 썸네일 패턴(작은 원형 + 파란 ＋ 배지). 두 곳에서 등록 가능. 갤러리 사진 드래그도 가능 */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}
                   onDragOver={e => { if (dragIdx !== null) { e.preventDefault(); if (!thumbDrag) setThumbDrag(true); } }}
                   onDragLeave={() => setThumbDrag(false)}
                   onDrop={e => { if (dragIdx !== null) { e.preventDefault(); e.stopPropagation(); dropToThumb(dragIdx); setThumbDrag(false); setDragIdx(null); } }}
                 >
-                  {sel.thumb_url
-                    ? <img key={sel.thumb_url} src={sel.thumb_url} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: `1px solid ${C.border}`, background: C.card2, display: "block", outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }} />
-                    : <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 40, outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }}>{(sel.name || "?")[0]}</div>}
-                  {thumbDrag && <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(59,130,246,.45)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, textAlign: "center", padding: 8, pointerEvents: "none" }}>여기에 놓아<br/>썸네일 변경</div>}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    {sel.thumb_url
+                      ? <img key={sel.thumb_url} src={sel.thumb_url} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `1px solid ${C.border}`, background: C.card2, display: "block", outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }} />
+                      : <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 24, outline: thumbDrag ? `3px solid ${C.blue}` : "none", outlineOffset: 2 }}>{(sel.name || "?")[0]}</div>}
+                    <label title="썸네일 등록/변경" style={{ position: "absolute", bottom: 0, right: 0, background: C.blue, borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid var(--c-card)" }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                      <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { uploadThumb(e.target.files); e.currentTarget.value = ""; }} />
+                    </label>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sel.name}</div>
+                    {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
+                    {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ display: "block", marginTop: 5, background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, padding: 0 }}>× 썸네일 삭제</button>}
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <label style={{ flex: 1, textAlign: "center", padding: "7px 0", borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{sel.thumb_url ? "썸네일 변경" : "＋ 썸네일"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => uploadThumb(e.target.files)} /></label>
-                  {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.red}44`, background: "transparent", color: C.red, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>삭제</button>}
-                </div>
-                <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>갤러리 사진을 위 썸네일 영역으로 끌어다 놓으면 변경돼요.</p>
                 <button onClick={() => setCompModel(sel)} disabled={photos.length === 0} title={photos.length === 0 ? "사진을 먼저 등록하세요" : "컴카드 만들기"}
-                  style={{ width: isMobile ? "100%" : "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
+                  style={{ width: "100%", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px 0", background: photos.length === 0 ? C.card2 : C.blue, color: photos.length === 0 ? C.muted : "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: photos.length === 0 ? "not-allowed" : "pointer", boxShadow: photos.length === 0 ? "none" : "0 2px 10px rgba(59,130,246,.35)" }}>
                   <CardCheck size={16} /> 컴카드 만들기
                 </button>
                 <button onClick={() => onEditModel && onEditModel(sel)} style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 0", background: "transparent", color: C.purple, border: `1px solid ${C.purple}`, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                   <Pencil size={15} /> 정보 수정
                 </button>
-                <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 10 }}>{sel.name}</div>
-                {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
                 <div style={{ marginTop: 12, display: "grid", gap: 5 }}>
                   {infoRows(sel).map(([k, v]) => (
                     <div key={k} style={{ display: "flex", fontSize: 12.5, lineHeight: 1.5 }}>
