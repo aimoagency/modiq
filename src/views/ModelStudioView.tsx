@@ -411,9 +411,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                     </label>
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sel.name}</div>
-                    {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
-                    {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ display: "block", marginTop: 5, background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, padding: 0 }}>× 썸네일 삭제</button>}
+                    <p style={{ margin: 0, fontSize: 12, color: C.text, fontWeight: 600 }}>프로필 사진</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>＋ 또는 사진 드래그로 썸네일 변경</p>
+                    {sel.thumb_url && <button onClick={() => saveThumb("")} style={{ display: "block", marginTop: 4, background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, padding: 0 }}>× 썸네일 삭제</button>}
                   </div>
                 </div>
                 <button onClick={() => setCompModel(sel)} disabled={photos.length === 0} title={photos.length === 0 ? "사진을 먼저 등록하세요" : "컴카드 만들기"}
@@ -423,6 +423,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 <button onClick={() => onEditModel && onEditModel(sel)} style={{ width: "100%", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 0", background: "transparent", color: C.purple, border: `1px solid ${C.purple}`, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                   <Pencil size={15} /> 정보 수정
                 </button>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 10 }}>{sel.name}</div>
+                {sel.category && <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{sel.category}</span>}
                 <div style={{ marginTop: 12, display: "grid", gap: 5 }}>
                   {infoRows(sel).map(([k, v]) => (
                     <div key={k} style={{ display: "flex", fontSize: 12.5, lineHeight: 1.5 }}>
