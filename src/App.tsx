@@ -3015,7 +3015,7 @@ async function sharePdf(){
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주민번호 앞 6자리 *</label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{mIsForeign ? "생년월일 6자리(YYMMDD) *" : "주민번호 앞 6자리 *"}</label>
               <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
             </div>
           </div>
