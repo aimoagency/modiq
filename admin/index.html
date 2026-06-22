@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Modiq 운영자 콘솔</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --card2:#1e222b; --border:#2a2f3a; --text:#e7eaf0; --muted:#8a93a3; --blue:#3b82f6; --green:#2ecc71; --red:#e85050; --orange:#e8a020; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Apple SD Gothic Neo','Malgun Gothic',-apple-system,sans-serif; font-size:14px; }
+  a { color:var(--blue); }
+  .wrap { max-width:1200px; margin:0 auto; padding:20px 16px 60px; }
+  .center { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  h1 { font-size:20px; margin:0; } h1 .dot { color:#A8FF00; }
+  label { display:block; font-size:12px; color:var(--muted); margin:10px 0 5px; }
+  input, select { width:100%; padding:10px 12px; background:var(--card2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; }
+  button { cursor:pointer; border:none; border-radius:8px; font-weight:700; font-size:13px; padding:9px 14px; }
+  .btn-blue { background:var(--blue); color:#fff; } .btn-red { background:var(--red); color:#fff; }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  button:disabled { opacity:.5; cursor:default; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .between { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .muted { color:var(--muted); } .small { font-size:12px; } .err { color:var(--red); font-size:13px; margin-top:8px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0; }
+  .stat { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .stat .k { font-size:11px; color:var(--muted); } .stat .v { font-size:20px; font-weight:800; margin-top:4px; }
+  .sec-title { font-size:15px; font-weight:800; margin:22px 0 10px; }
+  .tablewrap { overflow-x:auto; border:1px solid var(--border); border-radius:10px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; min-width:920px; }
+  th, td { padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+  th { color:var(--muted); font-weight:700; position:sticky; top:0; background:var(--card2); }
+  td.num, th.num { text-align:right; }
+  .pill { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .hidden { display:none; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:10px 16px; font-size:13px; box-shadow:0 6px 24px rgba(0,0,0,.4); }
+</style>
+</head>
+<body>
+  <!-- 로그인 -->
+  <div id="loginView" class="center">
+    <div class="card" style="width:360px; max-width:100%;">
+      <h1><span class="dot">m</span>odiq <span class="muted small">운영자 콘솔</span></h1>
+      <p class="muted small" style="margin:8px 0 4px;">플랫폼 관리자(platform_admins)만 접근할 수 있습니다.</p>
+      <label>이메일</label>
+      <input id="email" type="email" autocomplete="username" />
+      <label>비밀번호</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button class="btn-blue" style="width:100%; margin-top:14px;" id="loginBtn">로그인</button>
+      <div id="loginErr" class="err"></div>
+    </div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div id="appView" class="wrap hidden">
+    <div class="between">
+      <h1><span class="dot">m</span>odiq <span class="muted small">운영자 콘솔</span></h1>
+      <div class="row">
+        <span id="who" class="muted small"></span>
+        <button class="btn-ghost" id="refreshBtn">새로고침</button>
+        <button class="btn-ghost" id="logoutBtn">로그아웃</button>
+      </div>
+    </div>
+
+    <div id="cards" class="cards"></div>
+
+    <div class="sec-title">테넌트(에이전시) <span id="tcount" class="muted small"></span></div>
+    <div class="tablewrap">
+      <table id="tenantTable">
+        <thead><tr>
+          <th>에이전시</th><th>대표 이메일</th><th>플랜</th><th>trial 만료</th><th>가입일</th>
+          <th class="num">멤버</th><th class="num">모델</th><th class="num">섭외</th><th class="num">고객사</th><th class="num">패키지</th>
+          <th class="num">파일</th><th class="num">저장용량</th>
+        </tr></thead>
+        <tbody id="tenantBody"></tbody>
+      </table>
+    </div>
+
+    <div class="sec-title">고아 계정 <span id="ocount" class="muted small"></span> <span class="muted small">(에이전시·멤버십 없음 — 가입 실패 잔재)</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>이메일</th><th>생성일</th><th>확인</th><th>작업</th></tr></thead>
+        <tbody id="orphanBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+<script>
+  // 공개 값(anon key·URL)만 사용. 권한 작업은 전부 admin-api(서버)에서 검증.
+  const SB_URL = "https://fijtpyrmqzjefucsqfos.supabase.co";
+  const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpanRweXJtcXpqZWZ1Y3NxZm9zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzMyNjgsImV4cCI6MjA5NTYwOTI2OH0.tdnqIDJBY809IBO6OIEykxCezo9QY1Z_ziiqMFtYW2o";
+  const FN_URL = SB_URL + "/functions/v1/admin-api";
+  const TOKEN_KEY = "modiq_admin_token";
+  const PLANS = ["trial", "starter", "standard", "pro"];
+
+  const $ = (id) => document.getElementById(id);
+  const won = (n) => Number(n || 0).toLocaleString("ko-KR");
+  const mb = (b) => (Number(b || 0) / 1048576).toFixed(2) + " MB";
+  const fmtDate = (s) => (s ? String(s).slice(0, 10) : "-");
+  let toastTimer = null;
+  const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), 2600); };
+
+  const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+  const setToken = (t) => t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
+
+  async function login(email, password) {
+    const res = await fetch(SB_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || data.message || "로그인 실패");
+    if (!data.access_token) throw new Error("세션을 받지 못했습니다.");
+    return data.access_token;
+  }
+
+  // admin-api 호출. 권한 없으면 403, 토큰 만료면 401.
+  async function callAdmin(action, params) {
+    const res = await fetch(FN_URL, {
+      method: "POST",
+      headers: { apikey: ANON, Authorization: "Bearer " + getToken(), "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ action }, params || {})),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { setToken(""); showLogin("세션이 만료되었습니다. 다시 로그인하세요."); throw new Error("401"); }
+    if (res.status === 403) throw new Error("이 계정은 플랫폼 관리자(platform_admins)가 아닙니다.");
+    if (!res.ok) throw new Error(data.error || ("오류 " + res.status));
+    return data;
+  }
+
+  function showLogin(err) {
+    $("appView").classList.add("hidden");
+    $("loginView").classList.remove("hidden");
+    $("loginErr").textContent = err || "";
+  }
+  function showApp() {
+    $("loginView").classList.add("hidden");
+    $("appView").classList.remove("hidden");
+  }
+
+  function renderCards(tenants) {
+    const sum = (k) => tenants.reduce((a, t) => a + Number(t[k] || 0), 0);
+    const cards = [
+      ["테넌트", tenants.length],
+      ["총 모델", won(sum("models"))],
+      ["총 섭외", won(sum("bookings"))],
+      ["총 고객사", won(sum("customers"))],
+      ["총 저장용량", mb(sum("storage_bytes"))],
+    ];
+    $("cards").innerHTML = cards.map((c) => `<div class="stat"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join("");
+  }
+
+  function planSelect(t) {
+    const opts = PLANS.map((p) => `<option value="${p}"${p === t.plan ? " selected" : ""}>${p}</option>`).join("");
+    return `<select data-agency="${t.agency_id}" data-cur="${t.plan}" class="planSel" style="padding:5px 8px; font-size:12px; width:auto;">${opts}</select>`;
+  }
+
+  function renderTenants(tenants) {
+    $("tcount").textContent = "(" + tenants.length + "곳)";
+    if (!tenants.length) { $("tenantBody").innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center; padding:18px;">에이전시가 없습니다.</td></tr>`; return; }
+    $("tenantBody").innerHTML = tenants.map((t) => `
+      <tr>
+        <td>${esc(t.name) || "-"}</td>
+        <td class="muted">${esc(t.owner_email) || "-"}</td>
+        <td>${planSelect(t)}</td>
+        <td class="small">${fmtDate(t.trial_ends_at)}</td>
+        <td class="small muted">${fmtDate(t.created_at)}</td>
+        <td class="num">${won(t.members)}</td>
+        <td class="num">${won(t.models)}</td>
+        <td class="num">${won(t.bookings)}</td>
+        <td class="num">${won(t.customers)}</td>
+        <td class="num">${won(t.packages)}</td>
+        <td class="num muted">${won(t.storage_files)}</td>
+        <td class="num" style="font-weight:700;">${mb(t.storage_bytes)}</td>
+      </tr>`).join("");
+    document.querySelectorAll(".planSel").forEach((sel) => {
+      sel.addEventListener("change", async (e) => {
+        const el = e.target, agency = el.dataset.agency, plan = el.value, cur = el.dataset.cur;
+        if (plan === cur) return;
+        if (!confirm(`플랜을 '${cur}' → '${plan}' 으로 변경할까요?`)) { el.value = cur; return; }
+        try { await callAdmin("set_plan", { agency_id: agency, plan }); el.dataset.cur = plan; toast("플랜 변경됨"); }
+        catch (err) { alert(err.message); el.value = cur; }
+      });
+    });
+  }
+
+  function renderOrphans(orphans) {
+    $("ocount").textContent = "(" + orphans.length + "건)";
+    if (!orphans.length) { $("orphanBody").innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center; padding:18px;">고아 계정이 없습니다.</td></tr>`; return; }
+    $("orphanBody").innerHTML = orphans.map((o) => `
+      <tr data-id="${o.user_id}">
+        <td>${esc(o.email) || "-"}</td>
+        <td class="small muted">${fmtDate(o.created_at)}</td>
+        <td><span class="pill" style="color:${o.confirmed ? "var(--green)" : "var(--orange)"};">${o.confirmed ? "확인됨" : "미확인"}</span></td>
+        <td><button class="btn-red delOrphan" data-id="${o.user_id}" data-email="${esc(o.email)}" style="padding:5px 10px; font-size:12px;">삭제</button></td>
+      </tr>`).join("");
+    document.querySelectorAll(".delOrphan").forEach((b) => {
+      b.addEventListener("click", async (e) => {
+        const id = e.target.dataset.id, email = e.target.dataset.email;
+        if (!confirm(`고아 계정 '${email}' 을 삭제할까요?\n(에이전시·멤버십이 없는 계정만 삭제됩니다)`)) return;
+        try { await callAdmin("delete_user", { user_id: id }); toast("삭제됨"); load(); }
+        catch (err) { alert(err.message); }
+      });
+    });
+  }
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  async function load() {
+    try {
+      const [a, b] = await Promise.all([callAdmin("tenants"), callAdmin("orphans")]);
+      const tenants = a.tenants || [], orphans = b.orphans || [];
+      renderCards(tenants); renderTenants(tenants); renderOrphans(orphans);
+    } catch (err) {
+      if (err.message !== "401") { showApp(); toast(err.message); }
+    }
+  }
+
+  $("loginBtn").addEventListener("click", async () => {
+    const email = $("email").value.trim(), pw = $("password").value;
+    if (!email || !pw) { $("loginErr").textContent = "이메일·비밀번호를 입력하세요."; return; }
+    $("loginBtn").disabled = true; $("loginErr").textContent = "";
+    try {
+      const token = await login(email, pw); setToken(token);
+      $("who").textContent = email;
+      showApp(); await load();
+    } catch (err) { $("loginErr").textContent = err.message; }
+    finally { $("loginBtn").disabled = false; }
+  });
+  $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
+  $("logoutBtn").addEventListener("click", () => { setToken(""); showLogin(""); });
+  $("refreshBtn").addEventListener("click", load);
+
+  // 자동 진입(토큰 있으면)
+  if (getToken()) { showApp(); load(); } else { showLogin(""); }
+</script>
+</body>
+</html>
