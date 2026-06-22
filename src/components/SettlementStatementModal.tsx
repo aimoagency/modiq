@@ -9,7 +9,7 @@ import {
 } from "../lib/utils";
 import { sendEmail } from "../lib/email";
 import { sb } from "../lib/supabase";
-import { buildWithholdingStatementHtml, buildTransactionStatementHtml, printStatementHtml, type WhRow, type TxRow } from "../lib/withholdingStatement";
+import { buildWithholdingStatementHtml, buildTransactionStatementHtml, printStatementHtml, modelIdLabel, type WhRow, type TxRow } from "../lib/withholdingStatement";
 
 const taxLabel = (m: any) => modelTaxType(m) === "foreigner" ? "외국인" : modelTaxType(m) === "company" ? "소속사" : "프리랜서";
 const idKindLabel = (t?: string) => t === "rrn" ? "주민등록번호" : t === "arc" ? "외국인등록번호" : t === "passport" ? "여권번호" : "";
@@ -262,7 +262,7 @@ export default function SettlementStatementModal({
           {!docEmail && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ {isCompanyModel ? "소속 에이전시 이메일 미등록" : "이 모델은 이메일 미등록"} — 이메일 발송 불가(인쇄·PDF 저장은 가능).</p>}
           {isCompanyModel
             ? !selModel.agency_biz_no && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 소속 에이전시 사업자등록번호 미등록 — 모델 정보 '소속 에이전시 정보'에서 입력하세요.</p>
-            : !selModel.national_id_masked && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 주민등록번호 미등록 — 모델 정보 '세무 신고용 정보'에서 입력하면 마스킹 표시됩니다.</p>}
+            : !selModel.national_id_masked && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ {modelIdLabel(selModel)} 미등록 — 모델 정보 {modelTaxType(selModel) === "foreigner" ? "'[비자·정산 정보]'" : "'세무 신고용 정보'"}에서 입력하면 마스킹 표시됩니다.</p>}
           <div style={{ maxHeight: "66vh", overflowY: "auto", borderRadius: 8 }} dangerouslySetInnerHTML={{ __html: docHtml }} />
         </Modal>
       )}
