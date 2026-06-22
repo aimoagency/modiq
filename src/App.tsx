@@ -677,7 +677,7 @@ export default function App() {
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
   const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
-    if (!mName || (mTaxType!=="company" && !mSSN)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 주민번호 앞 6자리 필수");
+    if (!mName || (mTaxType!=="company" && !mSSN)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 생년월일 6자리 필수");
     if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mIsForeign;
     if (isFgn && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
@@ -3015,7 +3015,7 @@ async function sharePdf(){
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{mIsForeign ? "생년월일 6자리(YYMMDD) *" : "주민번호 앞 6자리 *"}</label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>생년월일 6자리(YYMMDD) *</label>
               <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
             </div>
           </div>
@@ -3231,7 +3231,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({!mIsForeign?"내국인":mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>setMNationalId(e.target.value)} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); } }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
