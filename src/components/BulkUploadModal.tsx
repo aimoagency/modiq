@@ -33,7 +33,7 @@ type FieldDef = {
 
 const MODEL_FIELDS: FieldDef[] = [
   { key: "name", label: "모델명", required: true, aliases: ["모델명", "이름", "성명", "name", "모델", "닉네임"] },
-  { key: "ssn6", label: "주민번호 앞6자리", required: true, type: "ssn6", aliases: ["주민번호", "주민", "주민등록번호", "생년월일", "ssn", "앞6자리", "주민앞"] },
+  { key: "ssn6", label: "생년월일 6자리", required: true, type: "ssn6", aliases: ["생년월일", "주민번호", "주민", "주민등록번호", "ssn", "앞6자리", "주민앞", "생일"] },
   { key: "gender", label: "성별", options: ["남", "여"], aliases: ["성별", "gender", "남녀", "sex", "성", "남여"] },
   { key: "phone", label: "전화번호", aliases: ["전화", "연락처", "휴대폰", "핸드폰", "phone", "번호", "모바일", "tel", "hp"] },
   { key: "email", label: "이메일", aliases: ["이메일", "email", "메일", "e-mail"] },
