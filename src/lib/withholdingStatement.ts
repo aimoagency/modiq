@@ -110,6 +110,104 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
   </div>`;
 };
 
+// ── 거래명세서 (Transaction Statement) ─────────────────────────────
+// 소속사(대대행) 모델용. 원천징수가 없고 소속 에이전시가 세금계산서를 발행하므로,
+// 우리(공급받는자) 쪽에서 공급가액·부가세(10%)·합계를 정리한 거래명세서를 발급.
+//  - 공급자        = 소속 에이전시 (model.agency_*) — 세금계산서 발행 주체
+//  - 공급받는자    = 우리 에이전시 (agency.*)
+export interface TxRow { date: string; desc: string; supply: number; vat: number; total: number; }
+export interface TxStatementInput {
+  agency: any;   // 공급받는자(우리 회사)
+  model: any;    // 소속사 모델 — agency_name/agency_biz_no 등 소속 에이전시(공급자) 정보 포함
+  rows: TxRow[];
+  range: { from?: string; to?: string };
+  issueDate?: string;
+}
+
+export const buildTransactionStatementHtml = (inp: TxStatementInput): string => {
+  const { agency, model, rows, range } = inp;
+  const issue = inp.issueDate || new Date().toISOString().slice(0, 10);
+  const tot = rows.reduce((a, r) => ({ supply: a.supply + r.supply, vat: a.vat + r.vat, total: a.total + r.total }), { supply: 0, vat: 0, total: 0 });
+  const periodStr = `${range.from ? fmtD(range.from) : "전체"} ~ ${range.to ? fmtD(range.to) : "현재"}`;
+
+  const party = (label: string, value: string) => `
+    <tr><td style="padding:5px 10px;color:#8a93a0;font-size:12px;width:96px;border:1px solid #e8eaed;background:#fafbfc">${label}</td>
+        <td style="padding:5px 10px;color:#16181f;font-size:12px;border:1px solid #e8eaed">${value}</td></tr>`;
+
+  const bodyRows = rows.length ? rows.map(r => `
+    <tr>
+      <td style="padding:6px 8px;border:1px solid #e8eaed;font-size:12px;text-align:center;white-space:nowrap">${esc(fmtD(r.date))}</td>
+      <td style="padding:6px 8px;border:1px solid #e8eaed;font-size:12px">${esc(r.desc)}</td>
+      <td style="padding:6px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right">${won(r.supply)}</td>
+      <td style="padding:6px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right;color:#2563c9">${won(r.vat)}</td>
+      <td style="padding:6px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right;font-weight:700">${won(r.total)}</td>
+    </tr>`).join("") : `<tr><td colspan="5" style="padding:14px;text-align:center;color:#8a93a0;border:1px solid #e8eaed;font-size:12px">해당 기간 거래 내역이 없습니다.</td></tr>`;
+
+  return `
+  <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:640px;margin:0 auto;background:#fff;color:#16181f;padding:24px;border:1px solid #e8eaed;border-radius:10px">
+    <div style="text-align:center;border-bottom:2px solid #16181f;padding-bottom:12px;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:800;letter-spacing:6px">거 래 명 세 서</div>
+      <div style="font-size:11px;color:#8a93a0;margin-top:4px">Transaction Statement · 거래기간 ${esc(periodStr)}</div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:240px">
+        <div style="font-size:11px;font-weight:700;color:#8a93a0;margin-bottom:4px">■ 공급자 (소속 에이전시 · 세금계산서 발행)</div>
+        <table style="width:100%;border-collapse:collapse">
+          ${party("상호", esc(model?.agency_name || "-"))}
+          ${party("사업자등록번호", esc(model?.agency_biz_no || "-"))}
+          ${party("담당자", esc(model?.agency_contact || "-"))}
+          ${party("연락처", esc(model?.agency_phone || "-"))}
+          ${party("대상 모델", esc(model?.name || "-"))}
+        </table>
+      </div>
+      <div style="flex:1;min-width:240px">
+        <div style="font-size:11px;font-weight:700;color:#8a93a0;margin-bottom:4px">■ 공급받는자 (당사)</div>
+        <table style="width:100%;border-collapse:collapse">
+          ${party("상호", esc(agency?.name || "-"))}
+          ${party("사업자등록번호", esc(agency?.biz_no || "-"))}
+          ${party("대표자", esc(agency?.rep_name || "-"))}
+          ${party("주소", esc(agency?.address || "-"))}
+          ${party("연락처", esc(agency?.contact_phone || agency?.rep_phone || "-"))}
+        </table>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
+      <thead>
+        <tr style="background:#f1f3f5">
+          <th style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;width:84px">거래일자</th>
+          <th style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;text-align:left">품목 / 내용</th>
+          <th style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;width:96px;text-align:right">공급가액</th>
+          <th style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;width:96px;text-align:right">세액(10%)</th>
+          <th style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;width:100px;text-align:right">합계</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+      <tfoot>
+        <tr style="background:#fafbfc;font-weight:800">
+          <td colspan="2" style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;text-align:center">합계 (${rows.length}건)</td>
+          <td style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right">${won(tot.supply)}</td>
+          <td style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right;color:#2563c9">${won(tot.vat)}</td>
+          <td style="padding:7px 8px;border:1px solid #e8eaed;font-size:12px;text-align:right">${won(tot.total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <p style="font-size:11px;color:#8a93a0;line-height:1.7;margin:0 0 16px">
+      · 소속사(대대행) 모델은 원천징수 대상이 아니며, 공급가액에 부가가치세 10%가 가산됩니다.<br>
+      · 본 거래명세서는 거래내역 확인용이며, <b>정식 세금계산서는 공급자(소속 에이전시)가 발행</b>합니다.<br>
+      · 세금계산서 수취 후 부가세 신고 시 매입세액으로 공제됩니다.
+    </p>
+
+    <div style="text-align:center;padding-top:14px;border-top:1px solid #e8eaed">
+      <div style="font-size:12px;color:#16181f">발급일 ${esc(fmtD(issue))}</div>
+      <div style="font-size:14px;font-weight:800;margin-top:6px">${esc(agency?.name || "")}</div>
+      ${agency?.biz_no ? `<div style="font-size:11px;color:#8a93a0">사업자등록번호 ${esc(agency.biz_no)}</div>` : ""}
+    </div>
+  </div>`;
+};
+
 // 인쇄(브라우저 인쇄 대화상자 → PDF로 저장). 별도 창에서 열어 인쇄.
 export const printStatementHtml = (innerHtml: string, title = "원천징수 내역서") => {
   const w = window.open("", "_blank", "width=760,height=900");

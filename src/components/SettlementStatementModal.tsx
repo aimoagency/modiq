@@ -9,7 +9,7 @@ import {
 } from "../lib/utils";
 import { sendEmail } from "../lib/email";
 import { sb } from "../lib/supabase";
-import { buildWithholdingStatementHtml, printStatementHtml, type WhRow } from "../lib/withholdingStatement";
+import { buildWithholdingStatementHtml, buildTransactionStatementHtml, printStatementHtml, type WhRow, type TxRow } from "../lib/withholdingStatement";
 
 const taxLabel = (m: any) => modelTaxType(m) === "foreigner" ? "외국인" : modelTaxType(m) === "company" ? "소속사" : "프리랜서";
 const idKindLabel = (t?: string) => t === "rrn" ? "주민등록번호" : t === "arc" ? "외국인등록번호" : t === "passport" ? "여권번호" : "";
@@ -68,24 +68,35 @@ export default function SettlementStatementModal({
 
   const stTxt = (paid: boolean) => paid ? "완료" : "미처리";
 
-  // ── 원천징수 내역서: 단일 모델 선택 시 ──
+  // ── 발급 서류: 단일 모델 선택 시 ── 소속사=거래명세서 / 프리랜서·외국인=원천징수 내역서
   const selModel = modelF !== "ALL" ? models.find((m) => m.id === modelF) : null;
-  const whHtml = useMemo(() => {
+  const isCompanyModel = !!selModel && modelTaxType(selModel) === "company";
+  const docLabel = isCompanyModel ? "거래명세서" : "원천징수 내역서";
+  // 소속사 발송처: 소속 에이전시 이메일(없으면 모델 이메일) / 그 외: 모델 이메일
+  const docEmail = isCompanyModel ? (selModel?.agency_email || selModel?.email || "") : (selModel?.email || "");
+  const docHtml = useMemo(() => {
     if (!selModel) return "";
+    if (isCompanyModel) {
+      const txRows: TxRow[] = rows.map((r) => ({
+        date: r.date, desc: [r.project, r.customer].filter(Boolean).join(" · ") || "촬영",
+        supply: r.gross, vat: Math.max(0, r.payout - r.gross), total: r.payout,
+      }));
+      return buildTransactionStatementHtml({ agency, model: selModel, rows: txRows, range });
+    }
     const whRows: WhRow[] = rows.map((r) => ({
       date: r.date, desc: [r.project, r.customer].filter(Boolean).join(" · ") || "촬영",
       gross: r.gross, withholding: r.withholding, payout: r.payout,
     }));
     return buildWithholdingStatementHtml({ agency, model: selModel, rows: whRows, range });
-  }, [selModel, rows, agency, range.from, range.to]);
+  }, [selModel, isCompanyModel, rows, agency, range.from, range.to]);
   const sendWh = async () => {
     if (!selModel) return;
-    if (!selModel.email) { alert("이 모델의 이메일이 등록되어 있지 않습니다.\n모델 정보에 이메일을 먼저 입력하세요."); return; }
-    if (!confirm(`${selModel.name}님 (${selModel.email})에게\n원천징수 내역서를 발송할까요?`)) return;
+    if (!docEmail) { alert(`${isCompanyModel ? "소속 에이전시(또는 모델)" : "이 모델"}의 이메일이 등록되어 있지 않습니다.\n${isCompanyModel ? "모델 정보 '소속 에이전시 정보'의 이메일" : "모델 정보의 이메일"}을 먼저 입력하세요.`); return; }
+    if (!confirm(`${isCompanyModel ? `${selModel.agency_name || selModel.name}` : `${selModel.name}님`} (${docEmail})에게\n${docLabel}를 발송할까요?`)) return;
     const r = await sendEmail({
-      to: selModel.email,
-      subject: `[${agency?.name || "원천징수"}] 원천징수 내역서 · ${(range.from || "전체").replace(/-/g, ".")}~${(range.to || "현재").replace(/-/g, ".")}`,
-      html: whHtml,
+      to: docEmail,
+      subject: `[${agency?.name || docLabel}] ${docLabel} · ${(range.from || "전체").replace(/-/g, ".")}~${(range.to || "현재").replace(/-/g, ".")}`,
+      html: docHtml,
       fromName: agency?.name || undefined,
       replyTo: agency?.owner_email || undefined,
     });
@@ -158,7 +169,7 @@ export default function SettlementStatementModal({
       <h3 style={{ margin: "0 0 12px", paddingRight: 44, color: C.text }}>📑 정산 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>({rows.length}건)</span></h3>
       {/* 액션 버튼 — 제목 아래 별도 줄(데스크탑·모바일 공통). 닫기 X와 겹치지 않음 */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        {modelF !== "ALL" && <button onClick={() => setWhOpen(true)} disabled={rows.length === 0} style={{ ...btnS(C.blue, rows.length === 0) }}>🧾 원천징수 내역서</button>}
+        {modelF !== "ALL" && <button onClick={() => setWhOpen(true)} disabled={rows.length === 0} style={{ ...btnS(C.blue, rows.length === 0) }}>🧾 {docLabel}</button>}
         {canViewFinance && <button onClick={downloadTaxAgent} disabled={rows.length === 0 || taxBusy} style={{ ...btnS(C.red, rows.length === 0 || taxBusy) }}>{taxBusy ? "복호화 중…" : "🔒 세무사용 (주민번호 포함)"}</button>}
         <button onClick={download} disabled={rows.length === 0} style={{ ...btnS(C.green, rows.length === 0) }}>⬇ 엑셀 다운로드</button>
       </div>
@@ -235,22 +246,24 @@ export default function SettlementStatementModal({
           )}
         </table>
       </div>
-      <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0" }}>화면은 핵심 항목만 표시합니다. 엑셀에는 계약ID·부가세·입금일·계산서발행일·원천징수·마진 등 전체 컬럼이 포함됩니다.{modelF === "ALL" ? " · 모델을 선택하면 원천징수 내역서를 발송할 수 있습니다." : ""}</p>
+      <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0" }}>화면은 핵심 항목만 표시합니다. 엑셀에는 계약ID·부가세·입금일·계산서발행일·원천징수·마진 등 전체 컬럼이 포함됩니다.{modelF === "ALL" ? " · 모델을 선택하면 발급 서류(프리랜서·외국인=원천징수 내역서 / 소속사=거래명세서)를 발송할 수 있습니다." : ""}</p>
       {canViewFinance && <p style={{ fontSize: 11, color: C.red, margin: "4px 0 0" }}>🔒 <b>세무사용</b> 파일은 모델 식별번호 전체가 포함된 민감정보입니다 — 다운로드 시 감사 로그가 기록되며 세무 신고 외 용도로 사용하지 마세요.</p>}
 
-      {/* 원천징수 내역서 미리보기 · 발송 */}
+      {/* 발급 서류 미리보기 · 발송 (소속사=거래명세서 / 그 외=원천징수 내역서) */}
       {whOpen && selModel && (
         <Modal onClose={() => setWhOpen(false)} maxW={720}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap", paddingRight: 44 }}>
-            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 원천징수 내역서 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {selModel.name}</span></h3>
+            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 {docLabel} <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {isCompanyModel ? (selModel.agency_name || selModel.name) : selModel.name}</span></h3>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => printStatementHtml(whHtml)} style={{ ...btnS(C.blue) }}>🖨 인쇄 / PDF 저장</button>
-              <button onClick={sendWh} disabled={!selModel.email} style={{ ...btnS(C.green, !selModel.email) }}>📧 이메일 발송</button>
+              <button onClick={() => printStatementHtml(docHtml, docLabel)} style={{ ...btnS(C.blue) }}>🖨 인쇄 / PDF 저장</button>
+              <button onClick={sendWh} disabled={!docEmail} style={{ ...btnS(C.green, !docEmail) }}>📧 이메일 발송</button>
             </div>
           </div>
-          {!selModel.email && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 이 모델은 이메일 미등록 — 이메일 발송 불가(인쇄·PDF 저장은 가능).</p>}
-          {!selModel.national_id_masked && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 주민등록번호 미등록 — 모델 정보 '세무 신고용 정보'에서 입력하면 마스킹 표시됩니다.</p>}
-          <div style={{ maxHeight: "66vh", overflowY: "auto", borderRadius: 8 }} dangerouslySetInnerHTML={{ __html: whHtml }} />
+          {!docEmail && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ {isCompanyModel ? "소속 에이전시 이메일 미등록" : "이 모델은 이메일 미등록"} — 이메일 발송 불가(인쇄·PDF 저장은 가능).</p>}
+          {isCompanyModel
+            ? !selModel.agency_biz_no && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 소속 에이전시 사업자등록번호 미등록 — 모델 정보 '소속 에이전시 정보'에서 입력하세요.</p>
+            : !selModel.national_id_masked && <p style={{ fontSize: 11, color: C.orange, margin: "0 0 8px" }}>⚠ 주민등록번호 미등록 — 모델 정보 '세무 신고용 정보'에서 입력하면 마스킹 표시됩니다.</p>}
+          <div style={{ maxHeight: "66vh", overflowY: "auto", borderRadius: 8 }} dangerouslySetInnerHTML={{ __html: docHtml }} />
         </Modal>
       )}
     </Modal>
