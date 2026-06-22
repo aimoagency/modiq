@@ -5,15 +5,17 @@ import { fmt, fmtDate, periodRange, REVENUE_STATUSES, bookingTotal, bookingAgenc
 import { STATUS, BOOKING_TYPES } from "../constants";
 import RevenueRanking from "../components/RevenueRanking";
 import Badge from "../components/Badge";
+import ClientStatementModal from "../components/ClientStatementModal";
 import { exportAoaXlsx } from "../lib/xlsx";
 
-export default function RevenueView({ bookings, models, customers, isMobile = false, onSelectBooking }: {
-  bookings: any[]; models: any[]; customers: any[]; isMobile?: boolean; onSelectBooking: (b:any)=>void;
+export default function RevenueView({ bookings, models, customers, agency, isMobile = false, onSelectBooking }: {
+  bookings: any[]; models: any[]; customers: any[]; agency?: any; isMobile?: boolean; onSelectBooking: (b:any)=>void;
 }) {
   const [preset, setPreset] = useState("3m");
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
   const [tab, setTab] = useState<"customer"|"model">("customer");
+  const [showStmt, setShowStmt] = useState(false); // 거래명세서/청구 모달
   const [sel, setSel] = useState<{ type:"model"|"customer"; id:string; name:string } | null>(null); // 선택된 모델/고객사
   const todayStr = new Date().toISOString().slice(0,10);
   const period = preset==="custom"   ? { from: cFrom||undefined, to: cTo||undefined }
@@ -70,10 +72,17 @@ export default function RevenueView({ bookings, models, customers, isMobile = fa
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:10 }}>
         <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}><Coins size={20} style={{ verticalAlign:-2, flexShrink:0 }}/> 매출 현황</h1>
-        <button onClick={exportXlsx} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSub, fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-          <Download size={14}/> 엑셀 다운로드
-        </button>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <button onClick={()=>setShowStmt(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, border:`1px solid ${C.blue}`, background:C.blue+"18", color:C.blue, fontSize:13, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+            📑 거래명세서 / 청구
+          </button>
+          <button onClick={exportXlsx} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8, border:`1px solid ${C.border}`, background:"transparent", color:C.textSub, fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+            <Download size={14}/> 엑셀 다운로드
+          </button>
+        </div>
       </div>
+
+      {showStmt && <ClientStatementModal bookings={bookings} customers={customers} models={models} agency={agency} isMobile={isMobile} onClose={()=>setShowStmt(false)} />}
 
       {/* 기간 필터 (칩) */}
       <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
