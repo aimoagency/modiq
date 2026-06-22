@@ -1,4 +1,4 @@
-# Modiq 개발 문서 (v1.0.0)
+# Modiq 개발 문서 (v1.1.0)
 
 > 탤런트(모델) 관리 OS — 에이전시 운영 SaaS
 > 스택: React + TypeScript + Vite / Supabase(REST + Storage + Edge Functions) / 멀티테넌트(에이전시별)
@@ -41,7 +41,8 @@ src/
 ├── components/           # 재사용 UI
 │   ├── ModelBrowser.tsx        # 좌측 검색 사이드바(필터+리스트). 스튜디오/패키지 공용
 │   ├── CompCardModal.tsx       # 컴카드(A4 가로) 생성·미리보기
-│   ├── SettlementStatementModal.tsx  # 정산 명세서(A4)
+│   ├── SettlementStatementModal.tsx  # 정산 내역서 + 모델 발급 서류(원천징수/거래명세서)
+│   ├── ClientStatementModal.tsx      # 매출 거래명세서/청구(고객사, 프로젝트별/월합산, 미수)
 │   ├── BulkUploadModal.tsx     # 모델/고객사 일괄 등록(엑셀)
 │   ├── CategorySelect, MultiCheck, MoneyInput, TimePicker, ...  # 입력 컨트롤
 │   └── icons.tsx, Badge, Modal, CloseButton, TypeIcon
@@ -60,6 +61,8 @@ src/
 └── lib/                  # 도메인 로직·외부 연동
     ├── supabase.ts       # REST 클라이언트(sb), Storage(sbUpload), thumbUrl, 토큰/세션
     ├── utils.ts          # 정산·세션 판정·나이 계산 등 핵심 계산 로직
+    ├── withholdingStatement.ts  # 원천징수 내역서 + 소속사 거래명세서(매입) HTML, 인쇄
+    ├── clientStatement.ts       # 매출 거래명세서(고객사) HTML 생성
     ├── packages.ts       # 패키지 타입·ID·공유 토큰·공유 URL
     ├── calendar.ts       # .ics 생성, 구독 링크
     ├── gcal.ts           # 구글 캘린더 OAuth/동기화 호출
@@ -92,10 +95,12 @@ src/
 
 ### models 주요 컬럼
 
-- 기본: `name`, `gender`(F/M), `category`(키즈/주니어/성인/시니어/플러스사이즈), `ssn6`(생년월일6자리→나이), `phone`, `email`
-- 신체: `height`, `shoe`, `bust`/`waist`/`hip`, `hair_length`, `eye_color`, `tattoo`, `underwear_ok`
+- 기본: `name`, `gender`(F/M), `category`(키즈/주니어/성인/시니어/플러스사이즈), `ssn6`(생년월일6자리 YYMMDD→나이), `phone`, `email`
+- 신체: `height`, `shoe`, `bust`/`waist`/`hip`(저장은 cm, 화면 표기는 inch 변환), `hair_length`, `eye_color`, `tattoo`, `underwear_ok`
 - 활동: `fields`(복수: 모델/배우/가수…), `specialty`, `instagram_followers`
-- 외국인: `is_foreigner`, `country`, `visa_type`, `visa_entry`/`visa_exit`, `has_alien_card`, `tax_rate`
+- 외국인: `is_foreigner`, `country`, `visa_type`, `visa_entry`/`visa_exit`, `has_alien_card`, `tax_rate`, `pay_method`/`pay_detail`(지급 방식) — [비자·정산 정보] 모달에서 일괄 입력
+- 세무 식별(대표·정산권한자 전용): `address`, `national_id_masked`(마스킹 표시값), `national_id_type`(rrn/arc/passport). 평문은 DB에 직접 저장하지 않고 `set_model_national_id`/`get_model_national_id` RPC로 **암호화 저장·복호화**, 복호화 접근은 `secure_id_access_log`에 감사 기록.
+- 세무유형: `payout_tax_type`(freelancer/foreigner/company) · 소속사: `agency_name`/`agency_biz_no`/`agency_contact`/`agency_phone`/`agency_email`
 - 사진: `photos`(Storage URL 배열, 최대 30), `liked_photos`, `thumb_url`(대표 썸네일), `compcard`(슬롯 jsonb)
 - 모델료: `fee_day`(9h) / `fee_half`(5h) / `fee_hour`(1h)
 - 정산방식: `payout_pay_type`(rate/fixed), `payout_day_value`/`payout_half_value`/`payout_hour_value`
@@ -128,11 +133,16 @@ src/
 - **정산방식(`payout_pay_type`)**
   - `rate`(비율): 모델료(세션) × 비율% = 모델 정산 기준액
   - `fixed`(정액): 입력 정액 그대로(모델료·수식 무관)
-- **세무유형**: 외국인(E-6 3.3% / C-4·기타 20%, `tax_rate`) · 프리랜서 3.3% · 소속사 +10% 계산서
+- **세무유형(`modelTaxType`)**: 외국인(E-6 3.3% / C-4·기타 20%, `tax_rate`) · 프리랜서 3.3% · 소속사 +10% 계산서
+  - `modelWithholding`: 프리랜서=3.3% / 외국인=비자율 / **소속사=0**(원천징수 무관)
+  - `modelPayout`: 프리랜서·외국인=기준액−원천징수 / **소속사=기준액×1.1**(세금계산서 +VAT)
+- **발급 서류 분기**(세무유형 기준, 계산식 변경 없이 문서만 분기):
+  - 정산(매입): 프리랜서·외국인 → **원천징수 내역서**(`buildWithholdingStatementHtml`, 식별번호 라벨 `modelIdLabel`) / 소속사 → **거래명세서**(`buildTransactionStatementHtml`, 공급자=소속 에이전시)
+  - 매출(고객): **거래명세서**(`buildClientStatementHtml`, 공급자=당사). 청구액 `clientCharge`=공급가×1.1, 입금판정=완납이면 전체 / 아니면 계약금·잔금 입금분 합산. 프로젝트별 또는 고객사 월합산으로 묶음.
 - **매출총이익 = 매출(공급가) − 모델 정산 기준액** (모델지급액 제외)
 - 영업이익(월 고정비 반영)은 **미구현** — 로드맵 참고
 
-> 금액은 원 단위 정수로 다룬다. 정산·세무 계산을 수정할 때는 명세서(`SettlementStatementModal`)와 매출 엑셀 출력을 함께 검증한다.
+> 금액은 원 단위 정수로 다룬다. 정산·세무 계산을 수정할 때는 명세서(`SettlementStatementModal`·`ClientStatementModal`)와 매출 엑셀 출력을 함께 검증한다. 기존 필터/수식(매출 인정 `REVENUE_STATUSES`, `clientCharge` 등)은 임의 수정 금지.
 
 ---
 
@@ -162,10 +172,10 @@ VITE_SOLAPI_FN_URL=https://<project>.supabase.co/functions/v1/solapi-send
 
 ## 8. 이미지 / 성능
 
-- 사진 업로드: 원본을 1200px로 리사이즈 → Storage 업로드, 동시에 360px `_thumb` 생성.
-- 목록/카드/아바타는 `thumbUrl()`로 `_thumb`을 받고 실패 시 원본으로 폴백. `loading="lazy"`로 화면 밖은 미로드.
+- 사진 업로드: 원본을 **긴 변 1500px(품질 0.8)** 로 리사이즈 → Storage 업로드, 동시에 **480px `_thumb`**(갤러리·공유 화면용) 생성. 목록/아바타용 대표 썸네일은 **150px**(`thumb_url`).
+- 목록/카드/아바타는 `thumb_url`/`thumbUrl()`로 작은 썸네일을 받고 실패 시 원본으로 폴백. `loading="lazy"`로 화면 밖은 미로드. 대형 목록은 IntersectionObserver 기반 증분 렌더(`useVisibleCount`)로 1000명 규모 대응.
 - 레거시(base64 DB 저장 / 썸네일 없는) 사진은 포트폴리오 우상단 **"썸네일 생성"·"저장소로 이전"** 버튼으로 1회 정리(멱등).
-- v1.0.0에서 좌측 모델 리스트·검색 카드가 원본을 받던 문제를 수정(썸네일 사용)해 갤러리 클릭 로딩을 개선.
+- v1.0.0에서 좌측 리스트·검색 카드가 원본을 받던 문제를 썸네일 사용으로 수정, v1.1.0에서 썸네일을 Storage URL(150/480px)로 전환·품질 0.8로 상향(공유 화면 선명도).
 
 ---
 
