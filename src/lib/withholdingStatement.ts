@@ -81,7 +81,7 @@ export const buildWithholdingStatementHtml = (inp: WhStatementInput): string => 
           ${party("구분", esc(typeKr))}
           ${party(modelIdLabel(model), esc(model?.national_id_masked || "미등록"))}
           ${party("주소", esc(model?.address || "-"))}
-          ${party("원천징수율 (TAX)", esc(modelRateLabel(model)))}
+          ${party('원천징수율 <span style="font-size:10px;font-weight:400">(Tax)</span>', esc(modelRateLabel(model)))}
         </table>
       </div>
     </div>
