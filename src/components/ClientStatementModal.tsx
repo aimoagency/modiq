@@ -28,6 +28,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
   const [to, setTo] = useState("");
   const [custF, setCustF] = useState("ALL");
   const [dueOnly, setDueOnly] = useState(false);
+  const [mode, setMode] = useState<"project" | "customer">("project"); // 발급 단위: 프로젝트별 / 고객사 월합산
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   const range = preset === "custom" ? { from: from || undefined, to: to || undefined } : periodRange(preset);
@@ -44,13 +45,14 @@ export default function ClientStatementModal({ bookings, customers, models, agen
       if (custF !== "ALL" && b.customer_id !== custF) return false;
       return true;
     });
+    const byCustomer = mode === "customer";
     const map = new Map<string, any>();
     for (const b of billable) {
       const proj = (b.project_name || "").trim();
-      const key = proj ? `P:${b.customer_id}__${proj}` : `S:${b.id}`;
+      const key = byCustomer ? `C:${b.customer_id}` : (proj ? `P:${b.customer_id}__${proj}` : `S:${b.id}`);
       if (!map.has(key)) {
         const c = customers.find((x) => x.id === b.customer_id);
-        map.set(key, { key, customer: c, customerId: b.customer_id, project: proj, items: [] as any[] });
+        map.set(key, { key, customer: c, customerId: b.customer_id, project: byCustomer ? "" : proj, items: [] as any[] });
       }
       map.get(key).items.push(b);
     }
@@ -63,10 +65,12 @@ export default function ClientStatementModal({ bookings, customers, models, agen
       const due = Math.max(0, charge - paid);
       const lastDate = items.reduce((d: string, b: any) => ((b.shoot_date || "") > d ? (b.shoot_date || "") : d), "");
       const status = due <= 0 ? "완납" : paid > 0 ? "부분입금" : "미수";
-      return { ...g, items, supply, vat, charge, paid, due, lastDate, status };
+      const projCount = new Set(items.map((b: any) => (b.project_name || "").trim()).filter(Boolean)).size;
+      const projLabel = byCustomer ? `월 합산 · ${items.length}건${projCount ? ` / ${projCount}개 PJ` : ""}` : (g.project || "(단건)");
+      return { ...g, items, supply, vat, charge, paid, due, lastDate, status, projLabel };
     }).filter((g) => !dueOnly || g.due > 0)
       .sort((a, b) => (b.lastDate || "").localeCompare(a.lastDate || ""));
-  }, [bookings, customers, range.from, range.to, custF, dueOnly]);
+  }, [bookings, customers, range.from, range.to, custF, dueOnly, mode]);
 
   const tot = useMemo(() => groups.reduce((a, g) => ({ charge: a.charge + g.charge, paid: a.paid + g.paid, due: a.due + g.due }), { charge: 0, paid: 0, due: 0 }), [groups]);
 
@@ -78,8 +82,8 @@ export default function ClientStatementModal({ bookings, customers, models, agen
       desc: [models.find((m: any) => m.id === b.model_id)?.name, openGroup.project || b.project_name || "촬영"].filter(Boolean).join(" · "),
       supply: bookingTotal(b), vat: vatAmount(b), total: clientCharge(b),
     }));
-    return buildClientStatementHtml({ agency, customer: openGroup.customer, project: openGroup.project, rows, paid: openGroup.paid, range });
-  }, [openGroup, agency, models, range.from, range.to]);
+    return buildClientStatementHtml({ agency, customer: openGroup.customer, project: openGroup.project || (mode === "customer" ? "월 합산" : ""), rows, paid: openGroup.paid, range });
+  }, [openGroup, agency, models, range.from, range.to, mode]);
 
   const sendDoc = async () => {
     if (!openGroup) return;
@@ -99,7 +103,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
 
   const download = async () => {
     const head = ["고객사", "프로젝트", "건수", "공급가액", "부가세(10%)", "청구합계(VAT)", "입금액", "미수금", "상태"];
-    const body = groups.map((g) => [g.customer?.name || "?", g.project || "(단건)", g.items.length, g.supply, g.vat, g.charge, g.paid, g.due, g.status]);
+    const body = groups.map((g) => [g.customer?.name || "?", g.projLabel, g.items.length, g.supply, g.vat, g.charge, g.paid, g.due, g.status]);
     const totalRow = ["합계", "", groups.reduce((s, g) => s + g.items.length, 0), "", "", tot.charge, tot.paid, tot.due, ""];
     const label = (range.from || "전체") + "_" + (range.to || "현재");
     await exportAoaXlsx([head, ...body, totalRow], `거래명세서_청구목록_${label}.xlsx`, "거래명세서", [16, 18, 6, 13, 12, 14, 13, 13, 9]);
@@ -115,7 +119,13 @@ export default function ClientStatementModal({ bookings, customers, models, agen
   return (
     <Modal onClose={onClose} maxW={1000}>
       <h3 style={{ margin: "0 0 12px", paddingRight: 44, color: C.text }}>📑 거래명세서 / 청구 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>({groups.length}건)</span></h3>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+        {/* 발급 단위: 프로젝트별 / 고객사 월합산(한 장) */}
+        <span style={{ display: "inline-flex", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+          {([["project", "프로젝트별"], ["customer", "고객사 월합산"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setMode(k)} style={{ padding: "6px 12px", border: "none", background: mode === k ? C.blue + "22" : "transparent", color: mode === k ? C.blue : C.muted, fontSize: 12, fontWeight: mode === k ? 700 : 500, cursor: "pointer" }}>{l}</button>
+          ))}
+        </span>
         <button onClick={() => setDueOnly((v) => !v)} style={{ ...btnS(dueOnly ? C.red : C.muted) }}>{dueOnly ? "● 미수만 보는 중" : "○ 미수만 보기"}</button>
         <button onClick={download} disabled={groups.length === 0} style={{ ...btnS(C.green, groups.length === 0) }}>⬇ 엑셀 다운로드</button>
       </div>
@@ -160,7 +170,7 @@ export default function ClientStatementModal({ bookings, customers, models, agen
             ) : groups.map((g) => (
               <tr key={g.key}>
                 <td style={td}>{g.customer?.name || "?"}</td>
-                <td style={{ ...td, color: C.textSub }}>{g.project || "(단건)"}</td>
+                <td style={{ ...td, color: C.textSub }}>{g.projLabel}</td>
                 <td style={{ ...td, textAlign: "center" }}>{g.items.length}</td>
                 <td style={numTd}>{won(g.supply)}</td>
                 <td style={numTd}>{won(g.charge)}</td>
@@ -183,13 +193,13 @@ export default function ClientStatementModal({ bookings, customers, models, agen
           )}
         </table>
       </div>
-      <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0" }}>프로젝트 단위로 묶어 거래명세서를 발급합니다(프로젝트명이 없으면 단건). 실제 세금계산서는 홈택스에서 별도 발행하세요.</p>
+      <p style={{ fontSize: 11, color: C.muted, margin: "10px 0 0" }}>{mode === "customer" ? "고객사별로 이 기간 전체 거래를 한 장에 합산해 발급합니다." : "프로젝트 단위로 묶어 거래명세서를 발급합니다(프로젝트명이 없으면 단건)."} 실제 세금계산서는 홈택스에서 별도 발행하세요.</p>
 
       {/* 거래명세서 미리보기 · 발송 */}
       {openGroup && (
         <Modal onClose={() => setOpenKey(null)} maxW={720}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap", paddingRight: 44 }}>
-            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 거래명세서 발급 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {openGroup.customer?.name || "?"}{openGroup.project ? ` / ${openGroup.project}` : ""}</span></h3>
+            <h3 style={{ margin: 0, color: C.text, fontSize: 15 }}>🧾 거래명세서 발급 <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>· {openGroup.customer?.name || "?"}{openGroup.project ? ` / ${openGroup.project}` : (mode === "customer" ? " / 월 합산" : "")}</span></h3>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => printStatementHtml(docHtml, "거래명세서")} style={{ ...btnS(C.blue) }}>🖨 인쇄 / PDF 저장</button>
               <button onClick={sendDoc} disabled={!hasEmail} style={{ ...btnS(C.green, !hasEmail) }}>📧 이메일 발송</button>
