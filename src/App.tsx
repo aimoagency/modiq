@@ -600,9 +600,29 @@ export default function App() {
     if (!validateBizNo(bizNoNorm)) return setAuthError("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
     setAuthLoading(true); setAuthError("");
     try {
-      const authRes = await sbAuth("signup", { email, password });
-      setAuthTokens(authRes.access_token||null, authRes.refresh_token||null);
-      const user = authRes.user;
+      let authRes: any;
+      try {
+        authRes = await sbAuth("signup", { email, password });
+      } catch (e: any) {
+        // 이미 가입된 이메일(이전 시도에서 계정만 만들어진 '고아' 계정 포함)이면 로그인으로 세션을 얻어 이어서 진행(복구)
+        if (/already.*regist|registered|user_already_exists|email.*exist/i.test(String(e?.message || e)))
+          authRes = await sbAuth("token?grant_type=password", { email, password });
+        else throw e;
+      }
+      // ⚠️ GoTrue 버전/설정에 따라 /signup 응답에 세션(access_token)이 없을 수 있다(이메일 확인 OFF여도).
+      // 세션 없이 곧장 INSERT하면 anon 권한으로 실행돼 RLS(42501 "new row violates ...")로 막힌다.
+      // → 반드시 세션(JWT)을 확보한 뒤에만 agencies/agency_members를 생성한다.
+      let access = authRes.access_token || authRes.session?.access_token || null;
+      let refresh = authRes.refresh_token || authRes.session?.refresh_token || null;
+      let user = authRes.user || (authRes.id ? authRes : null);
+      if (!access) {
+        const login = await sbAuth("token?grant_type=password", { email, password });
+        access = login.access_token || null;
+        refresh = login.refresh_token || null;
+        user = login.user || user;
+      }
+      if (!access || !user?.id) throw new Error("세션 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setAuthTokens(access, refresh);
       const agId = `AGY_${Date.now()}`;
       const trialEnd = new Date(Date.now() + 14*24*60*60*1000).toISOString();
       const agencyData = { id:agId, name:agencyName, biz_no:bizNoNorm, owner_id:user.id, owner_email:email, plan:"trial", additional_members:0, trial_ends_at:trialEnd, created_at:new Date().toISOString() };
