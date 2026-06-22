@@ -30,7 +30,7 @@ const resizeImage = (file: File, cb: (data: string) => void) => {
       cv.width = Math.round(img.width * sc);
       cv.height = Math.round(img.height * sc);
       cv.getContext("2d")!.drawImage(img, 0, 0, cv.width, cv.height);
-      cb(cv.toDataURL("image/jpeg", 0.6));
+      cb(cv.toDataURL("image/jpeg", 0.8)); // 품질 0.8 (디테일 보존)
     };
     img.src = String(r.result);
   };
@@ -117,7 +117,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
             try {
               const base = `${safeSeg(agency.id)}/${safeSeg(m.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
               const url = await sbUpload(`${base}.jpg`, dataURLtoBlob(p));
-              try { const small = await new Promise<string>(res => makeThumb(p, res, 480, 0.72)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 */ }
+              try { const small = await new Promise<string>(res => makeThumb(p, res, 480, 0.8)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 */ }
               map.set(p, url); newPhotos.push(url); moved++;
             } catch { newPhotos.push(p); } // 실패분은 그대로 둠(재시도 가능)
           } else newPhotos.push(p);
@@ -143,7 +143,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     const targets: string[] = [];
     models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p) && !/_thumb\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
     if (!targets.length) { alert("최적화할 Storage 사진이 없습니다."); return; }
-    if (!confirm(`기존 사진 ${targets.length}장을 최적화합니다.\n· 원본을 긴 변 1500px / 품질 0.6으로 재압축(용량↓)\n· 480px 고화질 썸네일 생성(공유 화면 선명도↑)\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    if (!confirm(`기존 사진 ${targets.length}장을 최적화합니다.\n· 원본을 긴 변 1500px / 품질 0.8로 재압축(용량↓)\n· 480px 고화질 썸네일 생성(공유 화면 선명도↑)\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
     setThumbing(true);
     let made = 0;
     // 이미지 1회 로드 → 원본(1500/0.6)·썸네일(360/0.62) 두 버전 생성
@@ -153,8 +153,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         const img = await new Promise<HTMLImageElement>((res, rej) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => rej(new Error("load")); im.src = url; });
         const path = decodeURIComponent((url.split("/object/public/" + STORAGE_BUCKET + "/")[1] || "").split("?")[0]);
         if (!path) continue;
-        await sbUpload(path, dataURLtoBlob(render(img, 1500, 0.6)));                          // 원본 재압축(덮어쓰기)
-        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(render(img, 480, 0.72))); // 썸네일(공유 화면 선명도 위해 480px/0.72)
+        await sbUpload(path, dataURLtoBlob(render(img, 1500, 0.8)));                          // 원본 재압축(덮어쓰기)
+        await sbUpload(path.replace(/(\.jpe?g)$/i, "_thumb$1"), dataURLtoBlob(render(img, 480, 0.8))); // 썸네일(공유 화면 선명도 위해 480px/0.8)
         made++;
       } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
     }
@@ -222,7 +222,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       try {
         const base = `${safeSeg(agency.id)}/${safeSeg(sel.id)}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const url = await sbUpload(`${base}.jpg`, dataURLtoBlob(data));
-        try { const small = await new Promise<string>(res => makeThumb(data, res, 480, 0.72)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 가능 */ }
+        try { const small = await new Promise<string>(res => makeThumb(data, res, 480, 0.8)); await sbUpload(`${base}_thumb.jpg`, dataURLtoBlob(small)); } catch { /* 썸네일 실패해도 원본 폴백 가능 */ }
         collected.push(url);
       } catch (e) {
         console.error("사진 업로드 실패 — base64로 저장(폴백)", e);
