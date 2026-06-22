@@ -3157,7 +3157,7 @@ async function sharePdf(){
               {mIsForeign ? (
                 <>
                   <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
-                  <span style={{ fontSize:11, color:C.muted }}>🔒 비자·정산 정보에서 설정됨</span>
+                  <span style={{ fontSize:11, color:C.muted }}>🔒 세율·주소·식별번호는 [비자·정산 정보]에서 입력</span>
                 </>
               ) : (
                 ([["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
@@ -3213,11 +3213,10 @@ async function sharePdf(){
             </div>
           </div>
 
-          {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── 소속사(대대행)는 원천징수 무관이라 숨김 */}
-          {canViewFinance && mTaxType!=="company" && (()=>{
-            const idType = !mIsForeign ? "rrn" : (mHasAlienCard ? "arc" : "passport");
-            const idLabel = idType==="rrn" ? "주민등록번호" : idType==="arc" ? "외국인등록번호" : "여권번호";
-            const idPh = idType==="passport" ? "예: M12345678" : "13자리 (- 없이)";
+          {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── 소속사(대대행)는 원천징수 무관이라 숨김 · 외국인은 [비자·정산 정보] 모달에서 입력 */}
+          {canViewFinance && mTaxType!=="company" && !mIsForeign && (()=>{
+            const idLabel = "주민등록번호";
+            const idPh = "13자리 (- 없이)";
             const masked = selectedModel?.national_id_masked;
             const showInput = !masked || showIdInput || !mEditMode;
             return (
@@ -3228,10 +3227,10 @@ async function sharePdf(){
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주소</label>
                 <input style={{ ...inp, marginBottom:0 }} value={mAddress} onChange={e=>setMAddress(e.target.value)} placeholder="모델 주소 (지급명세서용)" />
               </div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({!mIsForeign?"내국인":mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>(내국인)</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); } }} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
@@ -3404,6 +3403,39 @@ async function sharePdf(){
             )}
             {!mPayMethod && <p style={{ margin:0, fontSize:12, color:C.muted }}>지급 방식을 먼저 선택하세요.</p>}
           </div>
+
+          {/* ── 세무 신고용 정보 (주소 + 외국인등록번호/여권번호) — 비자 정보와 한 화면에서 입력 ── 대표·정산권한자 전용 */}
+          {canViewFinance && (()=>{
+            const idType = mHasAlienCard ? "arc" : "passport";
+            const idLabel = idType==="arc" ? "외국인등록번호" : "여권번호";
+            const idPh = idType==="passport" ? "예: M12345678" : "13자리 (- 없이)";
+            const masked = selectedModel?.national_id_masked;
+            const showInput = !masked || showIdInput || !mEditMode;
+            return (
+            <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"0 0 16px", background:C.card2 }}>
+              <p style={{ margin:"0 0 3px", fontSize:12, fontWeight:700, color:C.text }}>세무 신고용 정보 <span style={{ fontWeight:500, color:C.muted }}>(원천징수·지급명세서)</span></p>
+              <p style={{ margin:"0 0 10px", fontSize:11, color:C.muted }}>🔒 식별번호는 암호화 저장되고 화면엔 마스킹만 표시됩니다 · 대표·정산권한자 전용</p>
+              <div style={{ marginBottom:10 }}>
+                <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주소</label>
+                <input style={{ ...inp, marginBottom:0 }} value={mAddress} onChange={e=>setMAddress(e.target.value)} placeholder="모델 주소 (지급명세서용)" />
+              </div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
+              {showInput ? (
+                <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); } }} placeholder={idPh} autoComplete="off" />
+                  {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
+                  {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
+                </span>
+              ) : (
+                <span style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                  <span style={{ fontFamily:"monospace", fontSize:14, color:C.text, background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"7px 12px" }}>{masked}</span>
+                  <button type="button" onClick={()=>{ setShowIdInput(true); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"7px 12px" }}>변경</button>
+                </span>
+              )}
+              {!mEditMode && <p style={{ margin:"5px 0 0", fontSize:10, color:C.muted }}>모델 추가 시 함께 암호화 저장됩니다.</p>}
+            </div>
+            );
+          })()}
 
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={()=>setShowForeignModal(false)} style={{ ...btnS(C.green), flex:1 }}>저장</button>
