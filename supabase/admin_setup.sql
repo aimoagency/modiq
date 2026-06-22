@@ -33,7 +33,7 @@ returns table(
   order by a.created_at desc;
 $$;
 
--- 고아 계정: 에이전시도 멤버십도 없는 auth 사용자(가입 실패 잔재)
+-- 고아 계정: 에이전시도 멤버십도 없는 auth 사용자(가입 실패 잔재). 운영자(platform_admins)는 제외.
 create or replace function public.admin_orphan_accounts()
 returns table(user_id uuid, email text, created_at text, confirmed boolean)
 language sql security definer set search_path = '' as $$
@@ -41,6 +41,7 @@ language sql security definer set search_path = '' as $$
   from auth.users u
   where not exists (select 1 from public.agencies a where a.owner_id = u.id::text)
     and not exists (select 1 from public.agency_members m where m.user_id = u.id::text)
+    and not exists (select 1 from public.platform_admins pa where pa.email = u.email)
   order by u.created_at desc;
 $$;
 
