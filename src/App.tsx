@@ -3067,7 +3067,7 @@ async function sharePdf(){
               {(["cm","inch"] as const).map(u=>(
                 <button key={u} type="button" onClick={()=>switchSizeUnit(u)} style={{ padding:"3px 11px", borderRadius:14, border:`1px solid ${mSizeUnit===u?C.blue:C.border}`, background:mSizeUnit===u?C.blue+"22":"transparent", color:mSizeUnit===u?C.blue:C.muted, fontSize:11, fontWeight:mSizeUnit===u?700:500, cursor:"pointer" }}>{u}</button>
               ))}
-              <span style={{ fontSize:10, color:C.muted }}>{mSizeUnit==="inch"?"※ 저장 시 cm로 자동 변환":"cm로 저장·표시"}</span>
+              <span style={{ fontSize:10, color:C.muted }}>{mSizeUnit==="inch"?"※ inch로 표기 (포트폴리오·패키지·컴카드)":"※ cm 입력 → inch로 자동 변환 표기"}</span>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:8, marginBottom:10, maxWidth:isMobile?undefined:480 }}>
               {([[`가슴(${mSizeUnit})`,mBust,setMBust],[`허리(${mSizeUnit})`,mWaist,setMWaist],[`엉덩이(${mSizeUnit})`,mHip,setMHip]] as [string,string,(v:string)=>void][]).map(([ph,val,set])=>(

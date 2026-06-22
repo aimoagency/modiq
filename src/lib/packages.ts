@@ -67,9 +67,10 @@ export const emptyItem = (): PackageItem => ({ name: "", photos: [] });
 export const shareUrl = (token: string) =>
   `${location.origin}${location.pathname}?pkg=${encodeURIComponent(token)}`;
 
-// ── 사이즈 요약 문자열 ("173 / 34-24-35 / 240") ──
+// ── 사이즈 요약 문자열 ("173 / 34-24-35 / 240") — 3사이즈는 inch로 표기(저장은 cm) ──
 export const sizeLine = (it: PackageItem): string => {
-  const three = [it.bust, it.waist, it.hip].filter(Boolean).join("-");
+  const cmToIn = (v: any) => { const n = Number(v); return n > 0 ? String(Math.round(n / 2.54)) : ""; };
+  const three = [it.bust, it.waist, it.hip].map(cmToIn).filter(Boolean).join("-");
   return [it.height && `${it.height}cm`, three, it.shoe && `${it.shoe}mm`]
     .filter(Boolean).join(" · ");
 };
