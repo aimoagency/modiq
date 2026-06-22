@@ -94,7 +94,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [careerOpen, setCareerOpen] = useState(false); // 모델 정보 리스트 경력 펼침
   const [thumbing, setThumbing] = useState(false); // 기존 사진 썸네일 일괄 생성 진행중
   const [thumbsDone, setThumbsDone] = useState(false); // 썸네일 일괄생성 완료(기기 기억 → 버튼 숨김)
-  useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
+  useEffect(() => { try { setThumbsDone(localStorage.getItem("modiq_thumbs_v2_" + (agency?.id || "")) === "1"); } catch {} }, [agency?.id]);
   // 전체화면 오버레이 → 브라우저 뒤로가기로 닫기
   useBackClose(viewer !== null, () => setViewer(null));
   useBackClose(!!compModel, () => setCompModel(null));
@@ -143,7 +143,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     const targets: string[] = [];
     models.forEach(m => (Array.isArray(m.photos) ? m.photos : []).forEach((p: string) => { if (typeof p === "string" && p.includes("/object/public/" + STORAGE_BUCKET + "/") && /\.jpe?g(\?.*)?$/i.test(p) && !/_thumb\.jpe?g(\?.*)?$/i.test(p)) targets.push(p); }));
     if (!targets.length) { alert("최적화할 Storage 사진이 없습니다."); return; }
-    if (!confirm(`기존 사진 ${targets.length}장을 최적화합니다.\n· 원본을 긴 변 1500px / 품질 0.6으로 재압축(용량↓)\n· 360px 썸네일 생성(로딩↑)\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
+    if (!confirm(`기존 사진 ${targets.length}장을 최적화합니다.\n· 원본을 긴 변 1500px / 품질 0.6으로 재압축(용량↓)\n· 480px 고화질 썸네일 생성(공유 화면 선명도↑)\n시간이 걸릴 수 있고, 중간에 닫지 마세요. 진행할까요?`)) return;
     setThumbing(true);
     let made = 0;
     // 이미지 1회 로드 → 원본(1500/0.6)·썸네일(360/0.62) 두 버전 생성
@@ -159,7 +159,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       } catch { /* 개별 실패는 건너뜀(재실행 시 이어서) */ }
     }
     setThumbing(false);
-    if (made > 0) { setThumbsDone(true); try { localStorage.setItem("modiq_thumbs_" + (agency?.id || ""), "1"); } catch {} }
+    if (made > 0) { setThumbsDone(true); try { localStorage.setItem("modiq_thumbs_v2_" + (agency?.id || ""), "1"); } catch {} }
     alert(`사진 ${made}장 최적화 완료(원본 재압축 + 썸네일 생성).${made > 0 ? " 이 버튼은 이제 사라집니다." : ""}`);
   };
 
