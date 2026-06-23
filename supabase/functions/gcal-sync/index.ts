@@ -13,6 +13,25 @@ const CORS = {
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 
+// 종료가 비었거나 시작과 같으면 +N분(구글 "time range empty" 400 방지). 벽시계(Asia/Seoul) 값에 분만 가산.
+const addMin = (iso: string, mins: number) => {
+  const [d, t] = String(iso).split("T");
+  const [Y, Mo, D] = d.split("-").map(Number);
+  const [h, mi, s] = (t || "0:0:0").split(":").map(Number);
+  const dt = new Date(Date.UTC(Y, (Mo || 1) - 1, D || 1, h || 0, mi || 0, s || 0));
+  dt.setUTCMinutes(dt.getUTCMinutes() + mins);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}T${p(dt.getUTCHours())}:${p(dt.getUTCMinutes())}:${p(dt.getUTCSeconds())}`;
+};
+// 종일 일정 종료일(다음 날, exclusive) — 같은 날이면 구글이 거부
+const nextDay = (d: string) => {
+  const [Y, Mo, D] = String(d).split("-").map(Number);
+  const dt = new Date(Date.UTC(Y, (Mo || 1) - 1, D || 1));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+};
+
 (globalThis as any).Deno?.serve?.(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -54,8 +73,12 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 
   // 4) 생성/수정 이벤트 본문
   const body: any = { summary: summary || "일정", description: description || "", location: location || "" };
-  if (all_day) { body.start = { date }; body.end = { date }; }
-  else { body.start = { dateTime: start, timeZone: "Asia/Seoul" }; body.end = { dateTime: end || start, timeZone: "Asia/Seoul" }; }
+  if (all_day) { body.start = { date }; body.end = { date: nextDay(date) }; }
+  else {
+    const endDt = (end && end > start) ? end : addMin(start, 120);
+    body.start = { dateTime: start, timeZone: "Asia/Seoul" };
+    body.end = { dateTime: endDt, timeZone: "Asia/Seoul" };
+  }
   if (attendee_email) body.attendees = [{ email: attendee_email }];
 
   const url = action === "update" && event_id ? `${cal}/${event_id}?sendUpdates=all` : `${cal}?sendUpdates=all`;
