@@ -19,16 +19,20 @@ export default function TimePicker({ label, value, onChange }: { label:string; v
   return (
     <div>
       <label style={{ fontSize:10, color:C.muted, display:"block", marginBottom:3 }}>{label}</label>
-      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-        <button type="button" onClick={()=>setAmpm("오전")} style={ap("오전")}>오전</button>
-        <button type="button" onClick={()=>setAmpm("오후")} style={ap("오후")}>오후</button>
-        <select value={h12} onChange={e=>setH12(Number(e.target.value))} style={{ ...sel, width:44 }}>
-          {HOURS.map(h=><option key={h} value={h}>{h}</option>)}
-        </select>
-        <span style={{ color:C.muted, fontSize:11 }}>:</span>
-        <select value={m} onChange={e=>setM(Number(e.target.value))} style={{ ...sel, width:48 }}>
-          {MINS.map(mn=><option key={mn} value={mn}>{pad(mn)}</option>)}
-        </select>
+      <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+        <div style={{ display:"flex", gap:4 }}>
+          <button type="button" onClick={()=>setAmpm("오전")} style={ap("오전")}>오전</button>
+          <button type="button" onClick={()=>setAmpm("오후")} style={ap("오후")}>오후</button>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+          <select value={h12} onChange={e=>setH12(Number(e.target.value))} style={{ ...sel, width:44 }}>
+            {HOURS.map(h=><option key={h} value={h}>{h}</option>)}
+          </select>
+          <span style={{ color:C.muted, fontSize:11 }}>:</span>
+          <select value={m} onChange={e=>setM(Number(e.target.value))} style={{ ...sel, width:48 }}>
+            {MINS.map(mn=><option key={mn} value={mn}>{pad(mn)}</option>)}
+          </select>
+        </div>
       </div>
     </div>
   );

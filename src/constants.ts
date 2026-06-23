@@ -51,7 +51,7 @@ const COUNTRIES_RAW = [
   "탄자니아","우간다","세네갈","코트디부아르","카메룬","앙골라","모잠비크","짐바브웨",
 ];
 export const COUNTRIES = ["대한민국", ...COUNTRIES_RAW.filter(c => c !== "대한민국").sort((a, b) => a.localeCompare(b, "ko")), "기타"];
-export const SHOOT_TYPES_VIDEO = ["CF/TVC","바이럴영상","SNS영상","홈쇼핑","유튜브","브랜드필름"];
+export const SHOOT_TYPES_VIDEO = ["CF/TVC","바이럴영상","SNS영상","홈쇼핑","유튜브","브랜드필름","방송"];
 export const USAGE_SCOPES = ["온라인","스폰서애드","잡지","옥외광고","인쇄물","홈쇼핑","TVC"];
 export const USAGE_PERIODS = ["6개월","12개월","24개월","기타"];
 export const HOURS = [1,2,3,4,5,6,7,8,9,10,11,12];
