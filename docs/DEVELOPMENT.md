@@ -1,4 +1,4 @@
-# Modiq 개발 문서 (v1.1.0)
+# Modiq 개발 문서 (v1.2.0)
 
 > 탤런트(모델) 관리 OS — 에이전시 운영 SaaS
 > 스택: React + TypeScript + Vite / Supabase(REST + Storage + Edge Functions) / 멀티테넌트(에이전시별)
@@ -88,7 +88,7 @@ src/
 | `agency_members` | 소속 멤버·권한 | `agency_id`, `user_id`, `role`(owner/member), `name`, `phone`, 재무열람 권한 |
 | `models` | 모델 프로필·포트폴리오 | 아래 표 참고 |
 | `customers` | 고객사 | `name`, `industry`, `category`, 담당자, 입금 정보 |
-| `bookings` | 섭외(촬영/미팅/피팅/오디션) | `status`, `booking_type`, `model_id`, `customer_id`, `shoot_date`, 정산 필드 |
+| `bookings` | 섭외(촬영/미팅/피팅/오디션) | `status`, `booking_type`, `model_id`, `customer_id`, `shoot_date`, 정산 필드, `gcal_event_id`, `model_response`/`model_responded_at`/`model_resp_token`(수락형) |
 | `projects` | 섭외 묶음(프로젝트) | 모델↔고객사 양방향 추적 |
 | `packages` | 모델 제안 패키지 | `items`(모델 스냅샷 배열), `share_token`, `is_public` |
 | `model_offs` | 모델 기간 휴무 | `model_id`, `start_date`, `end_date`, `reason` |
@@ -150,9 +150,10 @@ src/
 
 | 함수 | 역할 | 시크릿 / 비고 |
 |---|---|---|
-| `email-send` | Resend로 이메일 발송(.ics 첨부 등) | `RESEND_API_KEY`, `EMAIL_FROM`, `FN_SHARED_SECRET` / Verify JWT **OFF** |
+| `email-send` | Resend로 이메일 발송(.ics 첨부). 발신=`EMAIL_FROM`(modiq), 회신=`replyTo`(에이전시) | `RESEND_API_KEY`, `EMAIL_FROM`, `FN_SHARED_SECRET` / Verify JWT **OFF** |
 | `cal-feed` | 모델 캘린더 구독 피드(확정 일정 자동 반영) | SERVICE_ROLE 기본 / Verify JWT **OFF** |
 | `gcal-oauth` / `gcal-sync` | 에이전시별 구글 캘린더 OAuth·동기화 | 회사정보에서 구글 계정 1회 연동 |
+| `booking-respond` | 섭외 초대 **수락/거절 공개 페이지** → 수락 시 `gcal-sync` 호출(캘린더 생성·모델 초대)·`.ics`/구글추가 제공, 거절 시 에이전시 알림 | SERVICE_ROLE 기본 / Verify JWT **OFF**. `?id&token`(`model_resp_token`) 검증 |
 | `solapi-send` | 카카오 알림톡(4종) 발송 | Solapi API 키는 함수 시크릿에 보관 |
 | `extract-business-info` | 사업자등록증 OCR | 회사정보 등록 시 |
 
@@ -199,7 +200,8 @@ VITE_SOLAPI_FN_URL=https://<project>.supabase.co/functions/v1/solapi-send
 - Supabase 키 `.env` 분리 + RLS 정책 정비
 
 **기능 로드맵**
-1. 구글 캘린더 3단계 자동 동기화(확정/변경/취소 자동)
+0. ~~구글 캘린더 자동 동기화~~ → **v1.2.0 반영**: 수락형 흐름(확정→초대 메일→모델 수락 시 캘린더 생성, 수락 후 변경 갱신·취소 삭제). 메일 발신=modiq·회신=에이전시.
+1. 모델 수락률/응답 현황 집계(대시보드)
 2. Hour 세션 자동적용 기준 정의
 3. 영업이익 단계(월 고정비 입력 → 매출총이익 → 영업이익)
 4. 체류 만료 알림(D-30/7/0) · 외국인 서류 업로드

@@ -1,5 +1,22 @@
 # modiq 변경 로그
 
+## v1.2.0 — 2026.06.24 · 섭외 수락형 일정 동기화 + 메일 발신/회신 정비 📅
+
+확정 즉시 캘린더에 넣던 흐름을 **모델 수락 기반**으로 전환하고, 메일 발신자/회신주소를 정비. 버전 표기 `1.2.0`으로 통일(package.json · constants.ts · 문서 · 앱 내 표시).
+
+### 섭외 수락형 일정 동기화
+- 촬영·실물미팅 **확정** 시 모델에게 **[수락]/[거절] 초대 메일**만 발송(`sendInviteEmail`) — 캘린더는 즉시 생성하지 않음.
+- 모델이 **수락**하면 공개 함수 `booking-respond`가 ① `model_response=accepted` 기록 ② `gcal-sync` 호출(에이전시 구글 캘린더 일정 생성 + 모델 게스트 초대) ③ 수락 페이지에서 `.ics`·구글 추가 제공(모델 메일이 구글이 아니어도 추가 가능).
+- **거절** 시 `declined` 기록 + 에이전시 알림 메일. 수락 후 일시·장소 변경만 구글 일정 갱신.
+- 섭외 상세에 **모델 응답 배지**(수락 대기/수락됨/거절). 수동 "일정 보내기"(구글 등록/이메일/링크)는 즉시 동작 override로 유지.
+- DB: `bookings`에 `model_response`·`model_responded_at`·`model_resp_token` 추가. 신규 Edge Function `booking-respond`(Verify JWT OFF).
+
+### 메일 발신 / 회신
+- 발신자는 `EMAIL_FROM`(modiq) 유지, **회신(Reply-To) = 에이전시 이메일**(`owner_email`) 연결 — 모델이 안내/초대 메일에 회신하면 담당 에이전시가 받는다(`email-send`).
+- ⚠️ 초대/안내 메일 실발송은 **Resend 도메인 인증 + `EMAIL_FROM`(인증 도메인 주소)** 가 전제.
+
+---
+
 ## v1.1.0 — 2026.06.22 · MVP 완료(정산·세무 서류 + 성능/UX) 🎉
 
 v1.0.0(MVP) 이후 누적 개선을 모은 마무리 릴리스. 이후 개발은 랜딩 페이지·가격 정책으로 이동. 버전 표기 `1.1.0`으로 통일(package.json · constants.ts · README · 앱 내 표시).
