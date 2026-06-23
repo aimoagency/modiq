@@ -64,7 +64,7 @@ const PackagePublicView = lazyRetry(() => import("./views/PackagePublicView"));
 const CalendarAddView = lazyRetry(() => import("./views/CalendarAddView"));
 const CalSubscribeView = lazyRetry(() => import("./views/CalSubscribeView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
-import { sendCalEmail, sendCancelEmail } from "./lib/email";
+import { sendCalEmail, sendCancelEmail, sendInviteEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
 import type { Pkg } from "./lib/packages";
 import { useBackClose, topBack } from "./lib/backstack";
@@ -1198,7 +1198,28 @@ export default function App() {
     } catch { return null; }
   };
 
-  // 섭외 확정/수정/취소 → 구글 캘린더 자동 동기화(+확정 시 영어 병기 안내 메일).
+  // 섭외 초대(수락 요청) 메일 발송 + 응답 토큰/상태(pending) 보장. 실패해도 앱 흐름 방해 X.
+  // 수락형 흐름: 이 메일을 먼저 보내고, 모델이 수락해야(booking-respond) 캘린더가 생성된다.
+  const sendBookingInvite = async (tb: any, tm: any, tc: any) => {
+    if (!tm?.email) return;
+    let token = tb.model_resp_token;
+    const patch: any = {};
+    if (!token) { token = genCalToken(); patch.model_resp_token = token; }
+    if (tb.model_response !== "accepted") patch.model_response = "pending";
+    if (Object.keys(patch).length) {
+      try {
+        await sb("bookings", "PATCH", patch, `?id=eq.${tb.id}`);
+        setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, ...patch } : x));
+        setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, ...patch } : s);
+      } catch {}
+    }
+    try {
+      const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+      await sendInviteEmail(tm.email, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
+    } catch {}
+  };
+
+  // 섭외 확정/수정/취소 → (수락형) 확정 시 초대 메일 / 수락 후 일시·장소 변경 시 구글 일정 갱신 / 취소 시 삭제·안내.
   // 구글 미연동·모델 이메일 없음·메일함수 미배포 시 안전하게 no-op(앱 흐름 방해 X).
   const syncBookingToCalendar = async (tb: any, tm: any, tc: any, opts: { mail?: boolean } = {}) => {
     if (!agency?.id || !tb) return;
@@ -1221,28 +1242,22 @@ export default function App() {
       }
       return;
     }
-    // 확정 계열 + 날짜 있을 때만 동기화
+    // 확정 계열 + 날짜 있을 때만 (수락형 흐름)
     if (!["CONFIRMED", "COMPLETED", "SETTLED"].includes(tb.status) || !tb.shoot_date) return;
-    try {
-      const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-      const input: any = { action: tb.gcal_event_id ? "update" : "create", agency_id: agency.id, event_id: tb.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
-      if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
-      else { input.all_day = true; input.date = ev.date; }
-      const r = await gcalSync(input);
-      if (r.ok && !tb.gcal_event_id && r.event_id) {
-        await sb("bookings", "PATCH", { gcal_event_id: r.event_id }, `?id=eq.${tb.id}`);
-        setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, gcal_event_id: r.event_id } : x));
-        setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: r.event_id } : s);
-      }
-    } catch {}
-    // 확정 시 영어 병기 안내 메일 자동 발송(모든 모델 · 내외국인 구분 없이)
-    if (opts.mail && tm?.email) {
+    const accepted = tb.model_response === "accepted";
+    // 이미 수락된 건: 일시·장소 변경을 구글 일정에 반영(생성은 수락 시 이미 완료)
+    if (accepted && tb.gcal_event_id) {
       try {
-        const tok = await ensureCalToken(tm);
-        const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-        await sendCalEmail(tm.email, ev2, tm?.name || "", tok ? calSubscribePageUrl(tok) : "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
+        const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+        const input: any = { action: "update", agency_id: agency.id, event_id: tb.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
+        if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
+        else { input.all_day = true; input.date = ev.date; }
+        await gcalSync(input);
       } catch {}
+      return;
     }
+    // 미수락 + 확정 트리거: 초대(수락 요청) 메일 발송 — 모델이 수락해야 캘린더 생성
+    if (opts.mail && !accepted) await sendBookingInvite(tb, tm, tc);
   };
 
   const handleChangeStatus = async (id: string, status: string) => {
@@ -2404,6 +2419,17 @@ async function sharePdf(){
               </a>
             </div>
           )}
+          {/* 모델 응답 상태(수락형 흐름) */}
+          {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date&&selectedBooking.model_response&&(()=>{
+            const map:Record<string,{t:string;c:string}>={ pending:{t:"수락 대기",c:C.orange}, accepted:{t:"✓ 수락됨",c:C.green}, declined:{t:"✕ 거절",c:C.red} };
+            const s=map[selectedBooking.model_response]||{t:selectedBooking.model_response,c:C.muted};
+            return (
+              <div style={{ marginBottom:12, display:"flex", alignItems:"center", gap:8, fontSize:12.5 }}>
+                <span style={{ color:C.muted }}>모델 응답</span>
+                <span style={{ color:s.c, fontWeight:700, background:s.c+"18", border:`1px solid ${s.c}44`, borderRadius:20, padding:"3px 10px" }}>{s.t}</span>
+              </div>
+            );
+          })()}
           {/* 하단 작업 바 (개선2: 상태/내용과 분리) */}
           {(()=>{
             const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date;
