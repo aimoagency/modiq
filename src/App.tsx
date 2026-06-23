@@ -2129,10 +2129,9 @@ async function sharePdf(){
               <div style={{ background:C.card2, borderRadius:8, padding:"10px 12px", marginBottom:10 }}>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 촬영 일정</label>
                 <input style={{ ...inp, marginBottom:8, padding:"6px 10px", fontSize:12 }} type="date" value={selectedBooking.shoot_date||""} onChange={e=>setSelectedBooking((p:any)=>({...p,shoot_date:e.target.value}))} />
-                <div style={{ display:"flex", alignItems:isMobile?"stretch":"flex-end", flexDirection:isMobile?"column":"row", gap:isMobile?8:16, flexWrap:"wrap" }}>
-                  <TimePicker label="시작" value={selectedBooking.start_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,start_time:v}))} />
-                  {!isMobile&&<span style={{ color:C.muted, fontSize:13, paddingBottom:6 }}>~</span>}
-                  <TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} />
+                <div style={{ display:"flex", alignItems:"flex-end", gap:10 }}>
+                  <div style={{ flex:1, minWidth:0 }}><TimePicker label="시작" value={selectedBooking.start_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,start_time:v}))} /></div>
+                  <div style={{ flex:1, minWidth:0 }}><TimePicker label="종료" value={selectedBooking.end_time||""} onChange={v=>setSelectedBooking((p:any)=>({...p,end_time:v}))} /></div>
                 </div>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
@@ -2153,13 +2152,15 @@ async function sharePdf(){
                 <div style={{ marginBottom:10 }}>
                   <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>촬영 유형 (복수 선택 가능)</label>
                   {([["사진",SHOOT_TYPES_PHOTO,C.blue],["영상",SHOOT_TYPES_VIDEO,C.purple]] as const).map(([grp,opts,col])=>(
-                    <div key={grp} style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:6 }}>
-                      <span style={{ fontSize:11, color:col, fontWeight:700, minWidth:30 }}>{grp}</span>
-                      {opts.map(t=>(
-                        <button key={t} type="button"
-                          onClick={()=>setSelectedBooking((p:any)=>({ ...p, shoot_types: p.shoot_types?.includes(t) ? p.shoot_types.filter((x:string)=>x!==t) : [...(p.shoot_types||[]),t] }))}
-                          style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${(selectedBooking.shoot_types||[]).includes(t)?col:C.border}`, background:(selectedBooking.shoot_types||[]).includes(t)?col+"22":"var(--c-card2)", color:(selectedBooking.shoot_types||[]).includes(t)?col:C.textSub, fontSize:12, fontWeight:(selectedBooking.shoot_types||[]).includes(t)?700:400, cursor:"pointer" }}>{t}</button>
-                      ))}
+                    <div key={grp} style={{ marginBottom:8 }}>
+                      <span style={{ fontSize:11, color:col, fontWeight:700, display:"block", marginBottom:5 }}>{grp}</span>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                        {opts.map(t=>(
+                          <button key={t} type="button"
+                            onClick={()=>setSelectedBooking((p:any)=>({ ...p, shoot_types: p.shoot_types?.includes(t) ? p.shoot_types.filter((x:string)=>x!==t) : [...(p.shoot_types||[]),t] }))}
+                            style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${(selectedBooking.shoot_types||[]).includes(t)?col:C.border}`, background:(selectedBooking.shoot_types||[]).includes(t)?col+"22":"var(--c-card2)", color:(selectedBooking.shoot_types||[]).includes(t)?col:C.textSub, fontSize:12, fontWeight:(selectedBooking.shoot_types||[]).includes(t)?700:400, cursor:"pointer" }}>{t}</button>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
