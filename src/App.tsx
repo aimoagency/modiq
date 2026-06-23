@@ -1152,6 +1152,15 @@ export default function App() {
     modelOffs.find(o => o.model_id===model_id && date>=o.start_date && date<=o.end_date) || null;
 
   // ── 섭외 일정 → 모델에게 보내기 (3가지 방법) ──
+  // 구글 등록 실패 시 raw 에러(JSON) 대신 사용자가 바로 조치할 수 있는 문구로 변환
+  const friendlyGcalErr = (err?: string) => {
+    const e = (err || "").toLowerCase();
+    if (e.includes("invalid_grant") || e.includes("expired") || e.includes("revoked") || e.includes("access_token"))
+      return "구글 캘린더 연동이 만료되었어요.\n설정 → 구글 캘린더 연동 에서 계정을 다시 연결해 주세요.";
+    if (e.includes("timerangeempty") || e.includes("time range"))
+      return "일정의 종료 시간을 확인해 주세요.\n종료가 없으면 시작 +2시간으로 등록됩니다 — 다시 시도해 주세요.";
+    return "구글 캘린더 등록에 실패했어요.\n설정에서 구글 연동 상태를 확인하거나 잠시 후 다시 시도해 주세요.";
+  };
   const doGcalSync = async () => {
     const b = selectedBooking; if (!b) return;
     const m = models.find(x=>x.id===b.model_id), c = customers.find(x=>x.id===b.customer_id);
@@ -1162,7 +1171,7 @@ export default function App() {
     const r = await gcalSync(input);
     if (r.skipped) return alert("구글 캘린더가 연동되지 않았습니다.\n설정 → 구글 캘린더 연동하기 를 먼저 해주세요.");
     if (r.ok) { if (!b.gcal_event_id && r.event_id) { try { await sb("bookings","PATCH",{gcal_event_id:r.event_id},`?id=eq.${b.id}`); setBookings(bookings.map(x=>x.id===b.id?{...x,gcal_event_id:r.event_id}:x)); setSelectedBooking((s:any)=>s?{...s,gcal_event_id:r.event_id}:s); } catch {} } alert(`구글 캘린더에 일정이 등록되고 ${m?.email||"모델"} 으로 초대를 보냈습니다.`); }
-    else alert("구글 일정 등록 실패: "+(r.error||""));
+    else alert(friendlyGcalErr(r.error));
   };
   const doSendCalMail = async () => {
     const b = selectedBooking; if (!b) return;
