@@ -150,6 +150,7 @@ export default function App() {
   const [customerQ,   setCustomerQ]   = useState("");
   const [bookingQ,    setBookingQ]    = useState("");
   const [bookingStatusF,  setBookingStatusF]  = useState("ALL");
+  const [bookingTypeF,    setBookingTypeF]    = useState("ALL");
   const [bookingManagerF, setBookingManagerF] = useState("ALL");
   const [bookingMonthF,   setBookingMonthF]   = useState("ALL");
   const [settlementTab,     setSettlementTab]     = useState<"PENDING"|"SETTLED"|"UNPAID">("PENDING");
@@ -1725,12 +1726,13 @@ async function sharePdf(){
       const cn = custNameMap.get(b.customer_id)||"";
       const matchQ = mn.includes(bookingQ)||cn.includes(bookingQ)||(b.project_name||"").includes(bookingQ);
       const matchSt = bookingStatusF==="ALL"||b.status===bookingStatusF;
+      const matchTy = bookingTypeF==="ALL"||(b.booking_type||"SHOOT")===bookingTypeF;
       const matchMg = bookingManagerF==="ALL"||b.manager===bookingManagerF;
       const matchMo = bookingMonthF==="ALL"||(b.shoot_date||"").startsWith(bookingMonthF);
       const matchCancel = bookingStatusF==="CANCELLED" || b.status!=="CANCELLED";
-      return matchQ&&matchSt&&matchMg&&matchMo&&matchCancel;
+      return matchQ&&matchSt&&matchTy&&matchMg&&matchMo&&matchCancel;
     });
-  }, [bookings, models, customers, bookingQ, bookingStatusF, bookingManagerF, bookingMonthF]);
+  }, [bookings, models, customers, bookingQ, bookingStatusF, bookingTypeF, bookingManagerF, bookingMonthF]);
   const bookingMonths = useMemo(()=>Array.from(new Set(bookings.filter(b=>b.shoot_date).map(b=>b.shoot_date.slice(0,7)))).sort().reverse(), [bookings]);
 
   const maxMembers  = getTotalMemberLimit(agency?.plan||"trial", agency?.additional_members||0);
@@ -1961,7 +1963,7 @@ async function sharePdf(){
 
 
         {/* ════ 섭외 ════ */}
-        {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
+        {page==="bookings" && <BookingsView filteredBookings={filteredBookings} bookingQ={bookingQ} setBookingQ={setBookingQ} bookingStatusF={bookingStatusF} setBookingStatusF={setBookingStatusF} bookingTypeF={bookingTypeF} setBookingTypeF={setBookingTypeF} bookingManagerF={bookingManagerF} setBookingManagerF={setBookingManagerF} bookingMonthF={bookingMonthF} setBookingMonthF={setBookingMonthF} bookingMonths={bookingMonths} memberNames={memberNames} models={models} customers={customers} openAddPicker={()=>{ setAddPrefill({}); setShowAddPicker(true); }} setSelectedBooking={openBookingFresh} isMobile={isMobile} />}
 
         {/* ════ 모델 ════ */}
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} legacyIdCount={myRole==="owner"?legacyIdCount:0} onMigrateIds={migrateModelIds} />}
