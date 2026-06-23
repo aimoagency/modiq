@@ -6,6 +6,8 @@ import { type CalEvent, icsText, googleCalUrl } from "./calendar";
 // 기본값은 코드에 내장(supabase.ts와 동일 방식). 필요 시 .env로 덮어쓰기 가능.
 const FN_URL: string = (import.meta as any).env?.VITE_EMAIL_FN_URL || "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/email-send";
 const FN_SECRET: string = (import.meta as any).env?.VITE_EMAIL_FN_SECRET || "modiq-mail-2026-x9k2";
+// 모델 수락/거절 공개 페이지(booking-respond) 기본 URL
+const RESPOND_FN: string = (import.meta as any).env?.VITE_RESPOND_FN_URL || "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/booking-respond";
 
 export interface EmailOpts {
   to: string;
@@ -135,6 +137,76 @@ export const sendCalEmail = (
     text,
     icsBase64: b64(icsText(ev)),
     icsFilename: `${ev.title}.ics`,
+    fromName: agencyName || undefined,
+    replyTo: replyTo || undefined,
+  });
+};
+
+// 섭외 초대(수락 요청) 메일 — 모델에게 일정을 보내고 [수락]/[거절] 받기.
+// 수락형 흐름: 이 메일을 먼저 보내고, 모델이 수락해야 캘린더 동기화가 시작된다(booking-respond).
+// 일정 카드(프로젝트→브랜드→날짜→시간→장소)는 sendCalEmail 과 동일 톤. .ics/구글추가는 수락 후 응답 페이지에서 제공.
+export const sendInviteEmail = (
+  to: string, ev: CalEvent, ids: { bookingId: string; token: string },
+  modelName = "", agencyName = "", replyTo = "",
+  meta: { project?: string; brand?: string; type?: string } = {},
+) => {
+  const project = (meta.project || "").trim();
+  const brand = (meta.brand || "").trim();
+  const ty = TYPE_BI[meta.type || "SHOOT"];
+  const headline = project || brand || ev.title;
+  const d = fmtDateBi(ev.date);
+  const timeStr = fmtTimeBi(ev.start, ev.end);
+  const base = `${RESPOND_FN}?id=${encodeURIComponent(ids.bookingId)}&token=${encodeURIComponent(ids.token)}`;
+  const acceptUrl = `${base}&intent=accept`;
+  const declineUrl = `${base}&intent=decline`;
+  const row = (label: string, value: string) => `
+        <tr style="border-top:1px solid #f1f3f5">
+          <td style="padding:9px 0;color:#8a93a0;width:110px;vertical-align:top;font-size:13px;line-height:1.5">${label}</td>
+          <td style="padding:9px 0;color:#16181f;vertical-align:top;font-size:13px;line-height:1.5">${value}</td>
+        </tr>`;
+  const rows = [
+    project ? row("Project", esc(project)) : "",
+    brand ? row("Brand", esc(brand)) : "",
+    row("Date", esc(d.en)),
+    row("Time", esc(timeStr)),
+    ev.location ? row("Location", `${esc(ev.location)}<div style="margin-top:5px"><a href="${mapsUrl(ev.location)}" style="color:#1a73e8;text-decoration:none;font-size:12px">📍 Open in Google Maps →</a></div>`) : "",
+  ].filter(Boolean).join("");
+  const html = `
+    <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;color:#16181f">
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #eef0f3">
+        <div style="font-size:11px;letter-spacing:1.5px;color:#8a93a0">SCHEDULE INVITE · 일정 수락 요청</div>
+        ${ty ? `<div style="margin-top:8px"><span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">${ty.en}</span></div>` : ""}
+        <div style="font-size:18px;font-weight:700;margin-top:8px">${esc(headline)}</div>
+        ${agencyName ? `<div style="font-size:12px;color:#8a93a0;margin-top:2px">from ${esc(agencyName)}</div>` : ""}
+      </div>
+      <div style="padding:14px 22px">
+        <table style="width:100%;border-collapse:collapse">${rows}</table>
+      </div>
+      <div style="padding:2px 22px 20px">
+        <p style="font-size:13px;color:#16181f;margin:0 0 12px;line-height:1.7">${modelName ? esc(modelName) + "님, " : ""}위 일정을 확인하고 <b>수락</b> 또는 <b>거절</b>해 주세요.<br><span style="color:#8a93a0;font-size:12px">Please review and accept or decline. Accepting adds it to the calendar.</span></p>
+        <table style="width:100%;border-collapse:separate;border-spacing:6px 0"><tr>
+          <td style="width:60%"><a href="${acceptUrl}" style="display:block;text-align:center;background:#10b981;color:#fff;text-decoration:none;padding:13px;border-radius:8px;font-weight:800;font-size:15px">✓ 수락 / Accept</a></td>
+          <td style="width:40%"><a href="${declineUrl}" style="display:block;text-align:center;background:#ffffff;color:#ef4444;text-decoration:none;padding:12px;border-radius:8px;font-weight:800;font-size:15px;border:1px solid #fecaca">✕ 거절</a></td>
+        </tr></table>
+      </div>
+    </div>`;
+  const text = [
+    `[일정 수락 요청 · Schedule Invite] ${headline}`,
+    ty ? `Type: ${ty.en}` : "",
+    project ? `Project: ${project}` : "",
+    brand ? `Brand: ${brand}` : "",
+    `Date: ${d.en}`,
+    `Time: ${timeStr}`,
+    ev.location ? `Location: ${ev.location}` : "",
+    ``,
+    `수락 / Accept: ${acceptUrl}`,
+    `거절 / Decline: ${declineUrl}`,
+  ].filter(Boolean).join("\n");
+  return sendEmail({
+    to,
+    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 수락 요청 · Please confirm — ${headline}`,
+    html,
+    text,
     fromName: agencyName || undefined,
     replyTo: replyTo || undefined,
   });
