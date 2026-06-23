@@ -35,6 +35,7 @@ const env = (k: string) => (globalThis as any).Deno?.env.get(k) || "";
   const subject = String(p?.subject || "").trim();
   const html = String(p?.html || "");
   const text = String(p?.text || "");
+  const replyTo = String(p?.replyTo || "").trim();   // 회신 받을 에이전시 이메일(발신자는 EMAIL_FROM 유지)
   if (!to || !subject || (!html && !text)) return json({ error: "to/subject/본문 필수" }, 400);
 
   const apiKey = env("RESEND_API_KEY");
@@ -42,6 +43,7 @@ const env = (k: string) => (globalThis as any).Deno?.env.get(k) || "";
   if (!apiKey || !from) return json({ error: "RESEND_API_KEY / EMAIL_FROM 미설정" }, 500);
 
   const body: any = { from, to: [to], subject };
+  if (replyTo) body.reply_to = replyTo;   // 발신=modiq(EMAIL_FROM), 회신=에이전시 이메일
   if (html) body.html = html;
   if (text) body.text = text;
   // .ics 첨부 (base64 content)
