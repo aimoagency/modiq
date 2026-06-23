@@ -31,7 +31,13 @@ export const sendEmail = async (opts: EmailOpts): Promise<{ ok: boolean; skipped
       headers: { "Content-Type": "application/json", ...(FN_SECRET ? { "x-fn-secret": FN_SECRET } : {}) },
       body: JSON.stringify(opts),
     });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+    // 실패 시 함수가 돌려준 실제 사유(Resend 오류 등)를 노출 — "HTTP 502"만 보이던 문제 개선
+    let detail = "";
+    try {
+      const j = await res.json();
+      detail = j?.error || j?.data?.message || j?.data?.error || (j?.data ? JSON.stringify(j.data) : "");
+    } catch { /* 본문 파싱 실패 시 상태코드만 */ }
+    if (!res.ok) return { ok: false, error: detail || `HTTP ${res.status}` };
     return { ok: true };
   } catch (e: any) {
     return { ok: false, error: String(e?.message || e) };
