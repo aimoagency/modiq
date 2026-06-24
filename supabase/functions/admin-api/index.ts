@@ -65,6 +65,16 @@ Deno.serve(async (req: Request) => {
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
     }
+    if (action === "delete_tenant") {
+      const agencyId = String(body?.agency_id || "");
+      if (!agencyId) return json({ error: "agency_id required" }, 400);
+      const { data: rows, error } = await admin.rpc("admin_delete_tenant", { p_agency_id: agencyId });
+      if (error) return json({ error: error.message }, 500);
+      const ids = ((rows as { deleted_user_id: string }[]) || []).map((r) => r.deleted_user_id).filter(Boolean);
+      let removed = 0;
+      for (const uid of ids) { const { error: de } = await admin.auth.admin.deleteUser(uid); if (!de) removed++; }
+      return json({ ok: true, deleted_auth_users: removed });
+    }
     if (action === "members") {
       const agencyId = String(body?.agency_id || "");
       if (!agencyId) return json({ error: "agency_id required" }, 400);
