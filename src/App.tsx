@@ -1263,11 +1263,19 @@ export default function App() {
   // 구글 미연동·모델 이메일 없음·메일함수 미배포 시 안전하게 no-op(앱 흐름 방해 X).
   const syncBookingToCalendar = async (tb: any, tm: any, tc: any, opts: { mail?: boolean } = {}) => {
     if (!agency?.id || !tb) return;
+    // ⚠️ 모델이 메일로 수락하면 gcal_event_id/model_response는 서버(booking-respond)에서만 갱신되어
+    //    에이전시 세션의 로컬 상태는 옛값(null)일 수 있다. 취소 삭제·변경 갱신이 확실히 반영되도록 최신값 재조회.
+    let liveEventId = tb.gcal_event_id || "";
+    let liveResp = tb.model_response || "";
+    try {
+      const fresh = await sb("bookings", "GET", null, `?id=eq.${encodeURIComponent(tb.id)}&select=gcal_event_id,model_response`);
+      if (Array.isArray(fresh) && fresh[0]) { liveEventId = fresh[0].gcal_event_id || ""; liveResp = fresh[0].model_response || liveResp; }
+    } catch {}
     // 취소: 구글 일정 있으면 삭제 + (opts.mail 시) 모델에게 취소 안내 메일 자동 발송
     if (tb.status === "CANCELLED") {
-      if (tb.gcal_event_id) {
+      if (liveEventId) {
         try {
-          await gcalSync({ action: "delete", agency_id: agency.id, event_id: tb.gcal_event_id });
+          await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId });
           await sb("bookings", "PATCH", { gcal_event_id: null }, `?id=eq.${tb.id}`);
           setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, gcal_event_id: null } : x));
           setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: null } : s);
@@ -1284,14 +1292,14 @@ export default function App() {
     }
     // 확정 계열 + 날짜 있을 때만 (수락형 흐름)
     if (!["CONFIRMED", "COMPLETED", "SETTLED"].includes(tb.status) || !tb.shoot_date) return;
-    const accepted = tb.model_response === "accepted";
+    const accepted = liveResp === "accepted";
     // 이미 구글 일정이 연동된 건(수락형 수락 또는 수동 "구글 캘린더 등록")은 일시·장소 변경을
     // 그 일정에 in-place 반영(중복 생성·옛 일정 잔존 방지). gcal-sync가 sendUpdates=all 이라
     // 모델 게스트에게 구글이 변경 통지 메일을 자동 발송한다.
-    if (tb.gcal_event_id) {
+    if (liveEventId) {
       try {
         const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-        const input: any = { action: "update", agency_id: agency.id, event_id: tb.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
+        const input: any = { action: "update", agency_id: agency.id, event_id: liveEventId, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
         if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
         else { input.all_day = true; input.date = ev.date; }
         await gcalSync(input);
