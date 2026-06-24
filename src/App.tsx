@@ -598,14 +598,13 @@ export default function App() {
   // 에이전시 생성(가입 즉시 또는 이메일 인증 후 첫 로그인) — 공통 헬퍼
   const provisionAgency = async (user: any, em: string, name: string, bizNoNorm: string) => {
     const agId = `AGY_${Date.now()}`;
-    const trialEnd = new Date(Date.now() + 14*24*60*60*1000).toISOString();
-    const agencyData = { id:agId, name, biz_no:bizNoNorm, owner_id:user.id, owner_email:em, plan:"trial", additional_members:0, trial_ends_at:trialEnd, created_at:new Date().toISOString() };
-    await sb("agencies","POST",agencyData);
-    await sb("agency_members","POST",{ id:`MEM_${user.id}`, agency_id:agId, user_id:user.id, email:em, name:name+" 대표", position:"대표", phone:"", role:"owner", created_at:new Date().toISOString() });
+    // 에이전시+대표 멤버를 SECURITY DEFINER RPC로 원자 생성(owner_id=auth.uid() 서버 강제 → RLS 안전)
+    const res = await sb("rpc/create_agency_for_owner", "POST", { p_id: agId, p_name: name, p_biz_no: bizNoNorm, p_email: em });
+    const agencyData = (Array.isArray(res) ? res[0] : res) || { id:agId, name, biz_no:bizNoNorm, owner_id:user.id, owner_email:em, plan:"trial", additional_members:0, trial_ends_at:new Date(Date.now()+14*24*60*60*1000).toISOString(), created_at:new Date().toISOString() };
     try { localStorage.removeItem("modiq_pending"); } catch {}
     setSession(user); setAgency(agencyData); setMyRole("owner");
     saveSession(user, agencyData, "owner");
-    await loadData(agId);
+    await loadData(agencyData.id);
   };
 
   const handleSignup = async () => {
