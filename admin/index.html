@@ -106,6 +106,7 @@
   const FN_URL = SB_URL + "/functions/v1/admin-api";
   const TOKEN_KEY = "modiq_admin_token";
   const PLANS = ["trial", "starter", "standard", "pro"];
+  let TENANTS = [];
 
   const $ = (id) => document.getElementById(id);
   const won = (n) => Number(n || 0).toLocaleString("ko-KR");
@@ -170,6 +171,7 @@
   }
 
   function renderTenants(tenants) {
+    TENANTS = tenants;
     $("tcount").textContent = "(" + tenants.length + "곳)";
     if (!tenants.length) { $("tenantBody").innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center; padding:18px;">에이전시가 없습니다.</td></tr>`; return; }
     $("tenantBody").innerHTML = tenants.map((t) => `
@@ -197,30 +199,56 @@
       });
     });
     document.querySelectorAll(".viewMembers").forEach((a) => {
-      a.addEventListener("click", (e) => { e.preventDefault(); viewMembers(a.dataset.agency, a.dataset.name); });
+      a.addEventListener("click", (e) => { e.preventDefault(); viewTenant(a.dataset.agency); });
     });
   }
 
-  // 에이전시 클릭 → 대표/담당자 목록 모달
-  async function viewMembers(agencyId, agencyName) {
-    $("mmTitle").textContent = (agencyName || "에이전시") + " · 대표/담당자";
-    $("mmBody").innerHTML = `<p class="muted small">불러오는 중…</p>`;
+  // 에이전시 클릭 → 테넌트 상세(기본정보 + 사용량 + 대표/담당자 + 삭제)
+  async function viewTenant(agencyId) {
+    const t = TENANTS.find((x) => x.agency_id === agencyId);
+    if (!t) return;
+    $("mmTitle").textContent = (t.name || "에이전시") + " · 상세";
+    $("mmBody").innerHTML = `
+      <div class="cards" style="margin:0 0 10px;">
+        <div class="stat"><div class="k">플랜</div><div class="v" style="font-size:15px;">${esc(t.plan) || "-"}</div></div>
+        <div class="stat"><div class="k">trial 만료</div><div class="v" style="font-size:15px;">${fmtDate(t.trial_ends_at)}</div></div>
+        <div class="stat"><div class="k">가입일</div><div class="v" style="font-size:15px;">${fmtDate(t.created_at)}</div></div>
+        <div class="stat"><div class="k">저장용량</div><div class="v" style="font-size:15px;">${mb(t.storage_bytes)}</div></div>
+      </div>
+      <p class="small" style="margin:0 0 4px;"><span class="muted">대표 이메일</span> &nbsp; ${esc(t.owner_email) || "-"}</p>
+      <p class="small muted" style="margin:0 0 12px;">멤버 ${won(t.members)} · 모델 ${won(t.models)} · 섭외 ${won(t.bookings)} · 고객사 ${won(t.customers)} · 패키지 ${won(t.packages)} · 파일 ${won(t.storage_files)}</p>
+      <div class="sec-title" style="margin:4px 0 8px; font-size:14px;">대표/담당자</div>
+      <div id="mmMembers" class="muted small">불러오는 중…</div>
+      <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:14px;">
+        <div class="small" style="color:var(--red); font-weight:700; margin-bottom:6px;">⚠ 위험 구역</div>
+        <p class="small muted" style="margin:0 0 8px;">이 테넌트의 <b>에이전시·담당자·모델·섭외·고객사·패키지·사진·로그인 계정</b>이 모두 영구 삭제됩니다. 되돌릴 수 없습니다.</p>
+        <button class="btn-red" id="delTenantBtn">이 테넌트 삭제</button>
+      </div>`;
     $("memberModal").classList.remove("hidden");
     try {
       const r = await callAdmin("members", { agency_id: agencyId });
       const ms = r.members || [];
-      if (!ms.length) { $("mmBody").innerHTML = `<p class="muted">등록된 대표/담당자가 없습니다.</p>`; return; }
-      $("mmBody").innerHTML = `<div class="tablewrap"><table style="min-width:0;">
+      $("mmMembers").innerHTML = ms.length ? `<div class="tablewrap"><table style="min-width:0;">
         <thead><tr><th>역할</th><th>이름</th><th>직위</th><th>이메일</th><th>전화</th><th>재무열람</th></tr></thead>
         <tbody>${ms.map((m) => `<tr>
           <td><span class="pill" style="color:${m.role === "owner" ? "var(--green)" : "var(--muted)"};">${m.role === "owner" ? "대표" : "담당자"}</span></td>
-          <td>${esc(m.name) || "-"}</td>
-          <td class="small">${esc(m.position) || "-"}</td>
-          <td class="muted small">${esc(m.email) || "-"}</td>
-          <td class="small">${esc(m.phone) || "-"}</td>
+          <td>${esc(m.name) || "-"}</td><td class="small">${esc(m.position) || "-"}</td>
+          <td class="muted small">${esc(m.email) || "-"}</td><td class="small">${esc(m.phone) || "-"}</td>
           <td class="small">${m.can_view_finance ? "✓" : "-"}</td>
-        </tr>`).join("")}</tbody></table></div>`;
-    } catch (err) { if (err.message !== "401") $("mmBody").innerHTML = `<p class="err">${esc(err.message)}</p>`; }
+        </tr>`).join("")}</tbody></table></div>` : `<p class="muted">등록된 대표/담당자가 없습니다.</p>`;
+    } catch (err) { if (err.message !== "401") $("mmMembers").innerHTML = `<p class="err">${esc(err.message)}</p>`; }
+    $("delTenantBtn").addEventListener("click", async () => {
+      const typed = prompt(`정말 삭제하려면 업체명을 그대로 입력하세요:\n\n${t.name}`);
+      if (typed === null) return;
+      if (typed.trim() !== (t.name || "")) { alert("업체명이 일치하지 않습니다. 삭제를 취소합니다."); return; }
+      $("delTenantBtn").disabled = true;
+      try {
+        const r = await callAdmin("delete_tenant", { agency_id: agencyId });
+        $("memberModal").classList.add("hidden");
+        toast("테넌트 삭제됨 (로그인 계정 " + (r.deleted_auth_users || 0) + "개 포함)");
+        load();
+      } catch (err) { alert(err.message); $("delTenantBtn").disabled = false; }
+    });
   }
 
   function renderOrphans(orphans) {
