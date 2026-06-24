@@ -6,8 +6,11 @@ import { type CalEvent, icsText, googleCalUrl } from "./calendar";
 // 기본값은 코드에 내장(supabase.ts와 동일 방식). 필요 시 .env로 덮어쓰기 가능.
 const FN_URL: string = (import.meta as any).env?.VITE_EMAIL_FN_URL || "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/email-send";
 const FN_SECRET: string = (import.meta as any).env?.VITE_EMAIL_FN_SECRET || "modiq-mail-2026-x9k2";
-// 모델 수락/거절 공개 페이지(booking-respond) 기본 URL
-const RESPOND_FN: string = (import.meta as any).env?.VITE_RESPOND_FN_URL || "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/booking-respond";
+// 모델 수락/거절 페이지: 앱 도메인의 정적 파일 /respond.html 이 렌더(Supabase 함수가 직접 HTML을
+// 주면 일부 모바일 브라우저가 text/plain 으로 받아 .txt 다운로드되는 문제 → 앱 정적 페이지로 분리).
+// 발송 시점의 앱 origin 을 사용(현재 빌드의 정적 파일이 확실히 존재).
+const RESPOND_PAGE: string = (import.meta as any).env?.VITE_RESPOND_PAGE_URL
+  || ((typeof window !== "undefined" && window.location?.origin) ? `${window.location.origin}/respond.html` : "https://modiq.kr/respond.html");
 
 export interface EmailOpts {
   to: string;
@@ -156,7 +159,7 @@ export const sendInviteEmail = (
   const headline = project || brand || ev.title;
   const d = fmtDateBi(ev.date);
   const timeStr = fmtTimeBi(ev.start, ev.end);
-  const base = `${RESPOND_FN}?id=${encodeURIComponent(ids.bookingId)}&token=${encodeURIComponent(ids.token)}`;
+  const base = `${RESPOND_PAGE}?id=${encodeURIComponent(ids.bookingId)}&token=${encodeURIComponent(ids.token)}`;
   const acceptUrl = `${base}&intent=accept`;
   const declineUrl = `${base}&intent=decline`;
   const row = (label: string, value: string) => `
