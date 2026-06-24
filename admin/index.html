@@ -69,6 +69,10 @@
     <div id="cards" class="cards"></div>
 
     <div class="sec-title">테넌트(에이전시) <span id="tcount" class="muted small"></span></div>
+    <div class="row" style="margin:0 0 10px;">
+      <input id="tenantSearch" placeholder="에이전시명 · 대표 이메일 · 플랜 검색" autocomplete="off" style="max-width:340px;" />
+      <span id="tfiltered" class="muted small"></span>
+    </div>
     <div class="tablewrap">
       <table id="tenantTable">
         <thead><tr>
@@ -171,7 +175,6 @@
   }
 
   function renderTenants(tenants) {
-    TENANTS = tenants;
     $("tcount").textContent = "(" + tenants.length + "곳)";
     if (!tenants.length) { $("tenantBody").innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center; padding:18px;">에이전시가 없습니다.</td></tr>`; return; }
     $("tenantBody").innerHTML = tenants.map((t) => `
@@ -201,6 +204,15 @@
     document.querySelectorAll(".viewMembers").forEach((a) => {
       a.addEventListener("click", (e) => { e.preventDefault(); viewTenant(a.dataset.agency); });
     });
+  }
+
+  // 테넌트 검색/필터(에이전시명·대표 이메일·플랜) — 전체 목록(TENANTS)에서 클라이언트 측 필터
+  function applyTenantFilter() {
+    const q = ($("tenantSearch").value || "").trim().toLowerCase();
+    const list = !q ? TENANTS : TENANTS.filter((t) =>
+      [t.name, t.owner_email, t.plan].some((v) => String(v == null ? "" : v).toLowerCase().includes(q)));
+    renderTenants(list);
+    $("tfiltered").textContent = q ? `검색 ${list.length} / 전체 ${TENANTS.length}` : "";
   }
 
   // 에이전시 클릭 → 테넌트 상세(기본정보 + 사용량 + 대표/담당자 + 삭제)
@@ -277,7 +289,8 @@
     try {
       const [a, b] = await Promise.all([callAdmin("tenants"), callAdmin("orphans")]);
       const tenants = a.tenants || [], orphans = b.orphans || [];
-      renderCards(tenants); renderTenants(tenants); renderOrphans(orphans);
+      TENANTS = tenants;
+      renderCards(tenants); applyTenantFilter(); renderOrphans(orphans);
     } catch (err) {
       if (err.message !== "401") { showApp(); toast(err.message); }
     }
@@ -297,6 +310,7 @@
   $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
   $("logoutBtn").addEventListener("click", () => { setToken(""); showLogin(""); });
   $("refreshBtn").addEventListener("click", load);
+  $("tenantSearch").addEventListener("input", applyTenantFilter);
   $("mmClose").addEventListener("click", () => $("memberModal").classList.add("hidden"));
   $("memberModal").addEventListener("click", (e) => { if (e.target === $("memberModal")) $("memberModal").classList.add("hidden"); });
 
