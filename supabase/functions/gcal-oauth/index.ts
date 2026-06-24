@@ -1,34 +1,62 @@
 // Supabase Edge Function: gcal-oauth
 // 구글 OAuth 콜백 — 동의 후 code를 토큰으로 교환하고 refresh_token을 agency별로 저장.
 //
+// ⚠️ 이 함수는 HTML을 직접 렌더하지 않는다. (모바일 Safari 등에서 Supabase 함수가 준 HTML이
+//    text/plain·잘못된 인코딩으로 처리돼 글자가 깨지거나 .txt 다운로드되는 문제 — respond.html과 동일 이슈)
+//    대신 처리 결과를 쿼리(?gcal=ok|fail)로 붙여 "시작한 앱 도메인(modiq 홈)"으로 302 리다이렉트한다.
+//    앱(App.tsx)이 ?gcal 파라미터를 보고 안내 토스트를 띄운다.
+//
 // 배포: Via Editor 로 함수명 gcal-oauth 생성 → 이 코드 붙여넣기 → Deploy (Verify JWT OFF)
-// 시크릿: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+// 시크릿: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI (선택: APP_BASE)
 //   (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 는 기본 제공)
 // 구글 콘솔 승인된 리디렉션 URI = 이 함수 URL 과 동일해야 함.
 
 const env = (k: string) => (globalThis as any).Deno?.env.get(k) || "";
 
-const page = (msg: string, ok = true) =>
-  new Response(
-    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-     <div style="font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#eceff3;color:#1a1d27">
-       <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:380px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1)">
-         <div style="font-size:40px">${ok ? "✅" : "⚠️"}</div>
-         <h2 style="margin:10px 0 6px;font-size:18px">${ok ? "구글 캘린더 연동 완료" : "연동 실패"}</h2>
-         <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6">${msg}</p>
-       </div>
-     </div>`,
-    { status: ok ? 200 : 400, headers: { "Content-Type": "text/html; charset=utf-8" } },
-  );
+// 콜백 후 돌아갈 앱 도메인. state 의 origin(허용 도메인만) 우선, 없으면 APP_BASE/모딕 홈.
+function safeBase(origin: string): string | null {
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== "https:") return null;
+    const h = u.hostname;
+    if (h === "modiq.kr" || h.endsWith(".modiq.kr") || h.endsWith(".vercel.app") || h.endsWith(".netlify.app")) return u.origin;
+  } catch { /* ignore */ }
+  return null;
+}
 
 (globalThis as any).Deno?.serve?.(async (req: Request) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code") || "";
-  const agencyId = url.searchParams.get("state") || "";
-  if (!code || !agencyId) return page("잘못된 요청입니다. 설정 화면에서 다시 시도하세요.", false);
+  const stateRaw = url.searchParams.get("state") || "";
+  const sep = stateRaw.indexOf("|");
+  const agencyId = sep >= 0 ? stateRaw.slice(0, sep) : stateRaw;   // state = agencyId | origin
+  const originEnc = sep >= 0 ? stateRaw.slice(sep + 1) : "";
+  let appBase = env("APP_BASE") || "https://modiq.kr";
+  if (originEnc) { try { appBase = safeBase(decodeURIComponent(originEnc)) || appBase; } catch { /* ignore */ } }
+  appBase = appBase.replace(/\/+$/, "");
+
+  // 결과를 ?gcal=... 로 붙여 앱 홈으로 302 (HTML 직접 렌더 금지)
+  const back = (params: Record<string, string>) =>
+    new Response(null, { status: 302, headers: { Location: appBase + "/?" + new URLSearchParams(params).toString() } });
+
+  if (!code || !agencyId) return back({ gcal: "fail", reason: "badreq" });
 
   const clientId = env("GOOGLE_CLIENT_ID"), clientSecret = env("GOOGLE_CLIENT_SECRET"), redirect = env("GOOGLE_REDIRECT_URI");
-  if (!clientId || !clientSecret || !redirect) return page("서버 설정(구글 시크릿)이 누락되었습니다.", false);
+  if (!clientId || !clientSecret || !redirect) return back({ gcal: "fail", reason: "config" });
+
+  const SB = env("SUPABASE_URL"), KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const h = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
+
+  // 이미 저장된 토큰(=과거 연동 성공)이 있으면 그 이메일을 반환.
+  // 일회용 code 재사용/새로고침(invalid_grant) 시 "이미 연동됨"으로 성공 처리하는 데 사용.
+  const existingEmail = async (): Promise<string> => {
+    try {
+      const r = await fetch(`${SB}/rest/v1/google_tokens?agency_id=eq.${encodeURIComponent(agencyId)}&select=email,refresh_token`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+      const rows = await r.json();
+      if (Array.isArray(rows) && rows[0]?.refresh_token) return rows[0].email || "구글 캘린더";
+    } catch { /* ignore */ }
+    return "";
+  };
 
   // 1) code → 토큰 교환
   let tok: any;
@@ -39,10 +67,19 @@ const page = (msg: string, ok = true) =>
       body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirect, grant_type: "authorization_code" }),
     });
     tok = await r.json();
-    if (!r.ok || !tok.refresh_token) {
-      return page(`토큰 발급 실패: ${tok.error_description || tok.error || "refresh_token 없음(이미 연동된 계정이면 구글 계정 권한에서 modiq 액세스 제거 후 재시도)"}`, false);
+    if (!r.ok) {
+      const em = await existingEmail();   // invalid_grant 등 — 이미 연동돼 있으면 성공 처리
+      return em ? back({ gcal: "ok", email: em, already: "1" }) : back({ gcal: "fail", reason: "exchange" });
     }
-  } catch (e) { return page("토큰 교환 중 오류: " + String(e), false); }
+  } catch {
+    const em = await existingEmail();
+    return em ? back({ gcal: "ok", email: em, already: "1" }) : back({ gcal: "fail", reason: "exchange" });
+  }
+
+  if (!tok.refresh_token) {
+    const em = await existingEmail();     // refresh_token 미발급(이미 동의된 계정 등) — 기존 토큰 있으면 유지·성공
+    return em ? back({ gcal: "ok", email: em, already: "1" }) : back({ gcal: "fail", reason: "norefresh" });
+  }
 
   // 2) 연동 이메일(선택)
   let email = "";
@@ -52,15 +89,17 @@ const page = (msg: string, ok = true) =>
   } catch { /* 무시 */ }
 
   // 3) refresh_token 저장(upsert)
-  const SB = env("SUPABASE_URL"), KEY = env("SUPABASE_SERVICE_ROLE_KEY");
   try {
     const r = await fetch(`${SB}/rest/v1/google_tokens?on_conflict=agency_id`, {
       method: "POST",
-      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+      headers: { ...h, Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify({ agency_id: agencyId, refresh_token: tok.refresh_token, email }),
     });
-    if (!r.ok) { const t = await r.text(); return page("토큰 저장 실패(google_tokens 테이블 필요): " + t, false); }
-  } catch (e) { return page("토큰 저장 오류: " + String(e), false); }
+    if (!r.ok) return back({ gcal: "fail", reason: "save" });
+  } catch { return back({ gcal: "fail", reason: "save" }); }
 
-  return page(`연동된 계정: ${email || "구글 캘린더"}<br>이제 이 창을 닫고 modiq로 돌아가세요. 섭외를 확정하면 일정이 자동으로 만들어집니다.`);
+  // 회사정보에 연동 이메일 표시용 저장
+  try { await fetch(`${SB}/rest/v1/agencies?id=eq.${encodeURIComponent(agencyId)}`, { method: "PATCH", headers: h, body: JSON.stringify({ gcal_email: email }) }); } catch { /* 무시 */ }
+
+  return back({ gcal: "ok", email: email || "구글 캘린더" });
 });
