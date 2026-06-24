@@ -65,6 +65,13 @@ Deno.serve(async (req: Request) => {
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
     }
+    if (action === "members") {
+      const agencyId = String(body?.agency_id || "");
+      if (!agencyId) return json({ error: "agency_id required" }, 400);
+      const { data, error } = await admin.rpc("admin_agency_members", { p_agency_id: agencyId });
+      if (error) return json({ error: error.message }, 500);
+      return json({ members: data });
+    }
     return json({ error: "unknown action" }, 400);
   } catch (e) {
     return json({ error: String(e) }, 500);
