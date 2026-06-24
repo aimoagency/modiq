@@ -43,7 +43,7 @@ export const scheduleConflict = (aS: string, aE: string, bS: string, bE: string,
   if (as === null || ae === null || bs === null || be === null) return { conflict: false, reason: "", severity: "" };
   if (as < be && bs < ae) return { conflict: true, reason: "시간대 겹침", severity: "OVERLAP" };
   const gap = as >= be ? as - be : bs - ae;
-  let need = (typeA === "MEETING" || typeB === "MEETING") ? 60 : 120;
+  let need = (typeA === "MEETING" && typeB === "MEETING") ? 60 : 120;
   const la = normLoc(locA), lb = normLoc(locB);
   const differentPlace = !!la && !!lb && la !== lb;
   if (differentPlace) need += 60;
