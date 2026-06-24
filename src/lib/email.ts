@@ -152,6 +152,7 @@ export const sendInviteEmail = (
   to: string, ev: CalEvent, ids: { bookingId: string; token: string },
   modelName = "", agencyName = "", replyTo = "",
   meta: { project?: string; brand?: string; type?: string } = {},
+  subscribeUrl = "",
 ) => {
   const project = (meta.project || "").trim();
   const brand = (meta.brand || "").trim();
@@ -190,7 +191,11 @@ export const sendInviteEmail = (
         <table style="width:100%;border-collapse:separate;border-spacing:6px 0"><tr>
           <td style="width:60%"><a href="${acceptUrl}" style="display:block;text-align:center;background:#10b981;color:#fff;text-decoration:none;padding:13px;border-radius:8px;font-weight:800;font-size:15px">✓ 수락 / Accept</a></td>
           <td style="width:40%"><a href="${declineUrl}" style="display:block;text-align:center;background:#ffffff;color:#ef4444;text-decoration:none;padding:12px;border-radius:8px;font-weight:800;font-size:15px;border:1px solid #fecaca">✕ 거절</a></td>
-        </tr></table>
+        </tr></table>${subscribeUrl ? `
+        <div style="margin-top:14px;padding:11px 13px;background:#f0f7ff;border:1px solid #d6e6ff;border-radius:8px">
+          <div style="font-size:12px;font-weight:700;color:#1a73e8;margin-bottom:3px">📅 네이버 · 카카오 · 아웃룩 캘린더 사용자</div>
+          <p style="font-size:12px;color:#5a6472;margin:0;line-height:1.65">구글 외 캘린더는 일정이 바뀌어도 자동으로 반영되지 않아요. 아래를 한 번 <b>구독</b>해 두면 이후 장소·시간 변경이 자동으로 따라옵니다.<br><a href="${esc(subscribeUrl)}" style="color:#1a73e8;font-weight:700;text-decoration:none">→ 내 캘린더에 구독하기 / Subscribe</a></p>
+        </div>` : ""}
       </div>
     </div>`;
   const text = [
@@ -204,6 +209,7 @@ export const sendInviteEmail = (
     ``,
     `수락 / Accept: ${acceptUrl}`,
     `거절 / Decline: ${declineUrl}`,
+    subscribeUrl ? `\n네이버·카카오 등 구글 외 캘린더는 아래를 한 번 구독하면 일정 변경이 자동 반영됩니다.\n구독 / Subscribe: ${subscribeUrl}` : "",
   ].filter(Boolean).join("\n");
   return sendEmail({
     to,
