@@ -1285,8 +1285,10 @@ export default function App() {
     // 확정 계열 + 날짜 있을 때만 (수락형 흐름)
     if (!["CONFIRMED", "COMPLETED", "SETTLED"].includes(tb.status) || !tb.shoot_date) return;
     const accepted = tb.model_response === "accepted";
-    // 이미 수락된 건: 일시·장소 변경을 구글 일정에 반영(생성은 수락 시 이미 완료)
-    if (accepted && tb.gcal_event_id) {
+    // 이미 구글 일정이 연동된 건(수락형 수락 또는 수동 "구글 캘린더 등록")은 일시·장소 변경을
+    // 그 일정에 in-place 반영(중복 생성·옛 일정 잔존 방지). gcal-sync가 sendUpdates=all 이라
+    // 모델 게스트에게 구글이 변경 통지 메일을 자동 발송한다.
+    if (tb.gcal_event_id) {
       try {
         const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
         const input: any = { action: "update", agency_id: agency.id, event_id: tb.gcal_event_id, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
@@ -1296,7 +1298,7 @@ export default function App() {
       } catch {}
       return;
     }
-    // 미수락 + 확정 트리거: 초대(수락 요청) 메일 발송 — 모델이 수락해야 캘린더 생성
+    // 아직 구글 일정 없음 + 미수락 + 확정 트리거: 초대(수락 요청) 메일 발송 — 모델이 수락해야 캘린더 생성
     if (opts.mail && !accepted) await sendBookingInvite(tb, tm, tc);
   };
 
