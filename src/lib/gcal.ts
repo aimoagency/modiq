@@ -18,7 +18,8 @@ export const startGoogleConnect = (agencyId: string) => {
     scope: SCOPE,
     access_type: "offline",     // refresh_token 받기
     prompt: "consent",          // 매번 동의 → refresh_token 보장
-    state: agencyId,
+    // state = agencyId|origin → 콜백 함수가 처리 후 "시작한 그 앱 도메인"으로 다시 돌려보냄(데스크톱/모바일 도메인 구분).
+    state: `${agencyId}|${encodeURIComponent((typeof window!=="undefined" && window.location?.origin) || "")}`,
   });
   const url = `https://accounts.google.com/o/oauth2/v2/auth?${p.toString()}`;
   const w = window.open(url, "_blank", "noopener");

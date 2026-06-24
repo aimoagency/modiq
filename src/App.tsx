@@ -136,6 +136,20 @@ export default function App() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [theme, setTheme] = useState<string>(()=>{ try { return localStorage.getItem("modiq_theme")||"dark"; } catch { return "dark"; } });
   useEffect(()=>{ document.documentElement.classList.toggle("light", theme==="light"); try { localStorage.setItem("modiq_theme", theme); } catch {} }, [theme]);
+  // 구글 캘린더 연동 콜백 복귀(?gcal=ok|fail): 새 탭이 modiq로 돌아오면 안내 후 URL 정리(새로고침 반복 방지).
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const g = sp.get("gcal");
+      if (!g) return;
+      const em = sp.get("email") || "";
+      if (g === "ok") alert("✅ 구글 캘린더 연동 완료" + (em ? `\n연동 계정: ${em}` : "") + (sp.get("already") ? "\n(이미 연동돼 있어요)" : ""));
+      else alert("구글 캘린더 연동을 마치지 못했어요.\n이미 연동돼 있을 수 있으니 회사정보에서 상태를 확인하거나, 잠시 후 다시 시도해 주세요.");
+      ["gcal","email","already","reason"].forEach(k=>sp.delete(k));
+      const qs = sp.toString();
+      window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : "") + window.location.hash);
+    } catch {}
+  }, []);
   const [members,   setMembers]   = useState<any[]>(_cachedData?.members || []);
 
   const [page, setPage] = useState<Page>("dashboard");
