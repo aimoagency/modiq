@@ -1081,9 +1081,12 @@ export default function App() {
           const fw = (d?:string,s?:string,e?:string)=>`${d?d.replace(/-/g,"."):"미정"}${s&&e?` ${s}~${e}`:""}`;
           sendAlimtalkBoth(tm?.phone||"", tcPhone, "CHANGE", { ...baseArgs, before:`${fw(prev?.shoot_date,prev?.start_time,prev?.end_time)} / ${prev?.location||"-"}`, after:`${fw(selectedBooking.shoot_date,selectedBooking.start_time,selectedBooking.end_time)} / ${selectedBooking.location||"-"}` });
         }
-        // 구글 캘린더 자동 동기화: 확정 전환(생성·외국인 메일) / 일시·장소 변경(갱신) / 취소(삭제)
+        // 구글 캘린더 자동 동기화 + 메일:
+        //  - 확정 전환 → 초대 메일 / 취소 전환 → 취소 안내 메일
+        //  - 확정 상태에서 일시·장소 변경 → (미수락) 초대 메일 자동 재발송 / (수락) 구글 일정 갱신만(현행)
         if ((statusChanged || whenLocChanged) && finalStatus!=="HOLD") {
-          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mail: statusChanged && (finalStatus==="CONFIRMED"||finalStatus==="CANCELLED") });
+          const mailFlag = (statusChanged && (finalStatus==="CONFIRMED"||finalStatus==="CANCELLED")) || (whenLocChanged && finalStatus==="CONFIRMED");
+          syncBookingToCalendar({ ...selectedBooking, ...updates }, tm, tc, { mail: mailFlag });
         }
       }
       setSelectedBooking((p:any)=>p?{...p,...updates}:p);
