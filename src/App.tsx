@@ -122,6 +122,7 @@ export default function App() {
   const [bizNo,       setBizNo]       = useState("");
   const [authError,   setAuthError]   = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [confirmSent, setConfirmSent] = useState(false); // 이메일 인증 메일 발송됨(가입 후 인증 대기)
   const [syncing, setSyncing] = useState(!!_savedSession); // 세션 있으면 첫 동기화 전까지 스켈레톤(데이터 비었을 때 0 대신)
 
   const [models,    setModels]    = useState<any[]>(_cachedData?.models || []);
@@ -594,6 +595,19 @@ export default function App() {
   }, [page, agency?.id]);
 
   // ── 인증 ──
+  // 에이전시 생성(가입 즉시 또는 이메일 인증 후 첫 로그인) — 공통 헬퍼
+  const provisionAgency = async (user: any, em: string, name: string, bizNoNorm: string) => {
+    const agId = `AGY_${Date.now()}`;
+    const trialEnd = new Date(Date.now() + 14*24*60*60*1000).toISOString();
+    const agencyData = { id:agId, name, biz_no:bizNoNorm, owner_id:user.id, owner_email:em, plan:"trial", additional_members:0, trial_ends_at:trialEnd, created_at:new Date().toISOString() };
+    await sb("agencies","POST",agencyData);
+    await sb("agency_members","POST",{ id:`MEM_${user.id}`, agency_id:agId, user_id:user.id, email:em, name:name+" 대표", position:"대표", phone:"", role:"owner", created_at:new Date().toISOString() });
+    try { localStorage.removeItem("modiq_pending"); } catch {}
+    setSession(user); setAgency(agencyData); setMyRole("owner");
+    saveSession(user, agencyData, "owner");
+    await loadData(agId);
+  };
+
   const handleSignup = async () => {
     if (!email||!password||!agencyName||!bizNo) return setAuthError("모든 항목을 입력하세요");
     if (password.length < 6) return setAuthError("비밀번호 6자 이상");
@@ -616,22 +630,24 @@ export default function App() {
       let access = authRes.access_token || authRes.session?.access_token || null;
       let refresh = authRes.refresh_token || authRes.session?.refresh_token || null;
       let user = authRes.user || (authRes.id ? authRes : null);
+      // 세션이 없으면: 이메일 인증 ON(미인증) 또는 일부 설정에서 signup이 세션 미발급 → 로그인 시도로 구분
       if (!access) {
-        const login = await sbAuth("token?grant_type=password", { email, password });
-        access = login.access_token || null;
-        refresh = login.refresh_token || null;
-        user = login.user || user;
+        try {
+          const login = await sbAuth("token?grant_type=password", { email, password });
+          access = login.access_token || null; refresh = login.refresh_token || null; user = login.user || user;
+        } catch (le: any) {
+          // 미인증이면 인증 메일 대기 안내. 에이전시는 인증 후 첫 로그인에서 생성 — 가입정보 임시 보관.
+          if (/confirm|인증/i.test(String(le?.message || le))) {
+            try { localStorage.setItem("modiq_pending", JSON.stringify({ email, name: agencyName, biz_no: bizNoNorm })); } catch {}
+            setConfirmSent(true); setAuthMode("login");
+            return;
+          }
+          throw le;
+        }
       }
       if (!access || !user?.id) throw new Error("세션 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
       setAuthTokens(access, refresh);
-      const agId = `AGY_${Date.now()}`;
-      const trialEnd = new Date(Date.now() + 14*24*60*60*1000).toISOString();
-      const agencyData = { id:agId, name:agencyName, biz_no:bizNoNorm, owner_id:user.id, owner_email:email, plan:"trial", additional_members:0, trial_ends_at:trialEnd, created_at:new Date().toISOString() };
-      await sb("agencies","POST",agencyData);
-      await sb("agency_members","POST",{ id:`MEM_${user.id}`, agency_id:agId, user_id:user.id, email, name:agencyName+" 대표", position:"대표", phone:"", role:"owner", created_at:new Date().toISOString() });
-      setSession(user); setAgency(agencyData); setMyRole("owner");
-      saveSession(user, agencyData, "owner");
-      await loadData(agId);
+      await provisionAgency(user, email, agencyName, bizNoNorm);
     } catch (e: any) {
       const msg = String(e?.message||e);
       if (/duplicate|unique|conflict|23505/i.test(msg)) setAuthError("이미 등록된 사업자번호입니다. 대표/관리자에게 담당자 초대를 요청하세요.");
@@ -650,7 +666,13 @@ export default function App() {
       const memberRows = await sb("agency_members","GET",null,`?user_id=eq.${user.id}`);
       if (!memberRows?.length) {
         const agRows = await sb("agencies","GET",null,`?owner_id=eq.${user.id}`);
-        if (!agRows?.length) throw new Error("소속 에이전시를 찾을 수 없습니다");
+        if (!agRows?.length) {
+          // 이메일 인증 완료 후 첫 로그인: 보관해둔 가입정보로 에이전시 생성
+          let pending: any = null;
+          try { pending = JSON.parse(localStorage.getItem("modiq_pending")||"null"); } catch {}
+          if (pending?.email===email && pending?.name && pending?.biz_no) { await provisionAgency(user, email, pending.name, pending.biz_no); return; }
+          throw new Error("가입 정보를 찾지 못했어요. 회원가입을 다시 진행해 주세요.");
+        }
         const agencyData = agRows[0];
         setSession(user); setAgency(agencyData); setMyRole("owner");
         saveSession(user, agencyData, "owner");
@@ -666,7 +688,10 @@ export default function App() {
         restoreDataCache(agencyData.id); // 🔒 보호(CLAUDE.md 참조): 캐시 있으면 숫자 즉시 표시 → 로그인 직후 빈 스켈레톤 방지. 제거 금지.
         await loadData(agencyData.id);
       }
-    } catch (e: any) { setAuthError(e.message||"로그인 실패"); }
+    } catch (e: any) {
+      const m = String(e?.message||e);
+      setAuthError(/confirm|인증/i.test(m) ? "이메일 인증이 필요해요.\n받은 메일의 인증 링크를 먼저 눌러 주세요." : (m||"로그인 실패"));
+    }
     finally { setAuthLoading(false); }
   };
 
@@ -1796,7 +1821,7 @@ async function sharePdf(){
           </div>
           <div style={{ display:"flex", background:"var(--c-bg)", borderRadius:8, padding:4, marginBottom:22 }}>
             {(["login","signup"] as AuthMode[]).map(mode=>(
-              <button key={mode} onClick={()=>{setAuthMode(mode);setAuthError("");}} style={{ flex:1, padding:"8px 0", border:"none", borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:14, background:authMode===mode?C.blue:"transparent", color:authMode===mode?"white":C.muted, transition:"all 0.2s" }}>
+              <button key={mode} onClick={()=>{setAuthMode(mode);setAuthError("");setConfirmSent(false);}} style={{ flex:1, padding:"8px 0", border:"none", borderRadius:6, cursor:"pointer", fontWeight:600, fontSize:14, background:authMode===mode?C.blue:"transparent", color:authMode===mode?"white":C.muted, transition:"all 0.2s" }}>
                 {mode==="login"?"로그인":"회원가입"}
               </button>
             ))}
@@ -1813,7 +1838,13 @@ async function sharePdf(){
           )}
           <input style={inp} type="email" placeholder="이메일 *" value={email} onChange={e=>{setEmail(e.target.value);setAuthError("");}} onKeyDown={e=>e.key==="Enter"&&(authMode==="login"?handleLogin():handleSignup())} />
           <input style={inp} type="password" placeholder="비밀번호 (6자 이상) *" value={password} onChange={e=>{setPassword(e.target.value);setAuthError("");}} onKeyDown={e=>e.key==="Enter"&&(authMode==="login"?handleLogin():handleSignup())} />
-          {authError && <p style={{ color:C.red, fontSize:12, margin:"-4px 0 10px", textAlign:"center" }}>{authError}</p>}
+          {confirmSent && (
+            <div style={{ background:"#13301f", border:"1px solid #2ECC71", borderRadius:8, padding:"10px 14px", marginBottom:10, fontSize:12 }}>
+              <p style={{ margin:0, color:"#2ECC71", fontWeight:700 }}>📧 인증 메일을 보냈어요</p>
+              <p style={{ margin:"4px 0 0", color:C.textSub, lineHeight:1.6 }}>{email} 로 보낸 링크를 눌러 인증을 완료한 뒤 로그인해 주세요. (메일이 안 보이면 스팸함도 확인)</p>
+            </div>
+          )}
+          {authError && <p style={{ color:C.red, fontSize:12, margin:"-4px 0 10px", textAlign:"center", whiteSpace:"pre-line" }}>{authError}</p>}
           <button onClick={authMode==="login"?handleLogin:handleSignup} disabled={authLoading} style={{ ...btnS(C.blue,authLoading), width:"100%", padding:12, fontSize:15, marginTop:4 }}>
             {authLoading?"처리 중...":authMode==="login"?"로그인 →":"무료 체험 시작 →"}
           </button>
