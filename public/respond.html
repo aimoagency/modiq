@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>modiq · 일정 수락</title>
+<style>
+  html,body{margin:0;background:#eceff3;color:#16181f;font-family:-apple-system,'Apple SD Gothic Neo',BlinkMacSystemFont,sans-serif}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
+  .card{background:#fff;border-radius:16px;padding:26px 22px;max-width:420px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+  .eyebrow{font-size:11px;letter-spacing:1.5px;color:#8a93a0}
+  .headline{font-size:19px;font-weight:800;margin:6px 0 14px}
+  table{width:100%;border-collapse:collapse;margin-bottom:6px}
+  td.k{padding:9px 0;color:#8a93a0;width:120px;vertical-align:top;font-size:13px}
+  td.v{padding:9px 0;font-size:13px;color:#16181f}
+  tr{border-top:1px solid #f1f3f5}
+  .ask{font-size:13px;color:#6b7280;margin:6px 0 14px;line-height:1.6}
+  .btn{display:block;text-align:center;text-decoration:none;padding:13px;border-radius:9px;font-weight:800;font-size:15px;border:none;width:100%;box-sizing:border-box;cursor:pointer;margin-top:8px}
+  .accept{background:#10b981;color:#fff}
+  .decline{background:#fff;color:#ef4444;border:1px solid #fecaca}
+  .gcal{background:#1a73e8;color:#fff}
+  .ics{background:#f3f4f6;color:#16181f}
+  .ok{margin:8px 0 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:14px;color:#047857;font-size:14px;font-weight:700;text-align:center}
+  .no{margin-top:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;color:#b91c1c;font-size:14px;font-weight:700;text-align:center}
+  .muted{font-size:12.5px;color:#6b7280;margin:0 0 10px;line-height:1.6}
+  .center{text-align:center}
+  .big{font-size:40px}
+  .h2{margin:10px 0 6px;font-size:18px;font-weight:800}
+  .p{margin:0;font-size:14px;color:#6b7280}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card" id="card">
+  <div class="center"><div class="eyebrow">SCHEDULE · 일정</div><p class="muted" style="margin-top:14px">불러오는 중…</p></div>
+</div></div>
+<script>
+(function(){
+  var FN = "https://fijtpyrmqzjefucsqfos.supabase.co/functions/v1/booking-respond";
+  var q = new URLSearchParams(location.search);
+  var id = q.get("id") || "", token = q.get("token") || "", intent = q.get("intent") || "";
+  var card = document.getElementById("card");
+  var TYPE_LABEL = { SHOOT:"촬영", MEETING:"실물미팅", FITTING:"피팅", AUDITION:"오디션" };
+  var TYPE_EN = { SHOOT:"Shoot", MEETING:"Meeting", FITTING:"Fitting", AUDITION:"Audition" };
+
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function hms(s){ var a=String(s||"").split(":"); return pad(a[0]||"00")+":"+pad(a[1]||"00")+":"+pad(a[2]||"00"); }
+  function compact(d){ return String(d||"").replace(/-/g,""); }
+  function hmsC(s){ return hms(s).replace(/:/g,""); }
+  function nextDay(d){ var dt=new Date(d+"T00:00:00"); dt.setDate(dt.getDate()+1); return ""+dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate()); }
+  function icsEsc(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+
+  function notice(big,h2,p){ card.innerHTML = '<div class="center"><div class="big">'+big+'</div><div class="h2">'+esc(h2)+'</div><p class="p">'+esc(p)+'</p></div>'; }
+
+  function cardHtml(s){
+    var ty = TYPE_LABEL[s.bookingType||"SHOOT"]||"일정", tyEn = TYPE_EN[s.bookingType||"SHOOT"]||"Schedule";
+    var headline = s.projectName || s.clientName || (ty+" 일정");
+    var dateStr = s.date ? String(s.date).replace(/-/g,".") : "날짜 미정";
+    var timeStr = s.start ? (hms(s.start).slice(0,5) + (s.end ? "–"+hms(s.end).slice(0,5) : "") + " (KST)") : "종일";
+    var rows = [];
+    if (s.projectName) rows.push(["Project · 프로젝트", s.projectName]);
+    rows.push(["Brand · 고객사", s.clientName]);
+    rows.push(["Type · 유형", ty+" · "+tyEn]);
+    rows.push(["Date · 날짜", dateStr]);
+    rows.push(["Time · 시간", timeStr]);
+    if (s.location) rows.push(["Location · 장소", s.location]);
+    var tr = rows.map(function(r){ return '<tr><td class="k">'+esc(r[0])+'</td><td class="v">'+esc(r[1])+'</td></tr>'; }).join("");
+    return '<div class="eyebrow">SCHEDULE · 일정</div><div class="headline">'+esc(headline)+'</div><table>'+tr+'</table>';
+  }
+
+  function buildIcs(s){
+    var timed = !!s.start;
+    var dtStart = timed ? "DTSTART:"+compact(s.date)+"T"+hmsC(s.start) : "DTSTART;VALUE=DATE:"+compact(s.date);
+    var dtEnd = timed ? "DTEND:"+compact(s.date)+"T"+hmsC(s.end||s.start) : "DTEND;VALUE=DATE:"+nextDay(s.date);
+    var stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+Z$/,"Z");
+    var lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//modiq//talent//KO","CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT","UID:"+(s.id||compact(s.date))+"@modiq","DTSTAMP:"+stamp,dtStart,dtEnd,
+      "SUMMARY:"+icsEsc(s.summary)];
+    if (s.location) lines.push("LOCATION:"+icsEsc(s.location));
+    if (s.description) lines.push("DESCRIPTION:"+icsEsc(s.description));
+    lines.push("BEGIN:VALARM","TRIGGER:-PT2H","ACTION:DISPLAY","DESCRIPTION:일정 알림","END:VALARM","END:VEVENT","END:VCALENDAR");
+    return lines.join("\r\n");
+  }
+  function googleUrl(s){
+    var dates;
+    if (s.start) dates = compact(s.date)+"T"+hmsC(s.start)+"/"+compact(s.date)+"T"+hmsC(s.end||s.start);
+    else dates = compact(s.date)+"/"+nextDay(s.date);
+    var p = new URLSearchParams({ action:"TEMPLATE", text:s.summary, dates:dates, ctz:"Asia/Seoul" });
+    if (s.location) p.set("location", s.location);
+    if (s.description) p.set("details", s.description);
+    return "https://calendar.google.com/calendar/render?"+p.toString();
+  }
+
+  function showAccepted(s){
+    var ics = buildIcs(s), icsHref = "data:text/calendar;charset=utf-8,"+encodeURIComponent(ics), gUrl = googleUrl(s);
+    card.innerHTML = cardHtml(s)
+      + '<div class="ok">✓ 수락되었습니다 · Accepted</div>'
+      + '<p class="muted">내 캘린더에도 추가하세요 · Add to your calendar:</p>'
+      + '<a class="btn gcal" href="'+esc(gUrl)+'" target="_blank" rel="noreferrer">Google Calendar에 추가</a>'
+      + '<a class="btn ics" href="'+icsHref+'" download="schedule.ics">Apple · Outlook · 기타 (.ics 파일)</a>';
+  }
+  function showDeclined(s){
+    card.innerHTML = cardHtml(s) + '<div class="no">거절이 접수되었습니다.<div style="font-weight:400;color:#7f1d1d;margin-top:4px;font-size:12px">담당자에게 전달됩니다 · Sent to the agency.</div></div>';
+  }
+
+  function act(kind){
+    card.innerHTML = (card.dataset.cardHtml||"") + '<p class="muted center">처리 중…</p>';
+    fetch(FN+"?id="+encodeURIComponent(id)+"&token="+encodeURIComponent(token)+"&do="+kind, { method:"GET" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) return notice("⚠️","처리 실패","잠시 후 다시 시도하거나 담당자에게 문의해주세요.");
+        if (d.result==="accepted") showAccepted(d.schedule);
+        else showDeclined(d.schedule);
+      })
+      .catch(function(){ notice("⚠️","네트워크 오류","연결을 확인하고 다시 시도해주세요."); });
+  }
+
+  function showConfirm(s, modelName, mode){
+    var inner = cardHtml(s);
+    card.dataset.cardHtml = inner;
+    var name = modelName ? esc(modelName)+" 님, " : "";
+    if (mode==="decline") {
+      inner += '<p class="ask">'+name+'아래 일정을 <b>거절</b>하시겠어요? 확정하려면 버튼을 눌러주세요.</p>'
+        + '<button class="btn decline" id="bd">✕ 거절 확정 / Confirm Decline</button>'
+        + '<button class="btn accept" id="ba">✓ 아니요, 수락할게요</button>';
+    } else {
+      inner += '<p class="ask">'+name+'아래 일정을 <b>수락</b>하시겠어요? 수락하면 캘린더에 일정이 추가됩니다.</p>'
+        + '<button class="btn accept" id="ba">✓ 수락 확정 / Confirm Accept</button>'
+        + '<button class="btn decline" id="bd">✕ 거절하기</button>';
+    }
+    card.innerHTML = inner;
+    var ba=document.getElementById("ba"), bd=document.getElementById("bd");
+    if (ba) ba.onclick = function(){ act("accept"); };
+    if (bd) bd.onclick = function(){ act("decline"); };
+  }
+
+  if (!id || !token) { notice("⚠️","잘못된 링크","메일의 버튼을 다시 눌러주세요."); return; }
+
+  fetch(FN+"?id="+encodeURIComponent(id)+"&token="+encodeURIComponent(token)+"&info=1", { method:"GET" })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok) { notice("⚠️","유효하지 않은 링크","만료되었거나 잘못된 링크입니다. 담당자에게 문의해주세요."); return; }
+      var s = d.schedule || {};
+      if (d.status==="cancelled" || s.status==="CANCELLED") { card.innerHTML = cardHtml(s) + '<div class="no">이 일정은 취소되었습니다 · This schedule was cancelled.</div>'; return; }
+      if (d.model_response==="accepted") { showAccepted(s); return; }
+      showConfirm(s, d.modelName, intent==="decline" ? "decline" : "accept");
+    })
+    .catch(function(){ notice("⚠️","네트워크 오류","연결을 확인하고 다시 시도해주세요."); });
+})();
+</script>
+</body>
+</html>
