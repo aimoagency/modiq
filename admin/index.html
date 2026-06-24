@@ -35,6 +35,9 @@
   .pill { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
   .hidden { display:none; }
   .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:10px 16px; font-size:13px; box-shadow:0 6px 24px rgba(0,0,0,.4); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; max-width:620px; width:100%; max-height:85vh; overflow:auto; }
+  a.link { color:var(--blue); text-decoration:none; cursor:pointer; font-weight:700; }
 </style>
 </head>
 <body>
@@ -83,6 +86,14 @@
         <thead><tr><th>이메일</th><th>생성일</th><th>확인</th><th>작업</th></tr></thead>
         <tbody id="orphanBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- 대표/담당자 모달 -->
+  <div id="memberModal" class="modal-bg hidden">
+    <div class="modal">
+      <div class="between"><h1 id="mmTitle" style="font-size:17px;">대표/담당자</h1><button class="btn-ghost" id="mmClose">닫기</button></div>
+      <div id="mmBody" style="margin-top:14px;"></div>
     </div>
   </div>
 
@@ -163,7 +174,7 @@
     if (!tenants.length) { $("tenantBody").innerHTML = `<tr><td colspan="12" class="muted" style="text-align:center; padding:18px;">에이전시가 없습니다.</td></tr>`; return; }
     $("tenantBody").innerHTML = tenants.map((t) => `
       <tr>
-        <td>${esc(t.name) || "-"}</td>
+        <td><a class="link viewMembers" data-agency="${esc(t.agency_id)}" data-name="${esc(t.name)}">${esc(t.name) || "-"}</a></td>
         <td class="muted">${esc(t.owner_email) || "-"}</td>
         <td>${planSelect(t)}</td>
         <td class="small">${fmtDate(t.trial_ends_at)}</td>
@@ -185,6 +196,31 @@
         catch (err) { alert(err.message); el.value = cur; }
       });
     });
+    document.querySelectorAll(".viewMembers").forEach((a) => {
+      a.addEventListener("click", (e) => { e.preventDefault(); viewMembers(a.dataset.agency, a.dataset.name); });
+    });
+  }
+
+  // 에이전시 클릭 → 대표/담당자 목록 모달
+  async function viewMembers(agencyId, agencyName) {
+    $("mmTitle").textContent = (agencyName || "에이전시") + " · 대표/담당자";
+    $("mmBody").innerHTML = `<p class="muted small">불러오는 중…</p>`;
+    $("memberModal").classList.remove("hidden");
+    try {
+      const r = await callAdmin("members", { agency_id: agencyId });
+      const ms = r.members || [];
+      if (!ms.length) { $("mmBody").innerHTML = `<p class="muted">등록된 대표/담당자가 없습니다.</p>`; return; }
+      $("mmBody").innerHTML = `<div class="tablewrap"><table style="min-width:0;">
+        <thead><tr><th>역할</th><th>이름</th><th>직위</th><th>이메일</th><th>전화</th><th>재무열람</th></tr></thead>
+        <tbody>${ms.map((m) => `<tr>
+          <td><span class="pill" style="color:${m.role === "owner" ? "var(--green)" : "var(--muted)"};">${m.role === "owner" ? "대표" : "담당자"}</span></td>
+          <td>${esc(m.name) || "-"}</td>
+          <td class="small">${esc(m.position) || "-"}</td>
+          <td class="muted small">${esc(m.email) || "-"}</td>
+          <td class="small">${esc(m.phone) || "-"}</td>
+          <td class="small">${m.can_view_finance ? "✓" : "-"}</td>
+        </tr>`).join("")}</tbody></table></div>`;
+    } catch (err) { if (err.message !== "401") $("mmBody").innerHTML = `<p class="err">${esc(err.message)}</p>`; }
   }
 
   function renderOrphans(orphans) {
@@ -233,6 +269,8 @@
   $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
   $("logoutBtn").addEventListener("click", () => { setToken(""); showLogin(""); });
   $("refreshBtn").addEventListener("click", load);
+  $("mmClose").addEventListener("click", () => $("memberModal").classList.add("hidden"));
+  $("memberModal").addEventListener("click", (e) => { if (e.target === $("memberModal")) $("memberModal").classList.add("hidden"); });
 
   // 자동 진입(토큰 있으면)
   if (getToken()) { showApp(); load(); } else { showLogin(""); }
