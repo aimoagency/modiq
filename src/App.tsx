@@ -1271,17 +1271,29 @@ export default function App() {
       const fresh = await sb("bookings", "GET", null, `?id=eq.${encodeURIComponent(tb.id)}&select=gcal_event_id,model_response`);
       if (Array.isArray(fresh) && fresh[0]) { liveEventId = fresh[0].gcal_event_id || ""; liveResp = fresh[0].model_response || liveResp; }
     } catch {}
-    // 취소: 구글 일정 있으면 삭제 + (opts.mail 시) 모델에게 취소 안내 메일 자동 발송
+
+    // gcal_event_id 저장(상태+DB 동기). null이면 연동 해제.
+    const saveEventId = async (eid: string | null) => {
+      try {
+        await sb("bookings", "PATCH", { gcal_event_id: eid }, `?id=eq.${tb.id}`);
+        setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, gcal_event_id: eid } : x));
+        setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: eid } : s);
+      } catch {}
+    };
+    // 섭외 → gcal-sync 입력(create/update 공통)
+    const gcalInput = (action: "create" | "update", eid?: string) => {
+      const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+      const input: any = { action, agency_id: agency.id, event_id: eid, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
+      if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
+      else { input.all_day = true; input.date = ev.date; }
+      return input;
+    };
+
+    // 취소: 구글 일정 삭제(성공했을 때만 id 정리 — 미연동·토큰만료면 id 유지해 재시도 가능) + (opts.mail) 취소 안내 메일
     if (tb.status === "CANCELLED") {
       if (liveEventId) {
-        try {
-          await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId });
-          await sb("bookings", "PATCH", { gcal_event_id: null }, `?id=eq.${tb.id}`);
-          setBookings(prev => prev.map(x => x.id === tb.id ? { ...x, gcal_event_id: null } : x));
-          setSelectedBooking((s: any) => s && s.id === tb.id ? { ...s, gcal_event_id: null } : s);
-        } catch {}
+        try { const r = await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId }); if (r.ok) await saveEventId(null); } catch {}
       }
-      // 확정·취소 두 경우 모두 자동 메일(사용자 합의). 취소는 .ics/캘린더 추가 없이 취소 안내만.
       if (opts.mail && tm?.email) {
         try {
           const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
@@ -1293,21 +1305,18 @@ export default function App() {
     // 확정 계열 + 날짜 있을 때만 (수락형 흐름)
     if (!["CONFIRMED", "COMPLETED", "SETTLED"].includes(tb.status) || !tb.shoot_date) return;
     const accepted = liveResp === "accepted";
-    // 이미 구글 일정이 연동된 건(수락형 수락 또는 수동 "구글 캘린더 등록")은 일시·장소 변경을
-    // 그 일정에 in-place 반영(중복 생성·옛 일정 잔존 방지). gcal-sync가 sendUpdates=all 이라
-    // 모델 게스트에게 구글이 변경 통지 메일을 자동 발송한다.
+    // ① 연동된 일정 있음 → 일시·장소 변경을 in-place 반영(중복·잔존 방지, sendUpdates=all 로 모델 통지)
     if (liveEventId) {
-      try {
-        const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-        const input: any = { action: "update", agency_id: agency.id, event_id: liveEventId, summary: ev.title, description: ev.description, location: ev.location, attendee_email: tm?.email || "" };
-        if (ev.start) { const hms = (s: string) => { const a = String(s).split(":"); return `${(a[0] || "00").padStart(2, "0")}:${a[1] || "00"}:${a[2] || "00"}`; }; input.start = `${ev.date}T${hms(ev.start)}`; input.end = `${ev.date}T${hms(ev.end || ev.start)}`; input.all_day = false; }
-        else { input.all_day = true; input.date = ev.date; }
-        await gcalSync(input);
-      } catch {}
+      try { await gcalSync(gcalInput("update", liveEventId)); } catch {}
       return;
     }
-    // 아직 구글 일정 없음 + 미수락 + 확정 트리거: 초대(수락 요청) 메일 발송 — 모델이 수락해야 캘린더 생성
-    if (opts.mail && !accepted) await sendBookingInvite(tb, tm, tc);
+    // ② 일정 없음 + 모델이 이미 수락 → 이벤트 재생성(취소 후 재확정 등). gcal-sync 가 모델 재초대.
+    if (accepted) {
+      try { const r = await gcalSync(gcalInput("create")); if (r.ok && r.event_id) await saveEventId(r.event_id); } catch {}
+      return;
+    }
+    // ③ 일정 없음 + 미수락 + 확정 트리거 → 초대(수락 요청) 메일 발송
+    if (opts.mail) await sendBookingInvite(tb, tm, tc);
   };
 
   const handleChangeStatus = async (id: string, status: string) => {
@@ -1328,14 +1337,15 @@ export default function App() {
       }
       setBookings(updatedList);
       setSelectedBooking((prev:any)=>prev?{...prev,status}:null);
-      // ── 알림톡: 확정/취소 시 모델+고객사에 발송 ──
-      if (status==="CONFIRMED"||status==="CANCELLED") {
+      // ── 알림톡 + 구글 동기화: 확정/취소(메일·알림톡) / 완료·정산 재활성(캘린더 갱신·재생성) ──
+      if (["CONFIRMED","COMPLETED","SETTLED","CANCELLED"].includes(status)) {
         const tb = updatedList.find(b=>b.id===id);
         if (tb) {
           const tm = models.find(m=>m.id===tb.model_id);
           const tc = customers.find(c=>c.id===tb.customer_id);
-          sendAlimtalkBoth(tm?.phone||"", tc?.phone||"", status==="CONFIRMED"?"CONFIRM":"CANCEL", { modelName:tm?.name||"모델", booking:tb, clientName:tc?.name||"고객사", managerName:tb.manager||"담당자", senderLabel:agency?.name||"에이전시", contactPhone:agency?.contact_phone||agency?.rep_phone||"" });
-          syncBookingToCalendar(tb, tm, tc, { mail: status==="CONFIRMED"||status==="CANCELLED" }); // 구글 자동 동기화 + 확정/취소 시 자동 메일(합의)
+          if (status==="CONFIRMED"||status==="CANCELLED")
+            sendAlimtalkBoth(tm?.phone||"", tc?.phone||"", status==="CONFIRMED"?"CONFIRM":"CANCEL", { modelName:tm?.name||"모델", booking:tb, clientName:tc?.name||"고객사", managerName:tb.manager||"담당자", senderLabel:agency?.name||"에이전시", contactPhone:agency?.contact_phone||agency?.rep_phone||"" });
+          syncBookingToCalendar(tb, tm, tc, { mail: status==="CONFIRMED"||status==="CANCELLED" }); // 구글 자동 동기화(취소 후 재확정 시 일정 재생성 포함) + 확정/취소 시 자동 메일(합의)
         }
       }
     } catch (e) { alert("상태 변경 실패: "+String(e)); }
