@@ -224,7 +224,7 @@ export default function App() {
       const warns:string[]=[];
       for (const l of pModelLines) {
         const lDate=l.date||pDate, lStart=l.start||pStart, lEnd=l.end||pEnd;
-        const ms=bookings.filter(b=>b.model_id===l.modelId&&b.shoot_date===lDate&&b.status!=="CANCELLED"&&b.status!=="HOLD"&&!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract&&scheduleConflict(lStart,lEnd,b.start_time,b.end_time,"SHOOT",b.booking_type).conflict);
+        const ms=bookings.filter(b=>b.model_id===l.modelId&&b.shoot_date===lDate&&b.status!=="CANCELLED"&&b.status!=="HOLD"&&!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract&&scheduleConflict(lStart,lEnd,b.start_time,b.end_time,"SHOOT",b.booking_type,l.location||pLocation,b.location).conflict);
         ms.forEach(b=>meetingsToHold.push(b.id));
         if (ms.length>0) { const nm=models.find(m=>m.id===l.modelId)?.name||"모델"; const lb=[...new Set(ms.map(b=>BOOKING_TYPES[b.booking_type||"SHOOT"]?.label))].join(", "); warns.push(`· ${nm} — ${fmtDate(lDate)} ${lb}`); }
       }
@@ -263,7 +263,7 @@ export default function App() {
       for (const b of conflicts) {
         const bIsShoot = !!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract;
         if (pBookingType==="SHOOT" && !bIsShoot) continue; // 촬영 vs 미팅: 미팅은 위에서 HOLD 처리 (촬영은 통과)
-        const c = scheduleConflict(lStart, lEnd, b.start_time, b.end_time, pBookingType, b.booking_type);
+        const c = scheduleConflict(lStart, lEnd, b.start_time, b.end_time, pBookingType, b.booking_type, lLoc, b.location);
         if (c.conflict) { autoHold = true; holdReason = c.reason; break; }
       }
       const finalStatus = autoHold ? "HOLD" : pStatus;
@@ -1032,7 +1032,7 @@ export default function App() {
     const othersSameDay = bookings.filter(b=>b.id!==selectedBooking.id&&b.model_id===selectedBooking.model_id&&b.shoot_date===selectedBooking.shoot_date&&b.status!=="CANCELLED");
     const blocks = (t:any, peers:any[]) => peers.some(b=>{
       // 시간 겹침/버퍼 부족일 때만 충돌(같은 날이라고 무조건 보류하지 않음 — 간격 규칙 적용)
-      if (!scheduleConflict(t.start_time,t.end_time,b.start_time,b.end_time,t.booking_type,b.booking_type).conflict) return false;
+      if (!scheduleConflict(t.start_time,t.end_time,b.start_time,b.end_time,t.booking_type,b.booking_type,t.location,b.location).conflict) return false;
       const tS=!!BOOKING_TYPES[t.booking_type||"SHOOT"]?.hasContract, bS=!!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract;
       if (tS!==bS) return !tS; // 충돌 시 우선순위: 비촬영(미팅/피팅/오디션)을 보류, 촬영은 유지
       return true; // 동급 + 충돌 → 보류
@@ -1132,11 +1132,11 @@ export default function App() {
       const bIsShoot = !!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract;
       if (newIsShoot && !bIsShoot) {
         // 촬영 추가 vs 기존 미팅(같은 날): 시간이 실제로 충돌할 때만 미팅 HOLD (간격 충분하면 유지)
-        const c = scheduleConflict(bStart, bEnd, b.start_time, b.end_time, bBookingType, b.booking_type);
+        const c = scheduleConflict(bStart, bEnd, b.start_time, b.end_time, bBookingType, b.booking_type, bLocation, b.location);
         if (c.conflict && b.status!=="HOLD") meetingsToHold.push(b.id);
       } else {
         // 동급 또는 미팅 vs 기존 촬영: 시간 겹치면 새 건 HOLD
-        const c = scheduleConflict(bStart, bEnd, b.start_time, b.end_time, bBookingType, b.booking_type);
+        const c = scheduleConflict(bStart, bEnd, b.start_time, b.end_time, bBookingType, b.booking_type, bLocation, b.location);
         if (c.conflict) { autoHold = true; holdReason = c.reason; }
       }
     }
@@ -1306,7 +1306,7 @@ export default function App() {
         const target = updatedList.find(b=>b.id===id);
         for (const hb of updatedList.filter(b=>b.id!==id&&b.model_id===target?.model_id&&b.shoot_date===target?.shoot_date&&b.status==="HOLD")) {
           const peers = updatedList.filter(b=>b.id!==hb.id&&b.model_id===hb.model_id&&b.shoot_date===hb.shoot_date&&b.status!=="CANCELLED");
-          const still = peers.some(b=>scheduleConflict(hb.start_time,hb.end_time,b.start_time,b.end_time,hb.booking_type,b.booking_type).conflict);
+          const still = peers.some(b=>scheduleConflict(hb.start_time,hb.end_time,b.start_time,b.end_time,hb.booking_type,b.booking_type,hb.location,b.location).conflict);
           if (!still) {
             await sb("bookings","PATCH",{status:"CHECKING"},`?id=eq.${hb.id}`);
             updatedList = updatedList.map(b=>b.id===hb.id?{...b,status:"CHECKING"}:b);
