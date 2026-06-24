@@ -2070,11 +2070,20 @@ async function sharePdf(){
               <div onClick={e=>e.stopPropagation()} style={{ position:"relative", background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:20, width:"92%", maxWidth:440 }}>
                 <CloseButton onClose={()=>setShowSendMenu(false)} />
                 <h3 style={{ margin:"0 0 4px", color:C.text, fontSize:16 }}><Calendar size={16} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델에게 일정 보내기</h3>
+                {(()=>{
+                  const resp=selectedBooking.model_response;
+                  let txt:string, col:string;
+                  if (synced) { txt="✓ 구글 캘린더에 등록됨"+(resp==="accepted"?" · 모델 수락함":""); col=C.green; }
+                  else if (resp==="pending") { txt="📨 수락 초대를 보냈어요 — 모델 수락 대기 중"; col=C.orange; }
+                  else if (resp==="declined") { txt="✕ 모델이 거절했어요"; col=C.red; }
+                  else { txt="아직 보내기 전이에요 — 아래에서 한 가지만 선택하세요"; col=C.muted; }
+                  return <div style={{ margin:"6px 0 12px", padding:"9px 12px", borderRadius:9, fontSize:12.5, fontWeight:700, color:col, background:col+"15", border:`1px solid ${col}40` }}>{txt}</div>;
+                })()}
                 <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
 
-                <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${C.blue}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.blue+"12" }}>
-                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>추천</span></div>
-                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>구글 캘린더에 일정 생성 + 모델 초대. 모델이 수락하면 변경·취소가 자동 동기화돼요. (설정에서 구글 연동 필요)</div>
+                <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${(synced?C.green:C.blue)}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:(synced?C.green:C.blue)+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:synced?C.green:C.blue, fontWeight:700 }}>{synced?"등록됨 ✓":"추천"}</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>{synced?"이미 캘린더에 등록된 일정이에요. 일시·장소가 바뀌었으면 눌러서 갱신하세요.":"구글 캘린더에 일정 생성 + 모델 초대. 이거 하나면 이후 변경·취소가 자동 동기화돼요. (설정에서 구글 연동 필요)"}</div>
                 </div>
 
                 <div onClick={async()=>{ if(!hasEmail){ alert("모델 이메일이 없습니다. 모델 정보에 이메일을 입력하세요."); return; } setShowSendMenu(false); await doSendCalMail(); }} style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:hasEmail?"pointer":"not-allowed", opacity:hasEmail?1:0.5, background:C.card2 }}>
@@ -2507,7 +2516,7 @@ async function sharePdf(){
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
                 {!editingBooking
                   ? <>
-                      {canSend&&<button onClick={()=>setShowSendMenu(true)} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
+                      {canSend&&<button onClick={()=>{ setShowSendMenu(true); (async()=>{ try { const fresh=await sb("bookings","GET",null,`?id=eq.${encodeURIComponent(selectedBooking.id)}&select=gcal_event_id,model_response`); if(Array.isArray(fresh)&&fresh[0]) setSelectedBooking((p:any)=>p&&p.id===selectedBooking.id?{...p,gcal_event_id:fresh[0].gcal_event_id||null,model_response:fresh[0].model_response||p.model_response}:p); } catch {} })(); }} title="모델 캘린더에 일정 전달(구글 동기화·이메일·링크)" style={{ ...btnS(C.green), fontSize:13, flex:1 }}><Calendar size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 일정 보내기{selectedBooking.gcal_event_id?" ✓":""}</button>}
                       {canVoucher&&<button onClick={()=>issueVoucher(selectedBooking)} style={{ ...btnS(C.blue), fontSize:13, flex:1 }}><ClipboardList size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 명세서</button>}
                     </>
                   : <>
