@@ -42,6 +42,7 @@
   - ⚠️ "장소 다르면 +1시간"의 **일반 가산은 두지 않는다**(미팅↔미팅 다른장소만 1시간). 촬영이 끼면 장소 무관 위 규칙 그대로.
   - 충돌 시 우선순위 = **비촬영(미팅/피팅/오디션)을 HOLD, 촬영은 유지.** "같은 날 촬영 있으면 시간 무관 무조건 HOLD" 식으로 되돌리지 말 것(간격 기준).
   - 관련: `lib/utils.ts scheduleConflict`(먼저=촬영 ? 120 : 60, 비촬영+같은장소 면제), `App.tsx`의 `blocks`·프로젝트추가·섭외추가·HOLD해제 재검사(모두 `scheduleConflict`에 `location`까지 전달).
+- 🛠 **어드민 콘솔 배포(중요·자동 아님)**: 운영자 어드민은 `admin/index.html`(단일 정적 파일, anon key + `admin@modiq.kr`/`platform_admins` 로그인 + `admin-api` 검증으로 보호)이며 **`admin.modiq.kr`** 에 뜬다 — **별도 Vercel 프로젝트 `modiq-admin`**(repo `aimoagency/modiq`, Root Directory `admin/`). ⚠️ **이 프로젝트는 master push 자동배포가 아니다.** `admin/index.html`을 고쳐 master에 머지해도 admin.modiq.kr은 그대로다 → 반드시 **Vercel `modiq-admin` → Settings → Git → Deploy Hooks**의 `admin`(branch `master`) 훅을 한 번 호출(**Copy → 브라우저 주소창 붙여넣기 Enter**, 응답 `{"job":{...,"state":"PENDING"}}` 뜨면 성공)하거나 `Deployments → ⋯ → Redeploy` 해야 반영된다. 그 뒤 admin.modiq.kr 강력 새로고침. (고객 앱 `modiq.kr`은 master 자동배포라 혼동 주의 — 어드민만 수동 훅.) (2026-06 확인)
 - ⚠️ 임시 컨테이너라 **커밋·푸시 안 한 수정은 세션 종료 시 유실**된다. 화면 수정은 반드시 커밋·푸시까지 완료할 것.
 
 ## 대시보드 로딩 / 첫 화면 (🔒 보호 영역 — 임의 수정·되돌리기 금지)
