@@ -36,22 +36,31 @@ export const toMin = (t: string) => { if (!t) return null; const [h, m] = t.spli
 // 장소 정규화: 공백·대소문자 무시하고 비교용 키 생성
 const normLoc = (s?: string) => (s || "").trim().toLowerCase().replace(/\s+/g, "");
 
-// 일정 충돌 검사 (강화: 장소 이동시간 가산 + severity 구분)
+// 일정 충돌 검사 (순서 의존 규칙 · severity 구분)
+// 규칙(먼저 시작하는 섭외 기준):
+//  - 비촬영(실물미팅·피팅·오디션)끼리 같은 장소 → 시간이 겹쳐도 충돌 아님(HOLD 안 함).
+//  - 비촬영끼리 다른 장소 → 1시간 간격 필요(이동).
+//  - 먼저가 비촬영 → 다음 촬영 → 1시간 간격 필요. (예: 11~12 미팅 → 13시 촬영 OK)
+//  - 먼저가 촬영 → 다음(촬영·비촬영 무관) → 2시간 간격 필요.
+//  ※ "장소 다르면 +1시간"의 일반 가산은 두지 않는다(미팅↔미팅 다른장소만 1시간).
 export const scheduleConflict = (aS: string, aE: string, bS: string, bE: string, typeA = "", typeB = "", locA?: string, locB?: string) => {
   if (!aS || !aE || !bS || !bE) return { conflict: false, reason: "", severity: "" };
   const as = toMin(aS), ae = toMin(aE), bs = toMin(bS), be = toMin(bE);
   if (as === null || ae === null || bs === null || be === null) return { conflict: false, reason: "", severity: "" };
+  const shootA = typeA === "SHOOT", shootB = typeB === "SHOOT";
+  // 비촬영끼리 같은 장소면 시간이 겹쳐도 충돌로 보지 않음
+  const la = normLoc(locA), lb = normLoc(locB);
+  const sameLoc = !!la && !!lb && la === lb;
+  if (!shootA && !shootB && sameLoc) return { conflict: false, reason: "", severity: "" };
   if (as < be && bs < ae) return { conflict: true, reason: "시간대 겹침", severity: "OVERLAP" };
   const gap = as >= be ? as - be : bs - ae;
-  let need = (typeA === "MEETING" && typeB === "MEETING") ? 60 : 120;
-  const la = normLoc(locA), lb = normLoc(locB);
-  const differentPlace = !!la && !!lb && la !== lb;
-  if (differentPlace) need += 60;
+  // 먼저 시작하는 섭외가 촬영이면 2시간, 아니면 1시간
+  const firstIsShoot = as <= bs ? shootA : shootB;
+  const need = firstIsShoot ? 120 : 60;
   if (gap < need) {
     const gapStr = `${Math.floor(gap / 60)}h ${gap % 60}m`;
     const needStr = `${need / 60}h`;
-    const moveNote = differentPlace ? " 장소이동" : "";
-    return { conflict: true, reason: `간격 ${gapStr} (${needStr} 미만${moveNote})`, severity: "BUFFER" };
+    return { conflict: true, reason: `간격 ${gapStr} (${needStr} 미만)`, severity: "BUFFER" };
   }
   return { conflict: false, reason: "", severity: "" };
 };
