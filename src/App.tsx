@@ -1269,7 +1269,16 @@ export default function App() {
     }
     try {
       const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-      await sendInviteEmail(tm.email, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
+      // 비구글 이메일(네이버·카카오·아웃룩 등)은 구글 게스트 초대가 캘린더에 자동 동기화되지 않으므로,
+      // 수락 요청 메일에 "한 번 구독" 링크를 함께 안내해 이후 일시·장소 변경이 자동 반영되게 한다.
+      // 구글(gmail/googlemail) 모델은 subUrl="" → 메일은 기존과 100% 동일.
+      const emailDomain = (tm?.email || "").split("@")[1]?.toLowerCase() || "";
+      let subUrl = "";
+      if (emailDomain && emailDomain !== "gmail.com" && emailDomain !== "googlemail.com") {
+        const ct = await ensureCalToken(tm);
+        if (ct) subUrl = calSubscribePageUrl(ct);
+      }
+      await sendInviteEmail(tm.email, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type }, subUrl);
     } catch {}
   };
 
