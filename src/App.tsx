@@ -6,6 +6,7 @@ import {
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
   MODEL_CATEGORIES, GENDERS, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
+  FEATURE_DISTRIBUTION,
 } from "./constants";
 import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
@@ -46,7 +47,7 @@ function lazyRetry<T extends ComponentType<any>>(factory: () => Promise<{ defaul
   }));
 }
 const CalendarView = lazyRetry(() => import("./views/CalendarView"));
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark, Handshake } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView"; // 첫 화면 — 즉시 렌더 위해 메인 번들에 포함(지연 로딩 제외)
@@ -63,6 +64,7 @@ const ModelStudioView = lazyRetry(() => import("./views/ModelStudioView"));
 const PackagePublicView = lazyRetry(() => import("./views/PackagePublicView"));
 const CalendarAddView = lazyRetry(() => import("./views/CalendarAddView"));
 const CalSubscribeView = lazyRetry(() => import("./views/CalSubscribeView"));
+const DistributionView = lazyRetry(() => import("./views/DistributionView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail, sendCancelEmail, sendInviteEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
@@ -345,6 +347,8 @@ export default function App() {
   const [mCategory,  setMCategory]  = useState("");
   const [mCareerYears, setMCareerYears] = useState(""); // 경력(년) — 수동 숫자 입력, 소수 가능
   const [mGender,    setMGender]    = useState(""); // 성별 M/F (ID 생성용)
+  const [mBirthYear, setMBirthYear] = useState(""); // 출생연도(YYYY) — 발송용
+  const [mShareConsent, setMShareConsent] = useState(false); // 타 에이전시 공유 동의 — 발송 대상 여부
   const [mRate,      setMRate]      = useState(0);
   const [mCountry,     setMCountry]     = useState("대한민국");
   const [mEntry,       setMEntry]       = useState("");
@@ -549,7 +553,7 @@ export default function App() {
   // 모델 일반 조회 컬럼 — 무거운 base64 이미지 컬럼(compcard ~2MB/8행)을 제외해 첫 로딩 속도 개선.
   // compcard는 컴카드 생성/저장 전용이라 어디서도 표시·조회하지 않으므로 빼도 안전(편집 PATCH에도 미포함).
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
-  const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url";
+  const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -730,7 +734,7 @@ export default function App() {
   const syncBankInfoFromForeign = (bank: string, account: string) => {
     setMBankName(bank); setMBankAcct(account); setMBank(`${bank} ${account}`.trim());
   };
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMBirthYear(""); setMShareConsent(false); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -743,7 +747,7 @@ export default function App() {
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, birth_year:mBirthYear!==""?Number(mBirthYear):null, share_consent:mShareConsent, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
     try {
       nm.thumb_url = await persistThumb(mThumb, agency.id, newModelId); // 썸네일 base64 → Storage URL(행 경량화)
       nm.bank_info = effectiveBankInfo(); // 외국인 국내계좌 → 통장 자동 반영(비어있을 때만)
@@ -758,7 +762,7 @@ export default function App() {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
     setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
-    setMCategory(m.category||""); setMCareerYears(m.career_years!=null?String(m.career_years):""); setMRate(m.rate||0);
+    setMCategory(m.category||""); setMCareerYears(m.career_years!=null?String(m.career_years):""); setMBirthYear(m.birth_year!=null?String(m.birth_year):""); setMShareConsent(!!m.share_consent); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMIsForeign(!!m.is_foreigner); setMVisaType(m.visa_type||""); setMHasAlienCard(!!m.has_alien_card); setMPayMethod(m.payment_method||""); setMPayDetail(m.payment_detail&&typeof m.payment_detail==="object"?m.payment_detail:{}); setMTaxRate(Number(m.tax_rate)||0);
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
@@ -774,7 +778,7 @@ export default function App() {
   };
 
   const [modelBaseline, setModelBaseline] = useState("");
-  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", birth_year:mBirthYear!==""?Number(mBirthYear):null, share_consent:mShareConsent, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
   useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
@@ -1943,6 +1947,7 @@ async function sharePdf(){
     { target:"studio"     as Page, label:"포트폴리오", icon:Camera },
     { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
+    ...(FEATURE_DISTRIBUTION?[{ target:"distribution" as Page, label:"발송", icon:Handshake }]:[]),
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
       { target:"settlement" as Page, label:"정산",     icon:CoinStack },
@@ -2062,6 +2067,9 @@ async function sharePdf(){
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
+
+        {/* ════ 발송(Distribution) ════ */}
+        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} isMobile={isMobile} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} agency={agency} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
@@ -2580,6 +2588,7 @@ async function sharePdf(){
             { t:"studio" as Page, l:"포트폴리오", I:Camera },
             { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
+            ...(FEATURE_DISTRIBUTION?[{ t:"distribution" as Page, l:"발송", I:Handshake }]:[]),
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
             ...(myRole==="owner"?[{ t:"members" as Page, l:"담당자", I:Users }]:[]),
             ...(myRole==="owner"?[{ t:"company" as Page, l:"회사정보", I:Building2 }]:[]),
@@ -3200,7 +3209,23 @@ async function sharePdf(){
                 {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            {FEATURE_DISTRIBUTION&&(
+            <div>
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도 <span style={{ fontSize:10, color:C.muted }}>(YYYY · 발송용)</span></label>
+              <input style={inp} type="text" inputMode="numeric" maxLength={4} placeholder="예: 1998" value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} />
+            </div>
+            )}
           </div>
+          {/* ── 타 에이전시 공유 동의(발송 대상 여부) ── */}
+          {FEATURE_DISTRIBUTION&&(
+          <label style={{ display:"flex", alignItems:"flex-start", gap:9, padding:"10px 12px", border:`1px solid ${mShareConsent?C.green+"66":C.border}`, borderRadius:8, margin:"0 0 14px", background:mShareConsent?C.green+"10":C.card2, cursor:"pointer" }}>
+            <input type="checkbox" checked={mShareConsent} onChange={e=>setMShareConsent(e.target.checked)} style={{ marginTop:2, flexShrink:0 }} />
+            <span style={{ fontSize:12, color:C.textSub, lineHeight:1.5 }}>
+              <b style={{ color:C.text }}>타 에이전시 공유 동의</b> — 체크 시 이 모델을 파트너 에이전시에 <b style={{ color:C.text }}>발송</b>할 수 있습니다.
+              <br/>공유되는 정보: 이름·성별·출생연도·신체사이즈·키워드·노출가(Day/Half/Hour)·사진. <span style={{ color:C.muted }}>(주민번호·정산가·세무·연락처는 공유되지 않습니다)</span>
+            </span>
+          </label>
+          )}
           {/* ── 신체 정보 · 프로필 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>신체 정보 · 프로필 <span style={{ fontWeight:500, color:C.muted }}>(컴카드·패키지에 표시)</span></p>

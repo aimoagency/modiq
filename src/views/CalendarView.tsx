@@ -284,7 +284,8 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const isSel      = cell.cur&&cell.date===selDate;
             const outsideVisa= cell.cur&&cell.date?isOutsideVisa(cell.date):false;
             const dayBookings= cell.date?(bookingsByDate[cell.date]||[]):[];
-            const isVisaExit = !!cell.date && !!visaExit && cell.date===visaExit;
+            const isVisaExit  = !!cell.date && !!visaExit  && cell.date===visaExit;
+            const isVisaEntry = !!cell.date && !!visaEntry && cell.date===visaEntry;
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
             const dayOffs = cell.cur && cell.date ? offsForDate(cell.date) : [];
 
@@ -304,14 +305,17 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 onMouseEnter={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=C.card2; }}
                 onMouseLeave={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=isToday?C.card2:"transparent"; }}
               >
+                {/* 비자 입국일 표시선 */}
+                {isVisaEntry&&<div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:C.green, borderRadius:"2px 2px 0 0" }} />}
                 {/* 비자 만료일 표시선 */}
                 {isVisaExit&&<div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:C.red, borderRadius:"2px 2px 0 0" }} />}
 
                 {/* 날짜 숫자 */}
                 <div style={{ marginBottom:3, textAlign:isMobile?"center":"left" }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":"transparent", color:isToday?"white":isVisaExit?C.red:!cell.cur?C.border:krHol?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":isVisaEntry?C.green+"22":"transparent", color:isToday?"white":isVisaExit?C.red:isVisaEntry?C.green:!cell.cur?C.border:krHol?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
                   {/* [추가] 충돌 ⚠️ 배지 */}
                   {dayConflict&&<span title={dayConflict.worst==="OVERLAP"?"시간 겹침 충돌":"완충시간 부족"} style={{ marginLeft:3, display:"inline-flex", alignItems:"center", verticalAlign:"middle" }}><AlertTriangle size={isMobile?9:11} color={conflictColor!} strokeWidth={2.4} style={{ flexShrink:0 }}/></span>}
+                  {!isMobile&&isVisaEntry&&<span style={{ fontSize:9, color:C.green, fontWeight:700, marginLeft:2 }}>입국</span>}
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
                   {dayOffs.length>0&&<span title={dayOffs.map((o:any)=>`${modelName(o.model_id)} 휴무 (${fmtD(o.start_date)}~${fmtD(o.end_date)})`).join("\n")} style={{ fontSize:9, color:C.muted, fontWeight:700, marginLeft:2, whiteSpace:"nowrap" }}><CalendarOff size={9} style={{ verticalAlign:-1, flexShrink:0 }}/>{isMobile?"":(modelFilter?" 휴무":` 휴무 ${dayOffs.length}`)}</span>}
