@@ -24,6 +24,11 @@ const firstPhoto = (m: any): string => {
   return a[0] || m?.thumb_url || "";
 };
 
+// ⚠️ 컴포넌트 바깥(모듈 레벨)에 둔다. 컴포넌트 안에 정의하면 매 렌더마다 새 함수가 되어
+//    내부 <input>이 리마운트→포커스 상실(한 글자씩만 입력되는 버그)을 일으킨다.
+const Card = ({ children }: any) => <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>{children}</div>;
+const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: C.text }}>{children}</p>;
+
 export default function DistributionView({ agency, models, createdBy, isMobile }: {
   agency: any; models: any[]; createdBy?: string; isMobile: boolean;
 }) {
@@ -155,9 +160,6 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
     catch (e: any) { alert("처리 실패: " + (e?.message || e)); }
     finally { setBusy(false); }
   };
-
-  const Card = ({ children }: any) => <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>{children}</div>;
-  const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: C.text }}>{children}</p>;
 
   return (
     <div style={{ maxWidth: 720 }}>
