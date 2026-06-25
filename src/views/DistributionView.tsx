@@ -413,7 +413,7 @@ function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
   const fields = Array.isArray(m.fields) ? m.fields : [];
   const name = m.display_name || m.name;
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
       <div onClick={() => ph && setZoom(true)} style={{ position: "relative", aspectRatio: "3/4", background: C.card2, cursor: ph ? "zoom-in" : "default" }}>
         {ph ? <img src={thumbUrl(ph)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}><User size={30} color={C.muted} /></div>}
         {photos.length > 1 && <span style={{ position: "absolute", top: 6, left: 6, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 7px" }}>{safeIdx + 1}/{photos.length}</span>}
@@ -441,7 +441,7 @@ function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
           <button onClick={() => setZoom(false)} style={{ position: "absolute", top: 16, right: 18, background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer" }}>닫기 ✕</button>
         </div>
       )}
-      <div style={{ padding: "10px 12px" }}>
+      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", flex: 1 }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>{name}
           {m.gender && <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}> · {m.gender === "F" ? "여성" : m.gender === "M" ? "남성" : m.gender}</span>}
         </p>
@@ -461,20 +461,28 @@ function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
         )}
         {fields.length > 0 && <p style={{ margin: "7px 0 0", fontSize: 10, color: C.muted }}>{fields.join(" · ")}</p>}
         {m.specialty && <p style={{ margin: "4px 0 0", fontSize: 10, color: C.muted }}>특기: {m.specialty}</p>}
-        <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 11, color: C.textSub }}>
-          <span>Day <b style={{ color: C.text }}>{won(m.fee_day)}</b></span>
-          <span>Half <b style={{ color: C.text }}>{won(m.fee_half)}</b></span>
-          <span>Hour <b style={{ color: C.text }}>{won(m.fee_hour)}</b></span>
+        {/* 가격 — 가로 한 줄 강제(줄바꿈 금지, 넘치면 가로 스크롤) */}
+        <div style={{ display: "flex", flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", gap: 10, marginTop: 8, fontSize: 11, color: C.textSub }}>
+          <span style={{ flexShrink: 0 }}>Day <b style={{ color: C.text }}>{won(m.fee_day)}</b></span>
+          <span style={{ flexShrink: 0 }}>Half <b style={{ color: C.text }}>{won(m.fee_half)}</b></span>
+          <span style={{ flexShrink: 0 }}>Hour <b style={{ color: C.text }}>{won(m.fee_hour)}</b></span>
         </div>
+        {/* 입출국 — 날짜 있는 쪽만 표기(둘 다 없으면 빈칸 유지) */}
         {travel && (travel.entry_date || travel.exit_date) && (
           <p style={{ margin: "8px 0 0", fontSize: 11, color: C.blue, fontWeight: 600 }}>
-            <Plane size={11} style={{ verticalAlign: -2 }} /> 입국 {fmtDate(travel.entry_date)} ~ 출국 {fmtDate(travel.exit_date)}
+            <Plane size={11} style={{ verticalAlign: -2 }} />
+            {travel.entry_date ? ` 입국 ${fmtDate(travel.entry_date)}` : ""}
+            {travel.entry_date && travel.exit_date ? " ~" : ""}
+            {travel.exit_date ? ` 출국 ${fmtDate(travel.exit_date)}` : ""}
           </p>
         )}
+        {/* 내 모델로 등록 — 카드 하단 고정 */}
         {onImport && (
-          imported
-            ? <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: C.green, textAlign: "center", background: C.green + "14", borderRadius: 8, padding: "8px 0" }}><CheckCircle2 size={13} style={{ verticalAlign: -2 }} /> 내 모델로 등록됨</div>
-            : <button onClick={onImport} disabled={importBusy} style={{ ...btnS(C.blue, importBusy), width: "100%", marginTop: 10 }}>{importBusy ? "등록 중…" : "내 모델로 등록"}</button>
+          <div style={{ marginTop: "auto", paddingTop: 10 }}>
+            {imported
+              ? <div style={{ fontSize: 12, fontWeight: 700, color: C.green, textAlign: "center", background: C.green + "14", borderRadius: 8, padding: "8px 0" }}><CheckCircle2 size={13} style={{ verticalAlign: -2 }} /> 내 모델로 등록됨</div>
+              : <button onClick={onImport} disabled={importBusy} style={{ ...btnS(C.blue, importBusy), width: "100%" }}>{importBusy ? "등록 중…" : "내 모델로 등록"}</button>}
+          </div>
         )}
       </div>
     </div>
