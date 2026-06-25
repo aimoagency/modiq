@@ -1340,7 +1340,10 @@ export default function App() {
   // 섭외 초대(수락 요청) 메일 발송 + 응답 토큰/상태(pending) 보장. 실패해도 앱 흐름 방해 X.
   // 수락형 흐름: 이 메일을 먼저 보내고, 모델이 수락해야(booking-respond) 캘린더가 생성된다.
   const sendBookingInvite = async (tb: any, tm: any, tc: any) => {
-    if (!tm?.email) return;
+    // 대대행(소속사) 모델은 모델 개인 이메일이 없고 'A 업체 이메일(agency_email)'로 수락/거절을 받는다.
+    const forAgency = tm?.payout_tax_type === "company" && !!tm?.agency_email;
+    const recipient = forAgency ? tm.agency_email : tm?.email;
+    if (!recipient) return;
     let token = tb.model_resp_token;
     const patch: any = {};
     if (!token) { token = genCalToken(); patch.model_resp_token = token; }
@@ -1357,13 +1360,16 @@ export default function App() {
       // 비구글 이메일(네이버·카카오·아웃룩 등)은 구글 게스트 초대가 캘린더에 자동 동기화되지 않으므로,
       // 수락 요청 메일에 "한 번 구독" 링크를 함께 안내해 이후 일시·장소 변경이 자동 반영되게 한다.
       // 구글(gmail/googlemail) 모델은 subUrl="" → 메일은 기존과 100% 동일.
-      const emailDomain = (tm?.email || "").split("@")[1]?.toLowerCase() || "";
+      // 모델 캘린더 구독 링크는 모델 본인에게만 의미 — 대대행(A 업체 수신)엔 붙이지 않는다.
       let subUrl = "";
-      if (emailDomain && emailDomain !== "gmail.com" && emailDomain !== "googlemail.com") {
-        const ct = await ensureCalToken(tm);
-        if (ct) subUrl = calSubscribePageUrl(ct);
+      if (!forAgency) {
+        const emailDomain = (recipient || "").split("@")[1]?.toLowerCase() || "";
+        if (emailDomain && emailDomain !== "gmail.com" && emailDomain !== "googlemail.com") {
+          const ct = await ensureCalToken(tm);
+          if (ct) subUrl = calSubscribePageUrl(ct);
+        }
       }
-      await sendInviteEmail(tm.email, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type }, subUrl);
+      await sendInviteEmail(recipient, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type, forAgency }, subUrl);
     } catch {}
   };
 
@@ -1402,10 +1408,12 @@ export default function App() {
       if (liveEventId) {
         try { const r = await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId }); if (r.ok) await saveEventId(null); } catch {}
       }
-      if (opts.mail && tm?.email) {
+      // 대대행(소속사)은 모델 개인 이메일 없이 A 업체 이메일로 취소 통지.
+      const cancelTo = (tm?.payout_tax_type === "company" && tm?.agency_email) ? tm.agency_email : tm?.email;
+      if (opts.mail && cancelTo) {
         try {
           const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-          await sendCancelEmail(tm.email, ev2, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
+          await sendCancelEmail(cancelTo, ev2, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
         } catch {}
       }
       return;
