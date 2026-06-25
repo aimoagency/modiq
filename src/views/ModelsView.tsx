@@ -3,7 +3,7 @@ import { C, inp, btnS } from "../theme";
 import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
 import { visaDday, ageFromSSN6 } from "../lib/utils";
-import { User, Phone, Coins, Plane } from "../components/icons";
+import { User, Phone, Plane } from "../components/icons";
 import SearchInput from "../components/SearchInput";
 import { useVisibleCount } from "../lib/useVisibleCount";
 
@@ -72,7 +72,6 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                   {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:"", (m.career_years!=null&&m.career_years!=="")?`경력 ${m.career_years}년`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{txt}</span>:null; })()}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub, paddingLeft:42 }}>
-                  {m.rate>0&&<span>{m.rate.toLocaleString()}원</span>}
                   {m.payout_pay_value>0&&<span>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                   <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
                 </div>
@@ -102,8 +101,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>}
                 {/* 전화 */}
                 {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ fontSize:12, color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
-                {/* 단가/수수료 */}
-                {m.rate>0&&<span style={{ fontSize:12, color:C.textSub }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.rate.toLocaleString()}원</span>}
+                {/* 정산방식 */}
                 {m.payout_pay_value>0&&<span style={{ fontSize:12, color:C.textSub }}>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                 {/* 브랜드 아이콘 링크 */}
                 {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:3, fontSize:12, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
