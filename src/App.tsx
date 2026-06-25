@@ -779,7 +779,7 @@ export default function App() {
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
   const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
-    if (!mName || (mTaxType!=="company" && !mSSN)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 생년월일 6자리 필수");
+    if (!mName || (mTaxType!=="company" && !mBirthYear)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 출생연도 필수");
     if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mIsForeign;
     if (isFgn && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
@@ -3019,7 +3019,7 @@ async function sharePdf(){
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=selectedModel.birth_year?(new Date().getFullYear()-Number(selectedModel.birth_year)):ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
               </div>
               <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
               <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -3034,19 +3034,19 @@ async function sharePdf(){
           </div>
           <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
-            {[
-              ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
-              ["이메일",   selectedModel.email],
-              ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
+            {(()=>{ const imp=!!selectedModel.source_agency_id; const phoneV=imp?selectedModel.agency_phone:selectedModel.phone; const emailV=imp?selectedModel.agency_email:selectedModel.email; return ([
+              ["전화번호", phoneV?<a href={`tel:${phoneV}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{phoneV}</a>:null],
+              ["이메일",   emailV],
+              ...(imp?[]:[["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"]] as [string,any][]),
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
               ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
-            ].map(([k,v])=>(
+            ] as [string,any][]).map(([k,v])=>(
               <div key={String(k)}>
                 <p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p>
                 <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{v||"-"}</p>
               </div>
-            ))}
+            )); })()}
             {selectedModel.is_foreigner&&<>
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>입국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{fmtDate(selectedModel.visa_entry)}</p></div>
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>출국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.yellow }}>{fmtDate(selectedModel.visa_exit)}</p></div>
@@ -3295,8 +3295,8 @@ async function sharePdf(){
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>생년월일 6자리(YYMMDD) *</label>
-              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도(YYYY) *</label>
+              <input style={inp} type="text" inputMode="numeric" maxLength={4} placeholder="예: 1998" value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3334,12 +3334,6 @@ async function sharePdf(){
                 {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            {FEATURE_DISTRIBUTION&&(
-            <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도 <span style={{ fontSize:10, color:C.muted }}>(YYYY · 발송용)</span></label>
-              <input style={inp} type="text" inputMode="numeric" maxLength={4} placeholder="예: 1998" value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} />
-            </div>
-            )}
           </div>
           {/* ── 신체 정보 · 프로필 ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 14px", background:C.card2 }}>
