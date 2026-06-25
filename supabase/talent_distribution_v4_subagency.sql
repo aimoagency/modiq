@@ -18,6 +18,14 @@ alter table public.agencies
 alter table public.talent_distributions
   add column if not exists sender_payout_info jsonb;
 
+-- 2-1) 발송 모델 스냅샷에 외국인 입출국(가용기간) 추가 — 비행기·D-day·비자 컬러 표시용
+alter table public.distribution_models
+  add column if not exists is_foreigner boolean;
+alter table public.distribution_models
+  add column if not exists visa_entry text;
+alter table public.distribution_models
+  add column if not exists visa_exit text;
+
 -- 3) 편입 모델의 출처(A) — 자동 기록 + 에이전시별 필터/추적
 --    ⚠️ agencies.id / talent_distributions.id 는 'AGY_...' 등 TEXT 식별자라 uuid 아님(text 사용).
 alter table public.models

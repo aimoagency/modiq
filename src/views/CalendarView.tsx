@@ -113,10 +113,10 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const visaEntry = filteredModel?.visa_entry || null;
   const visaExit  = filteredModel?.visa_exit  || null;
 
-  // 날짜가 비자 유효 범위 밖인지
+  // 날짜가 비자 유효 범위 밖인지 (출국일 '당일 포함' 그 이후는 불가로 처리)
   const isOutsideVisa = (date: string) => {
     if (!filteredModel?.is_foreigner || !visaEntry || !visaExit) return false;
-    return date < visaEntry || date > visaExit;
+    return date < visaEntry || date >= visaExit;
   };
 
   const filterModel = models.find(m=>m.id===modelFilter);

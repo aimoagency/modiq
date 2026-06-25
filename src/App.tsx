@@ -296,7 +296,7 @@ export default function App() {
         if (c.conflict) { autoHold = true; holdReason = c.reason; break; }
       }
       // 대대행: A쪽(발송처) 점유일이면 그 모델은 그 날 불가 → HOLD (날짜 단위)
-      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 측 점유(대대행)`; }
+      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 측 스케줄 확인`; }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
         id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
@@ -807,7 +807,8 @@ export default function App() {
   ): Promise<{ ok: boolean; id?: string; error?: string; degraded?: boolean }> => {
     try {
       const gender = sm.gender === "M" ? "M" : "F";
-      const natType = "K";
+      const isFgn = !!sm.is_foreigner;
+      const natType = isFgn ? "X" : "K";
       const agNo = (agency as any)?.agency_no || 1;
       const photos = Array.isArray(sm.photos) ? sm.photos.filter((p: any) => typeof p === "string" && p) : [];
       const newId = generateModelId(genderNatCode(gender, natType), agNo, nextModelSeq(models));
@@ -815,7 +816,10 @@ export default function App() {
       const senderName = src?.senderName || "";
       const nm: any = {
         id: newId, agency_id: agency.id, name: sm.display_name || "(이름없음)",
-        gender, nationality_type: natType, is_foreigner: false, share_consent: true,
+        gender, nationality_type: natType, is_foreigner: isFgn, share_consent: true,
+        country: isFgn ? "외국" : "대한민국",
+        visa_entry: isFgn ? (sm.visa_entry || null) : null,
+        visa_exit: isFgn ? (sm.visa_exit || null) : null,
         birth_year: sm.birth_year ?? null,
         height: sm.height ?? null, bust: sm.bust ?? null, waist: sm.waist ?? null, hip: sm.hip ?? null, shoe: sm.shoe ?? null,
         hair_length: sm.hair_length ?? null, hair_color: sm.hair_color ?? null, eye_color: sm.eye_color ?? null,
@@ -1265,7 +1269,7 @@ export default function App() {
       }
     }
     // 대대행: A쪽(발송처) 점유일이면 그 날은 불가 → HOLD (날짜 단위)
-    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 측 점유(대대행)`; }
+    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 측 스케줄 확인`; }
     // 촬영이 기존 미팅과 겹치면 확인 (확인 시 미팅 HOLD 처리)
     if (meetingsToHold.length>0) {
       const labels = [...new Set(sameDay.filter(b=>meetingsToHold.includes(b.id)).map(b=>BOOKING_TYPES[b.booking_type||"SHOOT"]?.label))].join(", ");

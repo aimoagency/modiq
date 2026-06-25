@@ -31,6 +31,7 @@ export interface DistributionModel {
   tattoo?: boolean | null; underwear_ok?: boolean | null;
   specialty?: string | null; fields?: any;
   fee_day?: number | null; fee_half?: number | null; fee_hour?: number | null;
+  is_foreigner?: boolean | null; visa_entry?: string | null; visa_exit?: string | null;
   photos?: any; compcard?: any;
   snapshot_at?: string;
 }
@@ -129,6 +130,10 @@ export const buildModelSnapshot = (m: any) => ({
   fee_day: m.fee_day ?? null,
   fee_half: m.fee_half ?? null,
   fee_hour: m.fee_hour ?? null,
+  // 외국인 입출국(가용기간) — 비행기·D-day·비자 컬러 표시용(개인정보 아님, 가용 판단용)
+  is_foreigner: m.is_foreigner ?? false,
+  visa_entry: m.visa_entry ?? null,
+  visa_exit: m.visa_exit ?? null,
   photos: m.photos ?? null,
   compcard: null, // 수신측이 자기 로고로 재구성 — 발송측 컴카드는 보내지 않음
 });
@@ -156,7 +161,17 @@ export const sendDistribution = async (opts: {
   const distId = dist.id;
 
   const modelRows = opts.models.map(m => ({ ...buildModelSnapshot(m), distribution_id: distId }));
-  if (modelRows.length) await sb("distribution_models", "POST", modelRows);
+  if (modelRows.length) {
+    try { await sb("distribution_models", "POST", modelRows); }
+    catch (e: any) {
+      // 외국인/입출국 컬럼 미적용(구 스키마) → 그 필드만 빼고 재시도(발송은 되게).
+      const msg = String(e?.message || e);
+      if (/is_foreigner|visa_entry|visa_exit|PGRST204|schema cache/i.test(msg)) {
+        const stripped = modelRows.map(({ is_foreigner, visa_entry, visa_exit, ...r }) => r);
+        await sb("distribution_models", "POST", stripped);
+      } else throw e;
+    }
+  }
 
   const recRows = opts.recipientAgencyIds.map(rid => ({ distribution_id: distId, recipient_agency_id: rid }));
   if (recRows.length) await sb("distribution_recipients", "POST", recRows);
