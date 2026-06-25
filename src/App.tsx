@@ -817,7 +817,9 @@ export default function App() {
       const nm: any = {
         id: newId, agency_id: agency.id, name: sm.display_name || "(이름없음)",
         gender, nationality_type: natType, is_foreigner: isFgn, share_consent: true,
-        country: isFgn ? "외국" : "대한민국",
+        country: sm.country || (isFgn ? "외국" : "대한민국"),
+        category: sm.category ?? null,
+        career_years: sm.career_years ?? null,
         visa_entry: isFgn ? (sm.visa_entry || null) : null,
         visa_exit: isFgn ? (sm.visa_exit || null) : null,
         birth_year: sm.birth_year ?? null,

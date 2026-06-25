@@ -26,6 +26,7 @@ export interface DistributionModel {
   display_name: string;
   gender?: string | null;
   birth_year?: number | null;
+  category?: string | null; career_years?: number | null; country?: string | null;
   height?: string | null; bust?: string | null; waist?: string | null; hip?: string | null; shoe?: string | null;
   hair_length?: string | null; hair_color?: string | null; eye_color?: string | null;
   tattoo?: boolean | null; underwear_ok?: boolean | null;
@@ -115,6 +116,9 @@ export const buildModelSnapshot = (m: any) => ({
   display_name: m.name || "(이름없음)",
   gender: m.gender ?? null,
   birth_year: m.birth_year ?? null,
+  category: m.category ?? null,
+  career_years: m.career_years ?? null,
+  country: m.country ?? null,
   height: m.height ?? null,
   bust: m.bust ?? null,
   waist: m.waist ?? null,
@@ -166,8 +170,8 @@ export const sendDistribution = async (opts: {
     catch (e: any) {
       // 외국인/입출국 컬럼 미적용(구 스키마) → 그 필드만 빼고 재시도(발송은 되게).
       const msg = String(e?.message || e);
-      if (/is_foreigner|visa_entry|visa_exit|PGRST204|schema cache/i.test(msg)) {
-        const stripped = modelRows.map(({ is_foreigner, visa_entry, visa_exit, ...r }) => r);
+      if (/is_foreigner|visa_entry|visa_exit|category|career_years|country|PGRST204|schema cache/i.test(msg)) {
+        const stripped = modelRows.map(({ is_foreigner, visa_entry, visa_exit, category, career_years, country, ...r }) => r);
         await sb("distribution_models", "POST", stripped);
       } else throw e;
     }

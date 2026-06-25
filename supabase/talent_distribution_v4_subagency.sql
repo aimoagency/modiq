@@ -26,6 +26,14 @@ alter table public.distribution_models
 alter table public.distribution_models
   add column if not exists visa_exit text;
 
+-- 2-2) 발송 모델 스냅샷에 모델타입·경력·국적 추가
+alter table public.distribution_models
+  add column if not exists category text;
+alter table public.distribution_models
+  add column if not exists career_years numeric;
+alter table public.distribution_models
+  add column if not exists country text;
+
 -- 3) 편입 모델의 출처(A) — 자동 기록 + 에이전시별 필터/추적
 --    ⚠️ agencies.id / talent_distributions.id 는 'AGY_...' 등 TEXT 식별자라 uuid 아님(text 사용).
 alter table public.models

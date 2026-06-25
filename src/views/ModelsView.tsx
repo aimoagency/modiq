@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
-import { C, inp, btnS } from "../theme";
-import RevenueRanking from "../components/RevenueRanking";
-import { periodRange } from "../lib/utils";
+import { C, btnS } from "../theme";
 import { visaDday, ageFromSSN6 } from "../lib/utils";
 import { User, Phone, Coins, Plane } from "../components/icons";
 import SearchInput from "../components/SearchInput";
@@ -16,13 +14,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   legacyIdCount?: number;
   onMigrateIds?: ()=>void;
 }) {
-  const [sortMode, setSortMode] = useState<"reg"|"rev">("reg");
-  const [revBasis, setRevBasis] = useState<"real"|"expected">("real");
-  const [periodPreset, setPeriodPreset] = useState("3m");
-  const [cFrom, setCFrom] = useState("");
-  const [cTo, setCTo] = useState("");
-  const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
-  // 출처(발송처) 필터 — 대대행 편입 모델을 발송 에이전시별로 거른다
+  // 출처(발송처) 필터 — 발송 에이전시별로 거른다
   const [srcFilter, setSrcFilter] = useState<string>(""); // "" 전체 · "__own__" 직접등록 · 그 외 발송처명
   const sources = useMemo(() => Array.from(new Set(filteredModels.map(m=>m.source_agency_name).filter(Boolean))) as string[], [filteredModels]);
   const displayModels = useMemo(() => {
@@ -43,24 +35,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
         </div>
       </div>
       <SearchInput placeholder="이름·국적·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={setModelQ} />
-      <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
-        {(["reg","rev"] as const).map(m=>(
-          <button key={m} onClick={()=>setSortMode(m)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sortMode===m?C.blue:C.border}`, background:sortMode===m?C.blue+"22":"transparent", color:sortMode===m?C.blue:C.muted, fontSize:12, fontWeight:sortMode===m?700:500, cursor:"pointer" }}>{m==="reg"?"등록순":"매출순"}</button>
-        ))}
-        {sortMode==="rev"&&(["real","expected"] as const).map(bb=>(
-          <button key={bb} onClick={()=>setRevBasis(bb)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${revBasis===bb?(bb==="real"?C.green:C.yellow):C.border}`, background:revBasis===bb?(bb==="real"?C.green:C.yellow)+"22":"transparent", color:revBasis===bb?(bb==="real"?C.green:C.yellow):C.muted, fontSize:12, fontWeight:revBasis===bb?700:500, cursor:"pointer" }}>{bb==="real"?"실매출":"예상매출"}</button>
-        ))}
-        {sortMode==="rev"&&([["month","이번 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
-          <button key={k} onClick={()=>setPeriodPreset(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${periodPreset===k?C.blue:C.border}`, background:periodPreset===k?C.blue+"22":"transparent", color:periodPreset===k?C.blue:C.muted, fontSize:12, fontWeight:periodPreset===k?700:500, cursor:"pointer" }}>{l}</button>
-        ))}
-        {sortMode==="rev"&&periodPreset==="custom"&&(
-          <span style={{ display:"flex", alignItems:"center", gap:5, ...(isMobile?{width:"100%", marginTop:6}:{}) }}>
-            <input type="date" value={cFrom} onChange={e=>setCFrom(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"4px 7px", fontSize:12 }} />
-            <span style={{ color:C.muted, fontSize:12 }}>~</span>
-            <input type="date" value={cTo} onChange={e=>setCTo(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"4px 7px", fontSize:12 }} />
-          </span>
-        )}
-      </div>
+      <div style={{ margin:"10px 0 0" }} />
       {sources.length>0 && (
         <div style={{ display:"flex", alignItems:"center", gap:6, margin:"0 0 12px", flexWrap:"wrap" }}>
           <span style={{ fontSize:11, color:C.muted }}>출처</span>
@@ -72,8 +47,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
           ))}
         </div>
       )}
-      {sortMode==="rev" ? <RevenueRanking items={displayModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb isMobile={isMobile} /> :
-       displayModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
+      {displayModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
