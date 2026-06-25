@@ -55,6 +55,7 @@ export interface SenderPayoutInfo {
   address?: string | null;      // 주소
   bank?: string | null;         // 정산 입금계좌
   tax_email?: string | null;    // 계산서 받을 이메일
+  gcal_email?: string | null;   // 구글 캘린더 연동 이메일(일정 수락·동기화용)
 }
 
 export interface TalentDistribution {

@@ -829,9 +829,9 @@ export default function App() {
         specialty: sm.specialty ?? null, fields: Array.isArray(sm.fields) ? sm.fields : (sm.fields ?? null),
         fee_day: sm.fee_day ?? null, fee_half: sm.fee_half ?? null, fee_hour: sm.fee_hour ?? null,
         photos, thumb_url: photos[0] || null,
-        // 연락처/이메일 = 발송업체(A) 정보 (전화=A 대표/연락처, 이메일=A 메일 — 일정 수락도 이 메일로)
+        // 연락처/이메일 = 발송업체(A) 정보 (전화=A 연락처 / 이메일=A 구글캘린더 연동 메일 — 일정 수락이 A 캘린더로)
         phone: pi.contact || null,
-        email: pi.tax_email || null,
+        email: pi.gcal_email || pi.tax_email || null,
         instagram_url: sm.instagram_url || null,
         // 소속사 고정 — A에게 세금계산서 10%로 정산
         payout_tax_type: "company", payout_pay_type: "rate",
@@ -1374,9 +1374,9 @@ export default function App() {
   // 섭외 초대(수락 요청) 메일 발송 + 응답 토큰/상태(pending) 보장. 실패해도 앱 흐름 방해 X.
   // 수락형 흐름: 이 메일을 먼저 보내고, 모델이 수락해야(booking-respond) 캘린더가 생성된다.
   const sendBookingInvite = async (tb: any, tm: any, tc: any) => {
-    // 대대행(소속사) 모델은 모델 개인 이메일이 없고 'A 업체 이메일(agency_email)'로 수락/거절을 받는다.
-    const forAgency = tm?.payout_tax_type === "company" && !!tm?.agency_email;
-    const recipient = forAgency ? tm.agency_email : tm?.email;
+    // 소속사 모델은 A 업체로 수락/거절을 받는다 — 이메일(=A 구글캘린더 연동 메일) 우선, 없으면 계산서 메일.
+    const forAgency = tm?.payout_tax_type === "company";
+    const recipient = forAgency ? (tm?.email || tm?.agency_email) : tm?.email;
     if (!recipient) return;
     let token = tb.model_resp_token;
     const patch: any = {};
@@ -1442,8 +1442,8 @@ export default function App() {
       if (liveEventId) {
         try { const r = await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId }); if (r.ok) await saveEventId(null); } catch {}
       }
-      // 대대행(소속사)은 모델 개인 이메일 없이 A 업체 이메일로 취소 통지.
-      const cancelTo = (tm?.payout_tax_type === "company" && tm?.agency_email) ? tm.agency_email : tm?.email;
+      // 소속사는 A 업체(=구글캘린더 메일 우선)로 취소 통지.
+      const cancelTo = (tm?.payout_tax_type === "company") ? (tm?.email || tm?.agency_email) : tm?.email;
       if (opts.mail && cancelTo) {
         try {
           const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");

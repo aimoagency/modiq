@@ -271,6 +271,7 @@ function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf,
           rep_name: agency?.rep_name || null, contact: agency?.contact_phone || agency?.rep_phone || null,
           address: agency?.address || null, bank: agency?.payout_bank_info || null,
           tax_email: agency?.payout_tax_email || null,
+          gcal_email: agency?.gcal_email || null,
         },
       });
       setDone(true);
