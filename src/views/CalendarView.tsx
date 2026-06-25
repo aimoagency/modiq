@@ -59,8 +59,8 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const monthStr    = `${calYear}-${String(calMonth+1).padStart(2,"0")}`;
   const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
-  // 필터 적용된 섭외
-  const filteredBookings = modelFilter ? bookings.filter(b=>b.model_id===modelFilter) : bookings;
+  // 필터 적용된 섭외 — 취소(CANCELLED) 건은 캘린더에서 제외(섭외 리스트엔 그대로 남음)
+  const filteredBookings = (modelFilter ? bookings.filter(b=>b.model_id===modelFilter) : bookings).filter(b=>b.status!=="CANCELLED");
 
   const bookingsByDate: Record<string, any[]> = {};
   filteredBookings.forEach(b=>{ if(b.shoot_date){ if(!bookingsByDate[b.shoot_date]) bookingsByDate[b.shoot_date]=[]; bookingsByDate[b.shoot_date].push(b); }});
@@ -78,12 +78,12 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const selDateBookings = selDate ? (bookingsByDate[selDate]||[]) : [];
 
   // 대대행 모델 'A쪽 점유일'(가용일) — 모델 필터 시, 그 모델의 source_model_id 기준 날짜만.
-  // ⚠️ 시간은 표시하지 않는다(상대 매출 추정 방지) · B가 직접 잡은 날엔 외부표시 안 함(중복 방지).
+  // ⚠️ 시간은 표시하지 않는다(상대 매출 추정 방지). B가 그 날 잡아도 '외부점유' 표시는 유지(A 스케줄 확인 필요 표식).
   const extBusyDates: Set<string> = (() => {
     const s = new Set<string>();
     const srcId = modelFilter ? models.find(m=>m.id===modelFilter)?.source_model_id : null;
     if (srcId && sharedBusy[srcId]) {
-      sharedBusy[srcId].forEach(b => { const d = (b.shoot_date||"").slice(0,10); if (d && !bookingsByDate[d]) s.add(d); });
+      sharedBusy[srcId].forEach(b => { const d = (b.shoot_date||"").slice(0,10); if (d) s.add(d); });
     }
     return s;
   })();

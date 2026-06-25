@@ -296,7 +296,7 @@ export default function App() {
         if (c.conflict) { autoHold = true; holdReason = c.reason; break; }
       }
       // 대대행: A쪽(발송처) 점유일이면 그 모델은 그 날 불가 → HOLD (날짜 단위)
-      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 측 스케줄 확인`; }
+      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 스케줄 확인 요망`; }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
         id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
@@ -1269,7 +1269,7 @@ export default function App() {
       }
     }
     // 대대행: A쪽(발송처) 점유일이면 그 날은 불가 → HOLD (날짜 단위)
-    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 측 스케줄 확인`; }
+    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 스케줄 확인 요망`; }
     // 촬영이 기존 미팅과 겹치면 확인 (확인 시 미팅 HOLD 처리)
     if (meetingsToHold.length>0) {
       const labels = [...new Set(sameDay.filter(b=>meetingsToHold.includes(b.id)).map(b=>BOOKING_TYPES[b.booking_type||"SHOOT"]?.label))].join(", ");
