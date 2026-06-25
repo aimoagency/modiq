@@ -26,6 +26,8 @@ alter table public.models
   add column if not exists source_agency_name text;
 alter table public.models
   add column if not exists source_distribution_id text;
+alter table public.models
+  add column if not exists source_model_id text;
 
 -- 이전에 uuid로 만든 경우 text로 정정(재실행 안전 · 빈 컬럼이면 무손실)
 alter table public.models alter column source_agency_id type text using source_agency_id::text;
