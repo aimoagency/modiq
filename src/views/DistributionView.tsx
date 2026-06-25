@@ -242,7 +242,7 @@ function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, created
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
 
-  const shareable = (m: any) => !!m.share_consent;
+  const shareable = (_m: any) => true; // 공유 동의 게이트 제거 — 내 소속 모델은 모두 발송 가능
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     return (models || []).filter((m: any) => !s || (m.name || "").toLowerCase().includes(s));
@@ -302,7 +302,7 @@ function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, created
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="모델 검색" style={{ ...inp, marginBottom: 0, maxWidth: 240 }} />
-            <span style={{ fontSize: 12, color: C.muted }}>선택 <b style={{ color: C.text }}>{picked.size}</b>명 · 공유 동의한 모델만 발송 가능</span>
+            <span style={{ fontSize: 12, color: C.muted }}>선택 <b style={{ color: C.text }}>{picked.size}</b>명</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
             {filtered.map((m: any) => {
@@ -319,7 +319,6 @@ function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, created
                     <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>{m.birth_year ? `${m.birth_year}년생` : ""}{m.height ? ` · ${m.height}` : ""}</p>
                   </div>
                   {on && <span style={{ position: "absolute", top: 6, right: 6, background: C.blue, color: "white", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}><CheckCircle2 size={14} /></span>}
-                  {!ok && <span style={{ position: "absolute", top: 6, left: 6, background: C.card, color: C.yellow, border: `1px solid ${C.yellow}66`, borderRadius: 6, fontSize: 9, fontWeight: 700, padding: "2px 5px" }}>공유 동의 필요</span>}
                 </div>
               );
             })}
