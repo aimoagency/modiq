@@ -17,11 +17,16 @@ alter table public.talent_distributions
   add column if not exists sender_payout_info jsonb;
 
 -- 3) 편입 모델의 출처(A) — 자동 기록 + 에이전시별 필터/추적
+--    ⚠️ agencies.id / talent_distributions.id 는 'AGY_...' 등 TEXT 식별자라 uuid 아님(text 사용).
 alter table public.models
-  add column if not exists source_agency_id uuid;
+  add column if not exists source_agency_id text;
 alter table public.models
   add column if not exists source_agency_name text;
 alter table public.models
-  add column if not exists source_distribution_id uuid;
+  add column if not exists source_distribution_id text;
+
+-- 이전에 uuid로 만든 경우 text로 정정(재실행 안전 · 빈 컬럼이면 무손실)
+alter table public.models alter column source_agency_id type text using source_agency_id::text;
+alter table public.models alter column source_distribution_id type text using source_distribution_id::text;
 
 create index if not exists idx_models_source_agency on public.models (source_agency_id);
