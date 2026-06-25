@@ -2903,7 +2903,6 @@ async function sharePdf(){
             {[
               ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
               ["이메일",   selectedModel.email],
-              ["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"],
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
               ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
@@ -3688,7 +3687,6 @@ async function sharePdf(){
                         <div style={{ flex:1 }}>
                           <span style={{ fontWeight:700, color:C.text, fontSize:13 }}>{m.name}</span>
                           {m.category ? <span style={{ fontSize:11, color:C.muted, marginLeft:6 }}>{m.category}</span> : null}
-                          {m.rate>0 ? <span style={{ fontSize:11, color:"#c9a96e", marginLeft:6 }}>기본단가 {m.rate.toLocaleString()}원</span> : null}
                           {m.is_foreigner ? <span style={{ fontSize:11, color:C.yellow, marginLeft:6 }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {visaDday(m.visa_exit)}</span> : null}
                         </div>
                         <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>+ 추가</span>
