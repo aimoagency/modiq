@@ -11,7 +11,9 @@
 --
 -- 적용: Supabase 대시보드 → SQL Editor → 붙여넣기 → Run.
 -- 롤백: drop function public.shared_model_schedule(text[]);
+-- ⚠️ 이미 다른 반환타입으로 만들어진 경우 CREATE OR REPLACE가 42P13으로 실패 → 먼저 DROP.
 -- ═══════════════════════════════════════════════════════════════
+drop function if exists public.shared_model_schedule(text[]);
 create or replace function public.shared_model_schedule(p_model_ids text[])
 returns table(model_id text, shoot_date text)
 language sql security definer stable
