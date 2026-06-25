@@ -244,6 +244,7 @@ export const modelGross = (b: any, model: any): number => {
 
 // 모델 세무 유형: 'foreigner'=외국인(전액 지급) / 'freelancer'=프리랜서(3.3% 원천징수) / 'company'=소속사(세금계산서 10% 가산)
 export const modelTaxType = (model: any): "foreigner" | "freelancer" | "company" => {
+  if (model?.source_agency_id) return "company"; // 발송 편입 모델은 발송업체 상태와 무관하게 무조건 세금계산서(소속사)
   const t = model?.payout_tax_type;
   return t === "foreigner" || t === "company" ? t : "freelancer";
 };

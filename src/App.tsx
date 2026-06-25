@@ -3489,6 +3489,8 @@ async function sharePdf(){
                 <input style={{ ...inp, marginBottom:0 }} type="email" value={mAgencyEmail} onChange={e=>setMAgencyEmail(e.target.value)} placeholder="agency@example.com" />
               </div>
             )}
+            {/* 정산방식(수수료/정액) — 발송 편입(소속사) 모델은 숨김(기준액=노출가 고정, 마진은 섭외 공급가로) */}
+            {!selectedModel?.source_agency_id && (<>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
               {([["rate","수수료(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
@@ -3509,6 +3511,7 @@ async function sharePdf(){
                 </div>
               ))}
             </div>
+            </>)}
           </div>
 
           {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── 소속사는 원천징수 무관이라 숨김 · 외국인은 [비자·정산 정보] 모달에서 입력 */}
