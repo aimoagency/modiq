@@ -118,6 +118,7 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ id: string; name: string; biz_no: string }[] | null>(null);
   const [msg, setMsg] = useState("");
+  const [msgOk, setMsgOk] = useState(false);
 
   const incoming = partners.filter((p: AgencyPartner) => p.status === "pending" && p.addressee_agency_id === myId);
   const outgoing = partners.filter((p: AgencyPartner) => p.status === "pending" && p.requester_agency_id === myId);
@@ -127,17 +128,24 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
     counterparty(p) === agId && (p.status === "pending" || p.status === "accepted"));
 
   const doSearch = async () => {
-    setMsg(""); setResult(null); setBusy(true);
+    setMsg(""); setMsgOk(false); setResult(null);
+    const digits = bizNo.replace(/[^0-9]/g, "");
+    if (digits.length !== 10) { setMsg("사업자등록번호 10자리를 정확히 입력하세요."); return; }
+    setBusy(true);
     try {
       const rows = await lookupAgencyByBizNo(bizNo);
       setResult(rows);
-      if (!rows.length) setMsg("해당 사업자등록번호의 에이전시를 찾지 못했습니다. (10자리·가입 여부 확인)");
-    } catch (e: any) { setMsg("검색 실패: " + (e?.message || e)); }
-    finally { setBusy(false); }
+      if (!rows.length) setMsg("등록되지 않은 사업자등록번호입니다. 상대 에이전시가 modiq에 가입되어 있어야 검색됩니다.");
+    } catch (e: any) {
+      const em = String(e?.message || e);
+      if (/PGRST202|Could not find the function|partner_lookup_by_bizno|does not exist/i.test(em))
+        setMsg("파트너 검색 기능이 아직 서버에 설정되지 않았습니다. (관리자에게 조회 RPC 적용을 요청하세요)");
+      else setMsg("검색 실패: " + em);
+    } finally { setBusy(false); }
   };
   const doRequest = async (agId: string) => {
-    setBusy(true); setMsg("");
-    try { await requestPartner(myId, agId, createdBy); setResult(null); setBizNo(""); setMsg("파트너 신청을 보냈습니다. 상대가 수락하면 발송할 수 있습니다."); await refreshPartners(); }
+    setBusy(true); setMsg(""); setMsgOk(false);
+    try { await requestPartner(myId, agId, createdBy); setResult(null); setBizNo(""); setMsg("파트너 신청을 보냈습니다. 상대가 수락하면 발송할 수 있습니다."); setMsgOk(true); await refreshPartners(); }
     catch (e: any) { setMsg("신청 실패: " + (e?.message || e)); }
     finally { setBusy(false); }
   };
@@ -171,7 +179,7 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
               : <button onClick={() => doRequest(r.id)} disabled={busy} style={btnS(C.green, busy)}>파트너 신청</button>}
           </div>
         ))}
-        {msg && <p style={{ margin: "10px 0 0", fontSize: 12, color: msg.includes("실패") || msg.includes("못") ? C.red : C.green }}>{msg}</p>}
+        {msg && <p style={{ margin: "10px 0 0", fontSize: 12, color: msgOk ? C.green : C.red }}>{msg}</p>}
       </Card>
 
       {/* 받은 신청 */}
