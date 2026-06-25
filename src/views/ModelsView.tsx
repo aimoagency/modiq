@@ -14,14 +14,21 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   legacyIdCount?: number;
   onMigrateIds?: ()=>void;
 }) {
-  // 출처(발송처) 필터 — 발송 에이전시별로 거른다
+  // 발송업체 필터 + 이름 정렬(가나다/ABC)
   const [srcFilter, setSrcFilter] = useState<string>(""); // "" 전체 · "__own__" 직접등록 · 그 외 발송처명
+  const [sort, setSort] = useState<"reg"|"ganada"|"abc">("reg");
   const sources = useMemo(() => Array.from(new Set(filteredModels.map(m=>m.source_agency_name).filter(Boolean))) as string[], [filteredModels]);
   const displayModels = useMemo(() => {
-    if (!srcFilter) return filteredModels;
-    if (srcFilter==="__own__") return filteredModels.filter(m=>!m.source_agency_id);
-    return filteredModels.filter(m=>m.source_agency_name===srcFilter);
-  }, [filteredModels, srcFilter, sources.length]);
+    let base = filteredModels;
+    if (srcFilter==="__own__") base = filteredModels.filter(m=>!m.source_agency_id);
+    else if (srcFilter) base = filteredModels.filter(m=>m.source_agency_name===srcFilter);
+    if (sort==="reg") return base;
+    const isKo = (s:string)=>/[가-힣]/.test(s||"");
+    const arr = [...base];
+    if (sort==="ganada") arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?-1:1; return String(a.name||"").localeCompare(String(b.name||""),"ko"); });
+    else arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?1:-1; return String(a.name||"").localeCompare(String(b.name||""),"en"); });
+    return arr;
+  }, [filteredModels, srcFilter, sort]);
   // 점진 렌더 — 1000명+ 목록을 한 번에 다 그리지 않음(스크롤 시 추가)
   const { visible, hasMore, sentinelRef } = useVisibleCount(displayModels, 60);
   return (
@@ -35,18 +42,18 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
         </div>
       </div>
       <SearchInput placeholder="이름·국적·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={setModelQ} />
-      <div style={{ margin:"10px 0 0" }} />
-      {sources.length>0 && (
-        <div style={{ display:"flex", alignItems:"center", gap:6, margin:"0 0 12px", flexWrap:"wrap" }}>
-          <span style={{ fontSize:11, color:C.muted }}>출처</span>
-          {([["","전체"],["__own__","직접 등록"]] as const).map(([k,l])=>(
-            <button key={k} onClick={()=>setSrcFilter(k)} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${srcFilter===k?C.blue:C.border}`, background:srcFilter===k?C.blue+"22":"transparent", color:srcFilter===k?C.blue:C.muted, fontSize:12, fontWeight:srcFilter===k?700:500, cursor:"pointer" }}>{l}</button>
-          ))}
-          {sources.map(s=>(
-            <button key={s} onClick={()=>setSrcFilter(s)} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${srcFilter===s?C.blue:C.border}`, background:srcFilter===s?C.blue+"22":"transparent", color:srcFilter===s?C.blue:C.muted, fontSize:12, fontWeight:srcFilter===s?700:500, cursor:"pointer" }}>{s}</button>
-          ))}
-        </div>
-      )}
+      <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
+        {([["reg","등록순"],["ganada","가나다"],["abc","ABC"]] as const).map(([k,l])=>(
+          <button key={k} onClick={()=>setSort(k)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sort===k?C.blue:C.border}`, background:sort===k?C.blue+"22":"transparent", color:sort===k?C.blue:C.muted, fontSize:12, fontWeight:sort===k?700:500, cursor:"pointer" }}>{l}</button>
+        ))}
+        {/* 발송업체 드롭다운 — 수신(편입)한 모델이 있을 때만 활성화 */}
+        <select value={srcFilter} onChange={e=>setSrcFilter(e.target.value)} disabled={sources.length===0}
+          style={{ marginLeft:"auto", background:C.card2, color:sources.length?C.text:C.muted, border:`1px solid ${C.border}`, borderRadius:8, padding:"6px 10px", fontSize:12, cursor:sources.length?"pointer":"not-allowed", opacity:sources.length?1:0.5, maxWidth:220 }}>
+          <option value="">발송업체 전체</option>
+          <option value="__own__">직접 등록</option>
+          {sources.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
       {displayModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
