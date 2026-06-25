@@ -185,11 +185,11 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
               </div>
             </div>
             <div style={{ marginBottom: 12 }}>
-              {lbl("정산 입금계좌 (대대행 발송 시 상대에게 전달 — 은행/계좌/예금주)")}
+              {lbl("정산 입금계좌 (모델 발송 시 상대에게 전달 — 은행/계좌/예금주)")}
               <input style={inp} value={payoutBank} onChange={e => setPayoutBank(e.target.value)} placeholder="예: 국민 123456-78-901234 (주)아이모" />
             </div>
             <div style={{ marginBottom: 16 }}>
-              {lbl("계산서 받을 이메일 (대대행 발송 시 상대에게 전달 — 세금계산서 수신)")}
+              {lbl("계산서 받을 이메일 (모델 발송 시 상대에게 전달 — 세금계산서 수신)")}
               <input style={inp} type="email" value={payoutTaxEmail} onChange={e => setPayoutTaxEmail(e.target.value)} placeholder="tax@example.com" />
             </div>
             <div style={{ display: "flex", gap: 10 }}>

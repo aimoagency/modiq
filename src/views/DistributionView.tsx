@@ -589,7 +589,7 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
       if (r?.ok) {
         setImportedIds(prev => new Set(prev).add(m.id));
         if (r.degraded) alert(`'${senderName}'의 모델을 편입했습니다(기본).\n⚠️ DB에 출처 컬럼(source_*)이 아직 없어 출처 필터·가용일·자동숨김은 동작하지 않습니다. SQL 적용 후 다시 편입하면 전체 기능이 켜집니다.`);
-        else alert(`'${senderName}'의 모델을 대대행(소속사)으로 편입했습니다.\n'모델' 메뉴에서 마진(공급가·기준액)만 입력하면 됩니다. (세무=소속사 10% 고정, 업체정보 자동)`);
+        else alert(`'${senderName}'의 모델을 소속사로 편입했습니다.\n'모델' 메뉴에서 마진(공급가·기준액)만 입력하면 됩니다. (세무=소속사 10% 고정, 업체정보 자동)`);
       }
       else alert("등록 실패: " + (r?.error || "알 수 없는 오류"));
     } finally { setBusyId(""); }
@@ -625,7 +625,7 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
       {openItem && (
         <Modal onClose={() => setOpenItem(null)} maxW={1180}>
           <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: C.text }}><Building size={16} style={{ verticalAlign: -2 }} /> {nameOf(openItem.distribution.sender_agency_id)}</p>
-          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 사진을 누르면 확대 · <b style={{ color: C.textSub }}>내 모델로 등록</b>하면 대대행(소속사)으로 편입됩니다</p>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 사진을 누르면 확대 · <b style={{ color: C.textSub }}>내 모델로 등록</b>하면 소속사로 편입됩니다</p>
           {openItem.distribution.sender_payout_info && (openItem.distribution.sender_payout_info.biz_no || openItem.distribution.sender_payout_info.bank) && (
             <p style={{ margin: "0 0 14px", fontSize: 11.5, color: C.textSub, background: C.blue + "12", border: `1px solid ${C.blue}33`, borderRadius: 8, padding: "8px 11px" }}>
               <Building size={12} style={{ verticalAlign: -2 }} /> 정산정보(자동 편입): {openItem.distribution.sender_payout_info.company_name || nameOf(openItem.distribution.sender_agency_id)}
