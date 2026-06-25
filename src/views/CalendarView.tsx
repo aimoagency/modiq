@@ -77,6 +77,17 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
   const selDateBookings = selDate ? (bookingsByDate[selDate]||[]) : [];
 
+  // 대대행 모델 'A쪽 점유일'(가용일) — 모델 필터 시, 그 모델의 source_model_id 기준 날짜만.
+  // ⚠️ 시간은 표시하지 않는다(상대 매출 추정 방지) · B가 직접 잡은 날엔 외부표시 안 함(중복 방지).
+  const extBusyDates: Set<string> = (() => {
+    const s = new Set<string>();
+    const srcId = modelFilter ? models.find(m=>m.id===modelFilter)?.source_model_id : null;
+    if (srcId && sharedBusy[srcId]) {
+      sharedBusy[srcId].forEach(b => { const d = (b.shoot_date||"").slice(0,10); if (d && !bookingsByDate[d]) s.add(d); });
+    }
+    return s;
+  })();
+
 
   // 모델 휴무: 해당 날짜에 걸친 휴무들 (모델 필터 시 그 모델만)
   const modelName = (id:string) => models.find(m=>m.id===id)?.name || "?";
@@ -289,6 +300,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const isVisaEntry = !!cell.date && !!visaEntry && cell.date===visaEntry;
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
             const dayOffs = cell.cur && cell.date ? offsForDate(cell.date) : [];
+            const isExtBusy = !!cell.cur && !!cell.date && extBusyDates.has(cell.date); // 대대행 A쪽 점유(날짜만)
 
             // ── [추가] 충돌 정보 ──
             const dayConflict = cell.date ? conflictByDate[cell.date] : undefined;
@@ -320,6 +332,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
                   {dayOffs.length>0&&<span title={dayOffs.map((o:any)=>`${modelName(o.model_id)} 휴무 (${fmtD(o.start_date)}~${fmtD(o.end_date)})`).join("\n")} style={{ fontSize:9, color:C.muted, fontWeight:700, marginLeft:2, whiteSpace:"nowrap" }}><CalendarOff size={9} style={{ verticalAlign:-1, flexShrink:0 }}/>{isMobile?"":(modelFilter?" 휴무":` 휴무 ${dayOffs.length}`)}</span>}
+                  {isExtBusy&&<span title="대대행 발송처(A)에서 점유 중 — 외부 일정(날짜만 공유)" style={{ fontSize:9, color:C.orange, fontWeight:800, marginLeft:2, whiteSpace:"nowrap" }}>● {isMobile?"":"외부점유"}</span>}
                 </div>
 
                 {/* 섭외 표시: 모바일=점, 데스크톱=뱃지 */}
@@ -385,6 +398,14 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             </div>
           </div>
 
+          {/* 대대행 외부 점유 안내(날짜만 — 시간·내용 비공개) */}
+          {selDate&&extBusyDates.has(selDate)&&(
+            <div style={{ background:C.orange+"14", border:`1px solid ${C.orange}55`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>
+              <span style={{ fontSize:12.5, color:C.text }}>
+                <Flag size={12} color={C.orange} style={{ verticalAlign:-2, flexShrink:0 }}/> 이 날은 <strong>발송처(대대행) 측에서 점유 중</strong>입니다. 일정 가능 여부는 메일 등으로 협의하세요. <span style={{ color:C.muted }}>(시간·내용은 비공개)</span>
+              </span>
+            </div>
+          )}
           {/* 모델 휴무 안내 */}
           {selDate&&offsForDate(selDate).length>0&&(
             <div style={{ background:C.muted+"14", border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>
