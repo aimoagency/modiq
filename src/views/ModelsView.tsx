@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C, inp, btnS } from "../theme";
 import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
-import { visaDday, ageFromSSN6 } from "../lib/utils";
+import { visaDday, modelAge } from "../lib/utils";
 import { User, Phone, Plane } from "../components/icons";
 import SearchInput from "../components/SearchInput";
 import { useVisibleCount } from "../lib/useVisibleCount";
@@ -58,7 +58,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
-            const age = ageFromSSN6(m.ssn6);
+            const age = modelAge(m);
             const ddayColor = dday==="만료" ? C.red : dday.startsWith("D-") && parseInt(dday.slice(2)) <= 7 ? C.orange : C.yellow;
             if (isMobile) return (
               <div key={m.id} onClick={()=>{ setSelectedModel(m); setMEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>

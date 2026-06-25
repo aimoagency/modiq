@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { C } from "../theme";
 import CloseButton from "./CloseButton";
 import { downloadNodePdf, shareNodePng } from "../lib/packages";
-import { ageFromSSN6 } from "../lib/utils";
+import { modelAge } from "../lib/utils";
 import { Download, Link2, Save } from "../components/icons";
 
 // 레퍼런스형 알약(pill) 버튼 — 다크 배경 위 아웃라인
@@ -108,7 +108,7 @@ export default function CompCardModal({ model, agency, onClose, onSave }: {
   };
 
   // 하단 바: 왼쪽 큰 이름 + 가운데 2줄(국적/나이 · 신체사이즈) + 오른쪽 에이전시 로고
-  const age = ageFromSSN6(model.ssn6);
+  const age = modelAge(model);
   const genderEn = model.gender === "F" ? "Female" : model.gender === "M" ? "Male" : "";
   const cmToIn = (v: any) => { const n = Number(v); return n > 0 ? String(Math.round(n / 2.54)) : ""; };
   const bwh = [model.bust, model.waist, model.hip].map(cmToIn).filter(Boolean).join("-"); // 3사이즈는 inch로 표기(저장은 cm 그대로)
