@@ -2243,6 +2243,13 @@ async function sharePdf(){
                 })()}
                 <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
 
+                {m?.payout_tax_type==="company" && (
+                <div onClick={async()=>{ setShowSendMenu(false); await sendBookingInvite(selectedBooking, m, customers.find(c=>c.id===selectedBooking.customer_id)); alert(`${m.agency_name||"발송처"}(소속사) 이메일로 일정 확인 요청을 보냈습니다.\n수락/거절 결과는 '모델 응답'에 표시됩니다.`); }} style={{ border:`1px solid ${C.green}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.green+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>✉️ 소속사에 일정 확인 요청 <span style={{ fontSize:11, color:C.green, fontWeight:700 }}>수락/거절</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>발송처(A) 구글캘린더 이메일로 수락/거절 요청 발송. A가 가능 여부를 확정/거절하면 '모델 응답'에 표시돼요.</div>
+                </div>
+                )}
+
                 <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${(synced?C.green:C.blue)}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:(synced?C.green:C.blue)+"12" }}>
                   <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:synced?C.green:C.blue, fontWeight:700 }}>{synced?"등록됨 ✓":"추천"}</span></div>
                   <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>{synced?"이미 캘린더에 등록된 일정이에요. 일시·장소가 바뀌었으면 눌러서 갱신하세요.":"구글 캘린더에 일정 생성 + 모델 초대. 이거 하나면 이후 변경·취소가 자동 동기화돼요. (설정에서 구글 연동 필요)"}</div>
@@ -2659,7 +2666,7 @@ async function sharePdf(){
             </div>
           )}
           {/* 모델 응답 상태(수락형 흐름) */}
-          {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date&&selectedBooking.model_response&&(()=>{
+          {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&(["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)||models.find(x=>x.id===selectedBooking.model_id)?.payout_tax_type==="company")&&!!selectedBooking.shoot_date&&selectedBooking.model_response&&(()=>{
             const map:Record<string,{t:string;c:string}>={ pending:{t:"수락 대기",c:C.orange}, accepted:{t:"✓ 수락됨",c:C.green}, declined:{t:"✕ 거절",c:C.red} };
             const s=map[selectedBooking.model_response]||{t:selectedBooking.model_response,c:C.muted};
             return (
@@ -2671,7 +2678,9 @@ async function sharePdf(){
           })()}
           {/* 하단 작업 바 (개선2: 상태/내용과 분리) */}
           {(()=>{
-            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date;
+            const _sbModel=models.find(x=>x.id===selectedBooking.model_id); const _isSub=_sbModel?.payout_tax_type==="company";
+            // 소속사(편입) 모델은 협의중·HOLD에서도 'A에게 일정 확인 요청'을 보낼 수 있어야 한다(가용 여부 확인 목적).
+            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&!!selectedBooking.shoot_date&&selectedBooking.status!=="CANCELLED"&&(["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)||_isSub);
             const canVoucher=!!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status);
             if(!editingBooking && !canSend && !canVoucher) return null;
             return (
