@@ -11,6 +11,7 @@ import {
 import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
 import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail, persistThumb } from "./lib/supabase";
+import { loadSharedSchedule, type SharedBusy } from "./lib/distribution";
 import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
@@ -168,6 +169,8 @@ export default function App() {
   // distIdsLoaded=false(조회 전·실패)면 숨기지 않음(오숨김 방지).
   const [activeDistIds, setActiveDistIds] = useState<Set<string>>(new Set());
   const [distIdsLoaded, setDistIdsLoaded] = useState(false);
+  // 편입(대대행) 모델의 A쪽 점유일 — source_model_id 기준 라이브 조회. 모델 캘린더에 '외부 점유'로 표시.
+  const [sharedBusy, setSharedBusy] = useState<Record<string, SharedBusy[]>>({});
   const [customerQ,   setCustomerQ]   = useState("");
   const [bookingQ,    setBookingQ]    = useState("");
   const [bookingStatusF,  setBookingStatusF]  = useState("ALL");
@@ -558,7 +561,7 @@ export default function App() {
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
   const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
   // V4 대대행 출처 컬럼(마이그레이션 적용 후 존재) — 미적용 환경에선 loadData가 자동 폴백
-  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id";
+  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -610,6 +613,11 @@ export default function App() {
       (recs||[]).forEach((r:any)=>{ const d=r.distribution; if (d && d.status==="active" && (!d.expires_at || new Date(d.expires_at).getTime()>now)) ids.add(d.id); });
       setActiveDistIds(ids); setDistIdsLoaded(true);
     } catch { setDistIdsLoaded(false); }
+    // 편입 모델의 A쪽 점유일(가용일) 라이브 조회 — source_model_id 보유 모델만.
+    try {
+      const srcIds = (mm||[]).map((m:any)=>m.source_model_id).filter(Boolean);
+      if (srcIds.length) setSharedBusy(await loadSharedSchedule(srcIds));
+    } catch { /* RPC 미적용/실패 시 표시만 생략(안전) */ }
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
@@ -816,10 +824,11 @@ export default function App() {
         agency_phone: pi.contact || null,
         agency_email: pi.tax_email || null,
         bank_info: pi.bank || null,
-        // 출처(A) 자동 기록 — 에이전시별 필터/추적
+        // 출처(A) 자동 기록 — 에이전시별 필터/추적 + 가용일 라이브 조회(source_model_id)
         source_agency_id: src?.senderAgencyId || null,
         source_agency_name: senderName || pi.company_name || null,
         source_distribution_id: src?.distributionId || null,
+        source_model_id: sm.source_model_id || null,
         memo: senderName ? `${senderName} 대대행(발송 편입)` : "대대행(발송 편입)",
       };
       await sb("models", "POST", nm);
@@ -2126,6 +2135,7 @@ async function sharePdf(){
             bookings={bookings}
             models={models}
             customers={customers}
+            sharedBusy={sharedBusy}
             onSelectBooking={openBookingFresh}
             initModelId={calInitModel}
             initDate={calInitDate||undefined}

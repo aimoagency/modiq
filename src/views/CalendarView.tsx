@@ -9,7 +9,7 @@ import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, 
 import SearchInput from "../components/SearchInput";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
-export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
+export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false, sharedBusy = {} }: {
   bookings: any[]; models: any[]; customers: any[];
   onSelectBooking: (b: any) => void;
   onAddBooking: (preModel?: string, preDate?: string) => void;
@@ -19,6 +19,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   onAddModelOff?: (model_id: string, start: string, end: string, reason?: string) => void;
   onDeleteModelOff?: (id: string) => void;
   isMobile?: boolean;
+  sharedBusy?: Record<string, { shoot_date: string }[]>; // 대대행 모델 A쪽 점유일(source_model_id 기준)
 }) {
   const today = new Date();
   // 대시보드 등에서 특정 날짜로 진입 시: 해당 월로 이동 + 그 날짜를 선택 상태로 → 우측 패널 자동 오픈
