@@ -11,8 +11,8 @@ import { Handshake, User, Plane, CheckCircle2, Clock, Building, Search } from ".
 import {
   loadPartners, requestPartner, respondPartner, lookupAgencyByBizNo, resolveAgencyNames,
   sendDistribution, loadSentDistributions, revokeDistribution,
-  loadReceivedDistributions, markReceivedViewed, loadSharedTravel,
-  type AgencyPartner, type TalentDistribution, type ReceivedItem, type DistributionModel, type TravelRow,
+  loadReceivedDistributions, markReceivedViewed, loadSharedTravel, loadSharedSchedule,
+  type AgencyPartner, type TalentDistribution, type ReceivedItem, type DistributionModel, type TravelRow, type SharedBusy,
 } from "../lib/distribution";
 
 type Tab = "partners" | "send" | "sent" | "inbox";
@@ -397,8 +397,8 @@ function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf,
 }
 
 // 발송 미리보기/수신 공통 모델 카드 (스냅샷 데이터 기준)
-function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
-  m: any; logoUrl?: string; travel?: TravelRow | null;
+function PreviewCard({ m, logoUrl, travel, busy, onImport, imported, importBusy }: {
+  m: any; logoUrl?: string; travel?: TravelRow | null; busy?: SharedBusy[];
   onImport?: () => void; imported?: boolean; importBusy?: boolean;
 }) {
   const photos: string[] = useMemo(() => {
@@ -470,6 +470,23 @@ function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
             {travel.exit_date ? ` 출국 ${fmtDate(travel.exit_date)}` : ""}
           </p>
         )}
+        {/* 가용일 — '잡힌 날'만 표기(고객·내용 비공개). 오늘 이후 점유일만. */}
+        {(() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const days = Array.from(new Set((busy || []).map(b => (b.shoot_date || "").slice(0, 10)).filter(d => d && d >= today))).sort();
+          if (!days.length) return null;
+          return (
+            <div style={{ margin: "9px 0 0" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10.5, color: C.muted }}>예약된 날 <span style={{ color: C.textSub }}>({days.length})</span> · 그 외 가능</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {days.slice(0, 8).map((d, i) => (
+                  <span key={i} style={{ fontSize: 10, color: C.red, background: C.red + "14", border: `1px solid ${C.red}40`, borderRadius: 5, padding: "1px 6px", whiteSpace: "nowrap" }}>{d.slice(5).replace("-", ".")}</span>
+                ))}
+                {days.length > 8 && <span style={{ fontSize: 10, color: C.muted }}>+{days.length - 8}</span>}
+              </div>
+            </div>
+          );
+        })()}
         {/* 내 모델로 등록 — 카드 하단 고정 */}
         {onImport && (
           <div style={{ marginTop: "auto", paddingTop: 10 }}>
@@ -539,6 +556,7 @@ function SentTab({ sent, sentLoaded, nameOf, refreshSent }: any) {
 function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }: any) {
   const [openItem, setOpenItem] = useState<ReceivedItem | null>(null);
   const [travel, setTravel] = useState<Record<string, TravelRow>>({});
+  const [schedule, setSchedule] = useState<Record<string, SharedBusy[]>>({});
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState("");
 
@@ -547,6 +565,7 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
     if (!item.viewed_at) { try { await markReceivedViewed(item.recipientRowId); item.viewed_at = new Date().toISOString(); } catch {} }
     const mids = (item.distribution.distribution_models || []).map(m => m.source_model_id);
     try { setTravel(await loadSharedTravel(mids)); } catch { setTravel({}); }
+    try { setSchedule(await loadSharedSchedule(mids)); } catch { setSchedule({}); }
   };
 
   // 이미 가져온 모델인지(같은 이름+생년 & 공유 출처 메모) — 새로고침 후에도 중복 표시 방지
@@ -614,6 +633,7 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(300px,1fr))", gap: 14 }}>
             {(openItem.distribution.distribution_models || []).map((m: DistributionModel) =>
               <PreviewCard key={m.id} m={m} logoUrl={agency?.logo_url || ""} travel={m.source_model_id ? travel[m.source_model_id] : null}
+                busy={m.source_model_id ? schedule[m.source_model_id] : undefined}
                 onImport={onImportModel ? () => doImport(m, openItem) : undefined}
                 imported={alreadyInRoster(m)} importBusy={busyId === m.id} />)}
           </div>
