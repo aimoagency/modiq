@@ -22,6 +22,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const [bizNo, setBizNo]       = useState(agency?.biz_no || "");
   const [address, setAddress]   = useState(agency?.address || "");
   const [payoutBank, setPayoutBank] = useState(agency?.payout_bank_info || "");
+  const [payoutTaxEmail, setPayoutTaxEmail] = useState(agency?.payout_tax_email || "");
   const [logo, setLogo]         = useState(agency?.logo_url || "");
   const [transferTo, setTransferTo] = useState("");
   const [saved, setSaved] = useState(false);
@@ -34,7 +35,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const resetFields = () => {
     setName(agency?.name || ""); setRepName(agency?.rep_name || ""); setRepPhone(agency?.rep_phone || "");
     setContactPhone(agency?.contact_phone || ""); setBizNo(agency?.biz_no || ""); setAddress(agency?.address || "");
-    setPayoutBank(agency?.payout_bank_info || ""); setLogo(agency?.logo_url || "");
+    setPayoutBank(agency?.payout_bank_info || ""); setPayoutTaxEmail(agency?.payout_tax_email || ""); setLogo(agency?.logo_url || "");
   };
 
   // 로고 업로드 — 투명 배경 유지 위해 PNG로 리사이즈
@@ -69,7 +70,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
   const handleSave = () => {
     const bn = bizNo.replace(/[^0-9]/g, "");
     if (bn && !validateBizNo(bn)) return alert("올바른 사업자등록번호가 아닙니다 (10자리·체크섬 확인)");
-    onSave({ name: name.trim(), rep_name: repName.trim(), rep_phone: repPhone.trim(), contact_phone: contactPhone.trim(), biz_no: bn, address: address.trim(), payout_bank_info: payoutBank.trim(), logo_url: logo });
+    onSave({ name: name.trim(), rep_name: repName.trim(), rep_phone: repPhone.trim(), contact_phone: contactPhone.trim(), biz_no: bn, address: address.trim(), payout_bank_info: payoutBank.trim(), payout_tax_email: payoutTaxEmail.trim(), logo_url: logo });
     setEditMode(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
   };
 
@@ -136,6 +137,7 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
             {row("사업자등록번호", fmtBiz(bizNo))}
             {row("주소", address)}
             {row("정산 입금계좌", payoutBank)}
+            {row("계산서 받을 이메일", payoutTaxEmail)}
             {saved && <p style={{ margin: "12px 0 0", color: C.green, fontSize: 13, fontWeight: 700 }}>저장되었습니다</p>}
           </div>
         ) : (
@@ -182,9 +184,13 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
                 <button onClick={openPostcode} style={{ ...btnS(C.blue), flexShrink: 0, padding: "9px 14px", whiteSpace: "nowrap" }}>주소 검색</button>
               </div>
             </div>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 12 }}>
               {lbl("정산 입금계좌 (대대행 발송 시 상대에게 전달 — 은행/계좌/예금주)")}
               <input style={inp} value={payoutBank} onChange={e => setPayoutBank(e.target.value)} placeholder="예: 국민 123456-78-901234 (주)아이모" />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              {lbl("계산서 받을 이메일 (대대행 발송 시 상대에게 전달 — 세금계산서 수신)")}
+              <input style={inp} type="email" value={payoutTaxEmail} onChange={e => setPayoutTaxEmail(e.target.value)} placeholder="tax@example.com" />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={handleSave} style={{ ...btnS(C.green), flex: 1 }}>

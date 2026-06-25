@@ -7,9 +7,11 @@
 -- 안전: 모두 ADD COLUMN IF NOT EXISTS (재실행 가능).
 -- ═══════════════════════════════════════════════════════════════
 
--- 1) A의 정산 입금계좌 (회사설정에서 1회 등록) — 상호/사업자번호/대표/주소는 기존 컬럼 사용
+-- 1) A의 정산 입금계좌 + 계산서 받을 이메일 (회사설정에서 1회 등록) — 상호/사업자번호/대표/주소는 기존 컬럼 사용
 alter table public.agencies
   add column if not exists payout_bank_info text;
+alter table public.agencies
+  add column if not exists payout_tax_email text;
 
 -- 2) 발송 본문에 A 법인 정산정보 스냅샷(발송 시점 고정)
 --    { company_name, biz_no, rep_name, contact, address, bank }

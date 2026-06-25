@@ -51,6 +51,7 @@ export interface SenderPayoutInfo {
   contact?: string | null;      // 연락처
   address?: string | null;      // 주소
   bank?: string | null;         // 정산 입금계좌
+  tax_email?: string | null;    // 계산서 받을 이메일
 }
 
 export interface TalentDistribution {
