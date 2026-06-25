@@ -757,6 +757,37 @@ export default function App() {
     } catch (e) { alert("모델 추가 실패: "+String(e)); }
   };
 
+  // ── 받은(공유) 모델 → 내 모델로 등록(가져오기) ──
+  // 발송 스냅샷에는 민감정보(정산가·세무·연락처·주민번호)가 없으므로 공유된 필드만 복사하고
+  // 나머지(연락처/세무/지급정보 등)는 빈칸으로 둔다. 국적정보가 없어 내국인(K) 기본 — 가져온 뒤 수정 가능.
+  const handleImportSharedModel = async (sm: any, senderName?: string): Promise<{ ok: boolean; id?: string; error?: string }> => {
+    try {
+      const gender = sm.gender === "M" ? "M" : "F";
+      const natType = "K";
+      const agNo = (agency as any)?.agency_no || 1;
+      const photos = Array.isArray(sm.photos) ? sm.photos.filter((p: any) => typeof p === "string" && p) : [];
+      const newId = generateModelId(genderNatCode(gender, natType), agNo, nextModelSeq(models));
+      const nm: any = {
+        id: newId, agency_id: agency.id, name: sm.display_name || "(이름없음)",
+        gender, nationality_type: natType, is_foreigner: false, share_consent: true,
+        birth_year: sm.birth_year ?? null,
+        height: sm.height ?? null, bust: sm.bust ?? null, waist: sm.waist ?? null, hip: sm.hip ?? null, shoe: sm.shoe ?? null,
+        hair_length: sm.hair_length ?? null, hair_color: sm.hair_color ?? null, eye_color: sm.eye_color ?? null,
+        tattoo: sm.tattoo ?? false, underwear_ok: sm.underwear_ok ?? false,
+        specialty: sm.specialty ?? null, fields: Array.isArray(sm.fields) ? sm.fields : (sm.fields ?? null),
+        fee_day: sm.fee_day ?? null, fee_half: sm.fee_half ?? null, fee_hour: sm.fee_hour ?? null,
+        photos, thumb_url: photos[0] || null,
+        memo: senderName ? `${senderName} 공유 모델` : "공유 모델",
+        payout_tax_type: "freelancer", payout_pay_type: "rate",
+      };
+      await sb("models", "POST", nm);
+      setModels(prev => [nm, ...prev]);
+      return { ok: true, id: newId };
+    } catch (e: any) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  };
+
   const openEditModel = (m: any) => {
     setSelectedModel(m);
     setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
@@ -2068,7 +2099,7 @@ async function sharePdf(){
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
 
         {/* ════ 발송(Distribution) ════ */}
-        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} isMobile={isMobile} />}
+        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} isMobile={isMobile} onImportModel={handleImportSharedModel} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} agency={agency} isMobile={isMobile} onSelectBooking={openBookingFresh} />}

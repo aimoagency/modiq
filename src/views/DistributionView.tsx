@@ -29,8 +29,9 @@ const firstPhoto = (m: any): string => {
 const Card = ({ children }: any) => <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>{children}</div>;
 const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: C.text }}>{children}</p>;
 
-export default function DistributionView({ agency, models, createdBy, isMobile }: {
+export default function DistributionView({ agency, models, createdBy, isMobile, onImportModel }: {
   agency: any; models: any[]; createdBy?: string; isMobile: boolean;
+  onImportModel?: (sm: any, senderName?: string) => Promise<{ ok: boolean; id?: string; error?: string }>;
 }) {
   const myId: string = agency?.id;
   const [tab, setTab] = useState<Tab>("partners");
@@ -112,7 +113,7 @@ export default function DistributionView({ agency, models, createdBy, isMobile }
       {tab === "partners" && <PartnersTab {...{ myId, partners, counterparty, nameOf, createdBy, refreshPartners }} />}
       {tab === "send" && <SendTab {...{ myId, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
       {tab === "sent" && <SentTab {...{ sent, sentLoaded, nameOf, refreshSent }} />}
-      {tab === "inbox" && <InboxTab {...{ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile }} />}
+      {tab === "inbox" && <InboxTab {...{ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }} />}
     </div>
   );
 }
@@ -390,16 +391,51 @@ function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, created
 }
 
 // 발송 미리보기/수신 공통 모델 카드 (스냅샷 데이터 기준)
-function PreviewCard({ m, logoUrl, travel }: { m: any; logoUrl?: string; travel?: TravelRow | null }) {
-  const ph = firstPhoto(m);
+function PreviewCard({ m, logoUrl, travel, onImport, imported, importBusy }: {
+  m: any; logoUrl?: string; travel?: TravelRow | null;
+  onImport?: () => void; imported?: boolean; importBusy?: boolean;
+}) {
+  const photos: string[] = useMemo(() => {
+    const a = Array.isArray(m.photos) ? m.photos.filter((p: any) => typeof p === "string" && p) : [];
+    if (a.length) return a;
+    const t = m.thumb_url || m.thumb || "";
+    return t ? [t] : [];
+  }, [m]);
+  const [idx, setIdx] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  const safeIdx = idx < photos.length ? idx : 0;
+  const ph = photos[safeIdx] || "";
   const fields = Array.isArray(m.fields) ? m.fields : [];
   const name = m.display_name || m.name;
   return (
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ position: "relative", aspectRatio: "3/4", background: C.card2 }}>
+      <div onClick={() => ph && setZoom(true)} style={{ position: "relative", aspectRatio: "3/4", background: C.card2, cursor: ph ? "zoom-in" : "default" }}>
         {ph ? <img src={thumbUrl(ph)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}><User size={30} color={C.muted} /></div>}
+        {photos.length > 1 && <span style={{ position: "absolute", top: 6, left: 6, background: "rgba(0,0,0,0.6)", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 7px" }}>{safeIdx + 1}/{photos.length}</span>}
         {logoUrl && <img src={logoUrl} alt="" style={{ position: "absolute", bottom: 6, right: 6, height: 24, maxWidth: 80, objectFit: "contain", background: "rgba(255,255,255,0.85)", borderRadius: 4, padding: 2 }} />}
       </div>
+      {photos.length > 1 && (
+        <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "7px 8px 0" }}>
+          {photos.map((p, i) => (
+            <div key={i} onClick={() => setIdx(i)} style={{ width: 38, height: 50, borderRadius: 5, overflow: "hidden", flexShrink: 0, cursor: "pointer", border: `2px solid ${i === safeIdx ? C.blue : "transparent"}` }}>
+              <img src={thumbUrl(p)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          ))}
+        </div>
+      )}
+      {zoom && (
+        <div onClick={() => setZoom(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 3000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <img src={ph} alt="" style={{ maxWidth: "100%", maxHeight: "82vh", objectFit: "contain" }} onClick={e => e.stopPropagation()} />
+          {photos.length > 1 && (
+            <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14, color: "#fff" }}>
+              <button onClick={() => setIdx((safeIdx - 1 + photos.length) % photos.length)} style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 18, cursor: "pointer" }}>‹</button>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>{safeIdx + 1} / {photos.length}</span>
+              <button onClick={() => setIdx((safeIdx + 1) % photos.length)} style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 18, cursor: "pointer" }}>›</button>
+            </div>
+          )}
+          <button onClick={() => setZoom(false)} style={{ position: "absolute", top: 16, right: 18, background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer" }}>닫기 ✕</button>
+        </div>
+      )}
       <div style={{ padding: "10px 12px" }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>{name}
           {m.gender && <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}> · {m.gender === "F" ? "여성" : m.gender === "M" ? "남성" : m.gender}</span>}
@@ -429,6 +465,11 @@ function PreviewCard({ m, logoUrl, travel }: { m: any; logoUrl?: string; travel?
           <p style={{ margin: "8px 0 0", fontSize: 11, color: C.blue, fontWeight: 600 }}>
             <Plane size={11} style={{ verticalAlign: -2 }} /> 입국 {fmtDate(travel.entry_date)} ~ 출국 {fmtDate(travel.exit_date)}
           </p>
+        )}
+        {onImport && (
+          imported
+            ? <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: C.green, textAlign: "center", background: C.green + "14", borderRadius: 8, padding: "8px 0" }}><CheckCircle2 size={13} style={{ verticalAlign: -2 }} /> 내 모델로 등록됨</div>
+            : <button onClick={onImport} disabled={importBusy} style={{ ...btnS(C.blue, importBusy), width: "100%", marginTop: 10 }}>{importBusy ? "등록 중…" : "내 모델로 등록"}</button>
         )}
       </div>
     </div>
@@ -488,15 +529,34 @@ function SentTab({ sent, sentLoaded, nameOf, refreshSent }: any) {
 }
 
 // ═══════════════════════════ 받은함 탭 ═══════════════════════════
-function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile }: any) {
+function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }: any) {
   const [openItem, setOpenItem] = useState<ReceivedItem | null>(null);
   const [travel, setTravel] = useState<Record<string, TravelRow>>({});
+  const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState("");
 
   const open = async (item: ReceivedItem) => {
     setOpenItem(item);
     if (!item.viewed_at) { try { await markReceivedViewed(item.recipientRowId); item.viewed_at = new Date().toISOString(); } catch {} }
     const mids = (item.distribution.distribution_models || []).map(m => m.source_model_id);
     try { setTravel(await loadSharedTravel(mids)); } catch { setTravel({}); }
+  };
+
+  // 이미 가져온 모델인지(같은 이름+생년 & 공유 출처 메모) — 새로고침 후에도 중복 표시 방지
+  const alreadyInRoster = (m: DistributionModel) =>
+    importedIds.has(m.id) ||
+    (models || []).some((x: any) => (x.name || "") === (m.display_name || "") && (x.birth_year ?? null) === (m.birth_year ?? null) && /공유 모델/.test(String(x.memo || "")));
+
+  const doImport = async (m: DistributionModel, senderName: string) => {
+    if (!onImportModel) return;
+    const dup = (models || []).some((x: any) => (x.name || "") === (m.display_name || "") && (x.birth_year ?? null) === (m.birth_year ?? null));
+    if (dup && !importedIds.has(m.id) && !confirm(`'${m.display_name}'와(과) 이름·생년이 같은 모델이 이미 있습니다.\n그래도 내 모델로 가져올까요?`)) return;
+    setBusyId(m.id);
+    try {
+      const r = await onImportModel(m, senderName);
+      if (r?.ok) { setImportedIds(prev => new Set(prev).add(m.id)); alert("내 모델로 등록했습니다.\n'모델' 메뉴에서 연락처·정산정보 등을 채워 사용하세요."); }
+      else alert("등록 실패: " + (r?.error || "알 수 없는 오류"));
+    } finally { setBusyId(""); }
   };
 
   if (!inboxLoaded) return <p style={{ color: C.muted, fontSize: 13 }}>불러오는 중…</p>;
@@ -529,11 +589,13 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
       {openItem && (
         <Modal onClose={() => setOpenItem(null)} maxW={920}>
           <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: C.text }}><Building size={16} style={{ verticalAlign: -2 }} /> {nameOf(openItem.distribution.sender_agency_id)}</p>
-          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 내 로고로 컴카드를 만들어 사용하세요</p>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 사진을 누르면 확대 · <b style={{ color: C.textSub }}>내 모델로 등록</b>하면 '모델' 메뉴에 추가됩니다</p>
           {openItem.distribution.message && <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textSub, background: C.card2, borderRadius: 8, padding: "9px 12px" }}>{openItem.distribution.message}</p>}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(230px,1fr))", gap: 12 }}>
             {(openItem.distribution.distribution_models || []).map((m: DistributionModel) =>
-              <PreviewCard key={m.id} m={m} logoUrl={agency?.logo_url || ""} travel={m.source_model_id ? travel[m.source_model_id] : null} />)}
+              <PreviewCard key={m.id} m={m} logoUrl={agency?.logo_url || ""} travel={m.source_model_id ? travel[m.source_model_id] : null}
+                onImport={onImportModel ? () => doImport(m, nameOf(openItem.distribution.sender_agency_id)) : undefined}
+                imported={alreadyInRoster(m)} importBusy={busyId === m.id} />)}
           </div>
         </Modal>
       )}
