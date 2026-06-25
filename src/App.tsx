@@ -171,6 +171,12 @@ export default function App() {
   const [distIdsLoaded, setDistIdsLoaded] = useState(false);
   // 편입(대대행) 모델의 A쪽 점유일 — source_model_id 기준 라이브 조회. 모델 캘린더에 '외부 점유'로 표시.
   const [sharedBusy, setSharedBusy] = useState<Record<string, SharedBusy[]>>({});
+  // 대대행 모델: A쪽(발송처) 점유일이면 그 날은 사용 불가(날짜 단위·시간 비공개) → 섭외 시 HOLD 판정에 사용.
+  // ⚠️ B가 이미 그 모델로 같은 날 잡아둔 건이 있으면 제외(A가 B 일정을 등록해 되돌아온 '반사' 중복 방지).
+  const subAgencyBusy = (model: any, date?: string): boolean =>
+    !!model?.source_model_id && !!date &&
+    (sharedBusy[model.source_model_id] || []).some((x: any) => (x.shoot_date || "").slice(0, 10) === date) &&
+    !bookings.some((b: any) => b.model_id === model.id && b.shoot_date === date && b.status !== "CANCELLED");
   const [customerQ,   setCustomerQ]   = useState("");
   const [bookingQ,    setBookingQ]    = useState("");
   const [bookingStatusF,  setBookingStatusF]  = useState("ALL");
@@ -289,6 +295,8 @@ export default function App() {
         const c = scheduleConflict(lStart, lEnd, b.start_time, b.end_time, pBookingType, b.booking_type, lLoc, b.location);
         if (c.conflict) { autoHold = true; holdReason = c.reason; break; }
       }
+      // 대대행: A쪽(발송처) 점유일이면 그 모델은 그 날 불가 → HOLD (날짜 단위)
+      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 측 점유(대대행)`; }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
         id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
@@ -1138,7 +1146,8 @@ export default function App() {
     });
     const eIsShoot = !!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract;
     const eInactive = selectedBooking.status==="CANCELLED"; // 취소 건은 일정에서 빠지므로 충돌 무관
-    const eHold = !eInactive && blocks(selectedBooking, othersSameDay);
+    // 대대행: A쪽(발송처) 점유일로 옮기면 그 날 불가 → HOLD (날짜 단위)
+    const eHold = !eInactive && (blocks(selectedBooking, othersSameDay) || subAgencyBusy(models.find(m=>m.id===selectedBooking.model_id), selectedBooking.shoot_date));
     const reason = "동일 모델 일정 충돌";
     const meetingsToHold = (eIsShoot && !eInactive) ? othersSameDay.filter(b=>!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract && b.status!=="HOLD").map(b=>b.id) : [];
     if (meetingsToHold.length>0) {
@@ -1242,6 +1251,8 @@ export default function App() {
         if (c.conflict) { autoHold = true; holdReason = c.reason; }
       }
     }
+    // 대대행: A쪽(발송처) 점유일이면 그 날은 불가 → HOLD (날짜 단위)
+    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 측 점유(대대행)`; }
     // 촬영이 기존 미팅과 겹치면 확인 (확인 시 미팅 HOLD 처리)
     if (meetingsToHold.length>0) {
       const labels = [...new Set(sameDay.filter(b=>meetingsToHold.includes(b.id)).map(b=>BOOKING_TYPES[b.booking_type||"SHOOT"]?.label))].join(", ");
@@ -1256,7 +1267,7 @@ export default function App() {
       for (const mid of meetingsToHold) { await sb("bookings","PATCH",{status:"HOLD"},`?id=eq.${mid}`); list=list.map(b=>b.id===mid?{...b,status:"HOLD"}:b); }
       setBookings(list);
       resetBookingForm(); setShowBookingForm(false);
-      if (autoHold) alert(`⚠️ HOLD 처리됨\n사유: ${holdReason}\n같은 날 동일 모델 섭외와 시간이 충돌합니다.`);
+      if (autoHold) alert(`⚠️ HOLD 처리됨\n사유: ${holdReason}`);
       else if (meetingsToHold.length>0) alert(`✅ 촬영 등록 완료\n겹치는 미팅 ${meetingsToHold.length}건이 HOLD로 변경됐습니다. 고객사와 일정을 조율하세요.`);
     } catch(e) { alert("섭외 추가 실패: "+String(e)); }
   };

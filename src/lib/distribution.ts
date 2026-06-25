@@ -208,9 +208,9 @@ export const loadSharedTravel = async (sourceModelIds: (string | null | undefine
 };
 
 // ── 공유 모델 가용일(점유 날짜) 라이브 조회 ───────────────────────
-// RPC shared_model_schedule: 유효한 발송으로 받은 모델의 '점유 날짜'만 반환(고객·장소 등 민감정보 없음).
-// B 화면에는 "그 날 잡힘/비어있음"만 보여준다 → 에이전시 간 중복 캐스팅 방지.
-export interface SharedBusy { model_id: string; shoot_date: string; start_time?: string | null; end_time?: string | null; booking_type?: string | null; status?: string | null; }
+// RPC shared_model_schedule: 유효한 발송으로 받은 모델의 '점유 날짜'만 반환.
+// ⚠️ 날짜만 — 시간·고객·장소·내용은 일절 반환하지 않는다(상대 매출 추정 방지).
+export interface SharedBusy { model_id: string; shoot_date: string; }
 export const loadSharedSchedule = async (sourceModelIds: (string | null | undefined)[]): Promise<Record<string, SharedBusy[]>> => {
   const ids = Array.from(new Set(sourceModelIds.filter(Boolean) as string[]));
   if (!ids.length) return {};

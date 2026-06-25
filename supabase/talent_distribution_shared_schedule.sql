@@ -13,16 +13,11 @@
 -- 롤백: drop function public.shared_model_schedule(text[]);
 -- ═══════════════════════════════════════════════════════════════
 create or replace function public.shared_model_schedule(p_model_ids text[])
-returns table(model_id text, shoot_date text, start_time text, end_time text, booking_type text, status text)
+returns table(model_id text, shoot_date text)
 language sql security definer stable
 set search_path = public
 as $$
-  select b.model_id,
-         b.shoot_date::text,
-         b.start_time::text,
-         b.end_time::text,
-         b.booking_type::text,
-         b.status::text
+  select b.model_id, b.shoot_date::text
   from public.bookings b
   where b.model_id = any(p_model_ids)
     and coalesce(b.status,'') <> 'CANCELLED'
