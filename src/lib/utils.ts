@@ -154,6 +154,34 @@ export const ageFromSSN6 = (ssn6: string): number | null => {
   return age >= 0 && age < 120 ? age : null;
 };
 
+// 출생연도(yyyy) → 연 나이(올해−출생연도). 생일 월·일이 없으므로 만 나이가 아닌 연 나이.
+export const ageFromYear = (y: number | string | null | undefined): number | null => {
+  const yr = Number(y);
+  if (!yr || yr < 1900 || yr > 2200) return null;
+  const age = new Date().getFullYear() - yr;
+  return age >= 0 && age < 120 ? age : null;
+};
+
+// 주민/외국인등록번호 숫자 → 출생연도(yyyy). 7번째(성별)자리로 세기 판별, 없으면 두자리 임계로 추정.
+//  840321(-1...) → 1984 / 030711(-3...) → 2003
+export const birthYearFromId = (raw: string): number | null => {
+  const d = (raw || "").replace(/[^0-9]/g, "");
+  if (d.length < 6) return null;
+  const yy = Number(d.slice(0,2)), mm = Number(d.slice(2,4)), dd = Number(d.slice(4,6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const g = d.length >= 7 ? Number(d[6]) : null;
+  let century: number;
+  if (g === 1 || g === 2 || g === 5 || g === 6) century = 1900;
+  else if (g === 3 || g === 4 || g === 7 || g === 8) century = 2000;
+  else if (g === 9 || g === 0) century = 1800;
+  else { const curYY = new Date().getFullYear() % 100; century = yy > curYY ? 1900 : 2000; }
+  return century + yy;
+};
+
+// 모델 나이: birth_year(출생연도) 우선, 없으면 기존 ssn6(yymmdd)에서 산출(하위호환).
+export const modelAge = (m: any): number | null =>
+  m?.birth_year ? ageFromYear(m.birth_year) : ageFromSSN6(m?.ssn6 || "");
+
 // 매출 인정 상태: 촬영확정/촬영완료/정산완료만 (문의·제안·대기·HOLD·취소 제외)
 export const REVENUE_STATUSES = ["CONFIRMED", "COMPLETED", "SETTLED"];
 
