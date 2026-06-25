@@ -394,7 +394,7 @@ export default function App() {
   const [mAgencyPhone,   setMAgencyPhone]   = useState(""); // 담당자 연락처
   const [mAgencyEmail,   setMAgencyEmail]   = useState(""); // 에이전시 이메일(일정·정산 연락)
   const [mAgencyBizNo,   setMAgencyBizNo]   = useState(""); // 사업자등록번호(세금계산서)
-  const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
+  const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("fixed");
   const [mPayValue, setMPayValue] = useState(0); // (구) 단일 정산값 — 하위호환
   // 정산방식 값(세션별): 비율이면 %, 정액이면 원
   const [mPayDayValue,  setMPayDayValue]  = useState(0);
@@ -744,7 +744,7 @@ export default function App() {
   const syncBankInfoFromForeign = (bank: string, account: string) => {
     setMBankName(bank); setMBankAcct(account); setMBank(`${bank} ${account}`.trim());
   };
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMBirthYear(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMBirthYear(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("fixed"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
