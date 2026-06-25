@@ -43,6 +43,16 @@ export interface DistributionRecipient {
   created_at: string;
 }
 
+// A(발송측) 법인 정산정보 스냅샷 — 발송 시점 고정. B가 A에게 지급/세금계산서 처리에 사용.
+export interface SenderPayoutInfo {
+  company_name?: string | null; // 상호
+  biz_no?: string | null;       // 사업자등록번호
+  rep_name?: string | null;     // 대표자
+  contact?: string | null;      // 연락처
+  address?: string | null;      // 주소
+  bank?: string | null;         // 정산 입금계좌
+}
+
 export interface TalentDistribution {
   id: string;
   sender_agency_id: string;
@@ -52,6 +62,7 @@ export interface TalentDistribution {
   expires_at?: string | null;
   created_at: string;
   revoked_at?: string | null;
+  sender_payout_info?: SenderPayoutInfo | null;
   distribution_models?: DistributionModel[];
   distribution_recipients?: DistributionRecipient[];
 }
@@ -130,6 +141,7 @@ export const sendDistribution = async (opts: {
   expiresAt?: string | null;
   models: any[];            // 원본 모델 행(스냅샷으로 변환됨)
   recipientAgencyIds: string[];
+  senderPayoutInfo?: SenderPayoutInfo | null; // A 법인 정산정보 스냅샷
 }): Promise<string> => {
   const distRows = await sb("talent_distributions", "POST", {
     sender_agency_id: opts.senderAgencyId,
@@ -137,6 +149,7 @@ export const sendDistribution = async (opts: {
     message: opts.message || null,
     status: "active",
     expires_at: opts.expiresAt || null,
+    sender_payout_info: opts.senderPayoutInfo || null,
   });
   const dist: TalentDistribution = Array.isArray(distRows) ? distRows[0] : distRows;
   const distId = dist.id;

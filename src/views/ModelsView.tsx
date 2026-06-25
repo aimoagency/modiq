@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { C, inp, btnS } from "../theme";
 import RevenueRanking from "../components/RevenueRanking";
 import { periodRange } from "../lib/utils";
@@ -22,8 +22,16 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
+  // 출처(발송처) 필터 — 대대행 편입 모델을 발송 에이전시별로 거른다
+  const [srcFilter, setSrcFilter] = useState<string>(""); // "" 전체 · "__own__" 직접등록 · 그 외 발송처명
+  const sources = useMemo(() => Array.from(new Set(filteredModels.map(m=>m.source_agency_name).filter(Boolean))) as string[], [filteredModels]);
+  const displayModels = useMemo(() => {
+    if (!srcFilter) return filteredModels;
+    if (srcFilter==="__own__") return filteredModels.filter(m=>!m.source_agency_id);
+    return filteredModels.filter(m=>m.source_agency_name===srcFilter);
+  }, [filteredModels, srcFilter, sources.length]);
   // 점진 렌더 — 1000명+ 목록을 한 번에 다 그리지 않음(스크롤 시 추가)
-  const { visible, hasMore, sentinelRef } = useVisibleCount(filteredModels, 60);
+  const { visible, hasMore, sentinelRef } = useVisibleCount(displayModels, 60);
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -53,8 +61,19 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
           </span>
         )}
       </div>
-      {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb isMobile={isMobile} /> :
-       filteredModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
+      {sources.length>0 && (
+        <div style={{ display:"flex", alignItems:"center", gap:6, margin:"0 0 12px", flexWrap:"wrap" }}>
+          <span style={{ fontSize:11, color:C.muted }}>출처</span>
+          {([["","전체"],["__own__","직접 등록"]] as const).map(([k,l])=>(
+            <button key={k} onClick={()=>setSrcFilter(k)} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${srcFilter===k?C.blue:C.border}`, background:srcFilter===k?C.blue+"22":"transparent", color:srcFilter===k?C.blue:C.muted, fontSize:12, fontWeight:srcFilter===k?700:500, cursor:"pointer" }}>{l}</button>
+          ))}
+          {sources.map(s=>(
+            <button key={s} onClick={()=>setSrcFilter(s)} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${srcFilter===s?C.blue:C.border}`, background:srcFilter===s?C.blue+"22":"transparent", color:srcFilter===s?C.blue:C.muted, fontSize:12, fontWeight:srcFilter===s?700:500, cursor:"pointer" }}>{s} 대대행</button>
+          ))}
+        </div>
+      )}
+      {sortMode==="rev" ? <RevenueRanking items={displayModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb isMobile={isMobile} /> :
+       displayModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
@@ -68,6 +87,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                     : <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:13, flexShrink:0 }}>{m.name?m.name[0]:"?"}</div>
                   }
                   <strong style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flexShrink:1 }}>{m.name}</strong>
+                  {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 대대행`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>대대행</span>}
                   {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}><Plane size={9} style={{ verticalAlign:-1, flexShrink:0 }}/> {dday}</span>}
                   {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:"", (m.career_years!=null&&m.career_years!=="")?`경력 ${m.career_years}년`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{txt}</span>:null; })()}
                 </div>
@@ -96,6 +116,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 }
                 {/* 이름 */}
                 <span style={{ fontWeight:800, fontSize:15, color:C.text, minWidth:60 }}>{m.name}</span>
+                {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 대대행`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:10, fontWeight:800, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap" }}>대대행</span>}
                 {/* 성별 · 나이 */}
                 {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:"", (m.career_years!=null&&m.career_years!=="")?`경력 ${m.career_years}년`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
                 {/* 외국인 D-day */}

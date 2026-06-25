@@ -31,7 +31,7 @@ const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", font
 
 export default function DistributionView({ agency, models, createdBy, isMobile, onImportModel }: {
   agency: any; models: any[]; createdBy?: string; isMobile: boolean;
-  onImportModel?: (sm: any, senderName?: string) => Promise<{ ok: boolean; id?: string; error?: string }>;
+  onImportModel?: (sm: any, src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }) => Promise<{ ok: boolean; id?: string; error?: string }>;
 }) {
   const myId: string = agency?.id;
   const [tab, setTab] = useState<Tab>("partners");
@@ -111,7 +111,7 @@ export default function DistributionView({ agency, models, createdBy, isMobile, 
       </div>
 
       {tab === "partners" && <PartnersTab {...{ myId, partners, counterparty, nameOf, createdBy, refreshPartners }} />}
-      {tab === "send" && <SendTab {...{ myId, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
+      {tab === "send" && <SendTab {...{ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
       {tab === "sent" && <SentTab {...{ sent, sentLoaded, nameOf, refreshSent }} />}
       {tab === "inbox" && <InboxTab {...{ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }} />}
     </div>
@@ -232,7 +232,7 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
 }
 
 // ═══════════════════════════ 보내기 탭 ═══════════════════════════
-function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent }: any) {
+function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent }: any) {
   const [step, setStep] = useState(1);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [recips, setRecips] = useState<Set<string>>(new Set());
@@ -266,6 +266,11 @@ function SendTab({ myId, models, acceptedPartners, counterparty, nameOf, created
         senderAgencyId: myId, createdBy, message,
         expiresAt: expiry ? new Date(expiry + "T23:59:59").toISOString() : null,
         models: pickedModels, recipientAgencyIds: Array.from(recips),
+        senderPayoutInfo: {
+          company_name: agency?.name || null, biz_no: agency?.biz_no || null,
+          rep_name: agency?.rep_name || null, contact: agency?.contact_phone || agency?.rep_phone || null,
+          address: agency?.address || null, bank: agency?.payout_bank_info || null,
+        },
       });
       setDone(true);
       setTimeout(() => { reset(); onSent?.(); }, 1200);
@@ -547,14 +552,20 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
     importedIds.has(m.id) ||
     (models || []).some((x: any) => (x.name || "") === (m.display_name || "") && (x.birth_year ?? null) === (m.birth_year ?? null) && /공유 모델/.test(String(x.memo || "")));
 
-  const doImport = async (m: DistributionModel, senderName: string) => {
+  const doImport = async (m: DistributionModel, item: ReceivedItem) => {
     if (!onImportModel) return;
+    const senderName = nameOf(item.distribution.sender_agency_id);
     const dup = (models || []).some((x: any) => (x.name || "") === (m.display_name || "") && (x.birth_year ?? null) === (m.birth_year ?? null));
     if (dup && !importedIds.has(m.id) && !confirm(`'${m.display_name}'와(과) 이름·생년이 같은 모델이 이미 있습니다.\n그래도 내 모델로 가져올까요?`)) return;
     setBusyId(m.id);
     try {
-      const r = await onImportModel(m, senderName);
-      if (r?.ok) { setImportedIds(prev => new Set(prev).add(m.id)); alert("내 모델로 등록했습니다.\n'모델' 메뉴에서 연락처·정산정보 등을 채워 사용하세요."); }
+      const r = await onImportModel(m, {
+        senderName,
+        senderAgencyId: item.distribution.sender_agency_id,
+        distributionId: item.distribution.id,
+        payoutInfo: item.distribution.sender_payout_info || null,
+      });
+      if (r?.ok) { setImportedIds(prev => new Set(prev).add(m.id)); alert(`'${senderName}'의 모델을 대대행(소속사)으로 편입했습니다.\n'모델' 메뉴에서 마진(공급가·기준액)만 입력하면 됩니다. (세무=소속사 10% 고정, 업체정보 자동)`); }
       else alert("등록 실패: " + (r?.error || "알 수 없는 오류"));
     } finally { setBusyId(""); }
   };
@@ -589,12 +600,19 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
       {openItem && (
         <Modal onClose={() => setOpenItem(null)} maxW={920}>
           <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: C.text }}><Building size={16} style={{ verticalAlign: -2 }} /> {nameOf(openItem.distribution.sender_agency_id)}</p>
-          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 사진을 누르면 확대 · <b style={{ color: C.textSub }}>내 모델로 등록</b>하면 '모델' 메뉴에 추가됩니다</p>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>모델 {(openItem.distribution.distribution_models || []).length}명 · 사진을 누르면 확대 · <b style={{ color: C.textSub }}>내 모델로 등록</b>하면 대대행(소속사)으로 편입됩니다</p>
+          {openItem.distribution.sender_payout_info && (openItem.distribution.sender_payout_info.biz_no || openItem.distribution.sender_payout_info.bank) && (
+            <p style={{ margin: "0 0 14px", fontSize: 11.5, color: C.textSub, background: C.blue + "12", border: `1px solid ${C.blue}33`, borderRadius: 8, padding: "8px 11px" }}>
+              <Building size={12} style={{ verticalAlign: -2 }} /> 정산정보(자동 편입): {openItem.distribution.sender_payout_info.company_name || nameOf(openItem.distribution.sender_agency_id)}
+              {openItem.distribution.sender_payout_info.biz_no ? ` · 사업자 ${openItem.distribution.sender_payout_info.biz_no}` : ""}
+              {openItem.distribution.sender_payout_info.bank ? ` · 입금 ${openItem.distribution.sender_payout_info.bank}` : ""}
+            </p>
+          )}
           {openItem.distribution.message && <p style={{ margin: "0 0 14px", fontSize: 13, color: C.textSub, background: C.card2, borderRadius: 8, padding: "9px 12px" }}>{openItem.distribution.message}</p>}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(230px,1fr))", gap: 12 }}>
             {(openItem.distribution.distribution_models || []).map((m: DistributionModel) =>
               <PreviewCard key={m.id} m={m} logoUrl={agency?.logo_url || ""} travel={m.source_model_id ? travel[m.source_model_id] : null}
-                onImport={onImportModel ? () => doImport(m, nameOf(openItem.distribution.sender_agency_id)) : undefined}
+                onImport={onImportModel ? () => doImport(m, openItem) : undefined}
                 imported={alreadyInRoster(m)} importBusy={busyId === m.id} />)}
           </div>
         </Modal>

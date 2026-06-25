@@ -553,6 +553,8 @@ export default function App() {
   // compcard는 컴카드 생성/저장 전용이라 어디서도 표시·조회하지 않으므로 빼도 안전(편집 PATCH에도 미포함).
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
   const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
+  // V4 대대행 출처 컬럼(마이그레이션 적용 후 존재) — 미적용 환경에선 loadData가 자동 폴백
+  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -566,8 +568,17 @@ export default function App() {
       try { const rows = await sb(table,"GET",null,query); fetched[table] = rows||[]; return rows||[]; }
       catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); return null; }
     };
+    // 모델: V4 출처 컬럼 포함 조회 → 컬럼 미존재(마이그레이션 전)면 기본 컬럼으로 1회 폴백(앱 깨짐 방지)
+    const fetchModels = async (): Promise<any[]|null> => {
+      const q = (cols:string) => `?agency_id=eq.${agencyId}&order=created_at.desc&select=${cols}`;
+      try { const rows = await sb("models","GET",null,q(MODEL_COLS_V4)); fetched["models"]=rows||[]; return rows||[]; }
+      catch {
+        try { const rows = await sb("models","GET",null,q(MODEL_COLS)); fetched["models"]=rows||[]; return rows||[]; }
+        catch (e2) { allOk=false; console.error("로드 실패: models", e2); return null; }
+      }
+    };
     const [mm, cc, bb, pp] = await Promise.all([
-      fetch1("models",    `?agency_id=eq.${agencyId}&order=created_at.desc&select=${MODEL_COLS}`),
+      fetchModels(),
       fetch1("customers", `?agency_id=eq.${agencyId}&order=created_at.desc`),
       fetch1("bookings",  `?agency_id=eq.${agencyId}&order=shoot_date.desc`),
       fetch1("projects",  `?agency_id=eq.${agencyId}&order=created_at.desc`),
@@ -757,16 +768,22 @@ export default function App() {
     } catch (e) { alert("모델 추가 실패: "+String(e)); }
   };
 
-  // ── 받은(공유) 모델 → 내 모델로 등록(가져오기) ──
-  // 발송 스냅샷에는 민감정보(정산가·세무·연락처·주민번호)가 없으므로 공유된 필드만 복사하고
-  // 나머지(연락처/세무/지급정보 등)는 빈칸으로 둔다. 국적정보가 없어 내국인(K) 기본 — 가져온 뒤 수정 가능.
-  const handleImportSharedModel = async (sm: any, senderName?: string): Promise<{ ok: boolean; id?: string; error?: string }> => {
+  // ── 받은(공유) 모델 → 대대행(소속사)으로 편입 (V4) ──
+  // 발송 스냅샷의 공유 필드(이름·신체·사진·노출가 등)만 복사하고, 세무유형은 '소속사(company) 10% 고정',
+  // A 업체정보(상호·사업자번호·연락처·계좌)는 발송 스냅샷(payoutInfo)에서 자동 채운다. 출처(A)도 자동 기록.
+  // 민감정보(주민번호 등)는 발송 자체가 안 되므로 제외. 국적정보 없어 내국인(K) 기본.
+  const handleImportSharedModel = async (
+    sm: any,
+    src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }
+  ): Promise<{ ok: boolean; id?: string; error?: string }> => {
     try {
       const gender = sm.gender === "M" ? "M" : "F";
       const natType = "K";
       const agNo = (agency as any)?.agency_no || 1;
       const photos = Array.isArray(sm.photos) ? sm.photos.filter((p: any) => typeof p === "string" && p) : [];
       const newId = generateModelId(genderNatCode(gender, natType), agNo, nextModelSeq(models));
+      const pi = src?.payoutInfo || {};
+      const senderName = src?.senderName || "";
       const nm: any = {
         id: newId, agency_id: agency.id, name: sm.display_name || "(이름없음)",
         gender, nationality_type: natType, is_foreigner: false, share_consent: true,
@@ -777,8 +794,19 @@ export default function App() {
         specialty: sm.specialty ?? null, fields: Array.isArray(sm.fields) ? sm.fields : (sm.fields ?? null),
         fee_day: sm.fee_day ?? null, fee_half: sm.fee_half ?? null, fee_hour: sm.fee_hour ?? null,
         photos, thumb_url: photos[0] || null,
-        memo: senderName ? `${senderName} 공유 모델` : "공유 모델",
-        payout_tax_type: "freelancer", payout_pay_type: "rate",
+        // 대대행(소속사) 고정 — A에게 세금계산서 10%로 정산
+        payout_tax_type: "company", payout_pay_type: "rate",
+        // A 업체정보 자동 (소속 에이전시 정보로 정산서 발행)
+        agency_name: pi.company_name || senderName || null,
+        agency_biz_no: pi.biz_no || null,
+        agency_contact: pi.rep_name || null,
+        agency_phone: pi.contact || null,
+        bank_info: pi.bank || null,
+        // 출처(A) 자동 기록 — 에이전시별 필터/추적
+        source_agency_id: src?.senderAgencyId || null,
+        source_agency_name: senderName || pi.company_name || null,
+        source_distribution_id: src?.distributionId || null,
+        memo: senderName ? `${senderName} 대대행(발송 편입)` : "대대행(발송 편입)",
       };
       await sb("models", "POST", nm);
       setModels(prev => [nm, ...prev]);
@@ -2810,7 +2838,7 @@ async function sharePdf(){
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:t==="company"?"(소속사)":"(프리랜서)"}</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>{t==="company"?`A 지급액 ${mdl?.source_agency_name?`(${mdl.source_agency_name} 대대행)`:"(소속사)"}`:`모델 실지급 ${t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:"(프리랜서)"}`}</span>
                   <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
@@ -3313,14 +3341,15 @@ async function sharePdf(){
             />
           </div>
 
-          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
+          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 (대대행 편입 모델은 소속사 고정이라 숨김) */}
+          {!selectedModel?.source_agency_id &&
           <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
               {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
             </div>
             {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>{mVisaType ? "비자·정산 정보 확인" : "비자·정산 정보 입력"}</button>}
-          </div>
+          </div>}
 
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
@@ -3350,6 +3379,8 @@ async function sharePdf(){
                   <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
                   <span style={{ fontSize:11, color:C.muted }}>🔒 세율·주소·식별번호는 [비자·정산 정보]에서 입력</span>
                 </>
+              ) : selectedModel?.source_agency_id ? (
+                <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>🔒 소속사 (계산서 10%) · {selectedModel.source_agency_name||"발송처"} 대대행 편입</span>
               ) : (
                 ([["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
@@ -3359,7 +3390,7 @@ async function sharePdf(){
             {!mIsForeign && mTaxType==="company" && (
               <div style={{ border:`1px solid ${C.blue}44`, borderRadius:8, padding:"10px 12px", margin:"0 0 12px", background:C.blue+"0d" }}>
                 <p style={{ margin:"0 0 3px", fontSize:11.5, fontWeight:700, color:C.blue }}>소속 에이전시 정보 <span style={{ fontWeight:500, color:C.muted }}>(대대행 — 모델 개인정보 대신, 세금계산서 10%로 정산)</span></p>
-                <p style={{ margin:"0 0 9px", fontSize:10.5, color:C.muted }}>일정·정산 연락은 모델이 아니라 아래 에이전시로 갑니다.</p>
+                <p style={{ margin:"0 0 9px", fontSize:10.5, color:C.muted }}>{selectedModel?.source_agency_id ? `${selectedModel.source_agency_name||"발송처"}에서 발송받아 자동 편입된 정보입니다. 정산서는 아래 업체 기준으로 발행됩니다.` : "일정·정산 연락은 모델이 아니라 아래 에이전시로 갑니다."}</p>
                 <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                   <div>
                     <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>소속 에이전시명</label>
