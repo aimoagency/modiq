@@ -13,7 +13,7 @@ import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail
 import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
-  makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
+  makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, modelAge, birthYearFromId, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
   modelTaxType, modelGross, modelWithholding, clientCharge,
   bookingSession, sessionLabel, foreignerRate, payCfg,
@@ -336,7 +336,8 @@ export default function App() {
 
   // ── 모델 폼 ──
   const [mName,      setMName]      = useState("");
-  const [mSSN,       setMSSN]       = useState("");
+  const [mSSN,       setMSSN]       = useState("");      // 주민 앞6자리(yymmdd) — 주민번호 입력 시 자동 채움(보조)
+  const [mBirthYear, setMBirthYear] = useState("");      // 출생연도(yyyy) — 기본정보 입력, 나이 계산용
   const [mAddress,    setMAddress]    = useState("");   // 모델 주소 (세무신고용)
   const [mNationalId, setMNationalId] = useState("");   // 식별번호 평문 (저장 후 즉시 비움)
   const [showIdInput, setShowIdInput] = useState(false); // 마스킹 대신 입력칸 표시
@@ -549,7 +550,7 @@ export default function App() {
   // 모델 일반 조회 컬럼 — 무거운 base64 이미지 컬럼(compcard ~2MB/8행)을 제외해 첫 로딩 속도 개선.
   // compcard는 컴카드 생성/저장 전용이라 어디서도 표시·조회하지 않으므로 빼도 안전(편집 PATCH에도 미포함).
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
-  const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url";
+  const MODEL_COLS = "id,name,ssn6,birth_year,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -730,20 +731,20 @@ export default function App() {
   const syncBankInfoFromForeign = (bank: string, account: string) => {
     setMBankName(bank); setMBankAcct(account); setMBank(`${bank} ${account}`.trim());
   };
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMBirthYear(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
   const switchSizeUnit = (u: "cm"|"inch") => { if (u === mSizeUnit) return; setMBust(b => convSizeVal(b, u)); setMWaist(w => convSizeVal(w, u)); setMHip(h => convSizeVal(h, u)); setMSizeUnit(u); };
   const handleAddModel = async () => {
-    if (!mName || (mTaxType!=="company" && !mSSN)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 생년월일 6자리 필수");
+    if (!mName || (mTaxType!=="company" && !mBirthYear)) return alert(mTaxType==="company"?"모델명 필수":"모델명과 출생연도 필수");
     if (!mGender) return alert("성별을 선택하세요 (모델 ID 생성에 필요).");
     const isFgn = mIsForeign;
     if (isFgn && (!mEntry || !mExit)) return alert("입출국 날짜를 입력해주세요.");
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, birth_year:mBirthYear?Number(mBirthYear):null, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
     try {
       nm.thumb_url = await persistThumb(mThumb, agency.id, newModelId); // 썸네일 base64 → Storage URL(행 경량화)
       nm.bank_info = effectiveBankInfo(); // 외국인 국내계좌 → 통장 자동 반영(비어있을 때만)
@@ -756,7 +757,7 @@ export default function App() {
 
   const openEditModel = (m: any) => {
     setSelectedModel(m);
-    setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
+    setMName(m.name||""); setMSSN(m.ssn6||""); setMBirthYear(m.birth_year?String(m.birth_year):(m.ssn6?String(birthYearFromId(m.ssn6)||""):"")); setMPhone(m.phone||""); setMEmail(m.email||"");
     setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
     setMCategory(m.category||""); setMCareerYears(m.career_years!=null?String(m.career_years):""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
@@ -774,7 +775,7 @@ export default function App() {
   };
 
   const [modelBaseline, setModelBaseline] = useState("");
-  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, birth_year:mBirthYear?Number(mBirthYear):null, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
   useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
@@ -2885,7 +2886,7 @@ async function sharePdf(){
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=modelAge(selectedModel); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
               </div>
               <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
               <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -3160,8 +3161,8 @@ async function sharePdf(){
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>생년월일 6자리(YYMMDD) *</label>
-              <input style={inp} value={mSSN} onChange={e=>setMSSN(e.target.value)} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도 (YYYY) *</label>
+              <input style={inp} value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} inputMode="numeric" placeholder="예: 1995 (주민번호 입력 시 자동)" />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3375,7 +3376,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>(내국인)</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); }} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); const dg=v.replace(/[^0-9]/g,""); const f6=dg.slice(0,6); if(f6.length===6){ setMSSN(f6); const by=birthYearFromId(dg); if(by) setMBirthYear(String(by)); } }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
@@ -3567,7 +3568,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); } }} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const dg=v.replace(/[^0-9]/g,""); const f6=dg.slice(0,6); if(f6.length===6){ setMSSN(f6); const by=birthYearFromId(dg); if(by) setMBirthYear(String(by)); } } }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
