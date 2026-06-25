@@ -840,7 +840,7 @@ export default function App() {
         agency_biz_no: pi.biz_no || null,
         agency_contact: pi.rep_name || null,
         agency_phone: pi.contact || null,
-        agency_email: pi.tax_email || null,
+        agency_email: pi.gcal_email || pi.tax_email || null,
         bank_info: pi.bank || null,
         // 출처(A) 자동 기록 — 에이전시별 필터/추적 + 가용일 라이브 조회(source_model_id)
         source_agency_id: src?.senderAgencyId || null,
