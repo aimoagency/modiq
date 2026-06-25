@@ -1842,6 +1842,7 @@ async function sharePdf(){
     const hit = (m:any, t:string) =>
       m.name?.toLowerCase().includes(t) || m.phone?.includes(t) || m.email?.toLowerCase().includes(t) ||
       m.specialty?.toLowerCase().includes(t) || m.career?.toLowerCase().includes(t) || m.country?.toLowerCase().includes(t) ||
+      m.source_agency_name?.toLowerCase().includes(t) || (t==="대대행" && !!m.source_agency_id) ||
       (Array.isArray(m.fields)&&m.fields.join(" ").toLowerCase().includes(t)) || matchedByCustomer.has(m.id);
     return models.filter(m => terms.some(t => hit(m, t)));
   }, [models, bookings, customers, modelQ]);
