@@ -120,6 +120,9 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   };
 
   const filterModel = models.find(m=>m.id===modelFilter);
+  // 모델 필터 칩: 섭외(예약)가 있는 모델만 노출(등록만 된 모델까지 전부 나열되는 것 방지). 현재 선택 모델은 항상 포함.
+  const bookedModelIds = new Set(bookings.map((b:any)=>b.model_id).filter(Boolean));
+  const filterModels = models.filter(m=>bookedModelIds.has(m.id) || m.id===modelFilter);
 
   return (
     <div>
@@ -136,7 +139,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
         <span style={{ fontSize:12, color:C.muted, fontWeight:600 }}>모델 필터:</span>
         <button onClick={()=>setModelFilter("")} style={{ padding:"4px 12px", borderRadius:20, border:`1px solid ${!modelFilter?C.blue:C.border}`, background:!modelFilter?C.blue+"22":"transparent", color:!modelFilter?C.blue:C.muted, fontSize:12, fontWeight:600, cursor:"pointer" }}>전체</button>
-        {models.map(m=>{
+        {filterModels.map(m=>{
           const isSel = modelFilter===m.id;
           return (
             <button key={m.id} onClick={()=>{ setModelFilter(isSel?"":m.id); setSelDate(null); }}
