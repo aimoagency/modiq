@@ -31,7 +31,7 @@ const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", font
 
 export default function DistributionView({ agency, models, createdBy, isMobile, onImportModel }: {
   agency: any; models: any[]; createdBy?: string; isMobile: boolean;
-  onImportModel?: (sm: any, src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }) => Promise<{ ok: boolean; id?: string; error?: string }>;
+  onImportModel?: (sm: any, src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }) => Promise<{ ok: boolean; id?: string; error?: string; degraded?: boolean }>;
 }) {
   const myId: string = agency?.id;
   const [tab, setTab] = useState<Tab>("partners");
@@ -586,7 +586,11 @@ function InboxTab({ received, inboxLoaded, nameOf, refreshInbox, agency, isMobil
         distributionId: item.distribution.id,
         payoutInfo: item.distribution.sender_payout_info || null,
       });
-      if (r?.ok) { setImportedIds(prev => new Set(prev).add(m.id)); alert(`'${senderName}'의 모델을 대대행(소속사)으로 편입했습니다.\n'모델' 메뉴에서 마진(공급가·기준액)만 입력하면 됩니다. (세무=소속사 10% 고정, 업체정보 자동)`); }
+      if (r?.ok) {
+        setImportedIds(prev => new Set(prev).add(m.id));
+        if (r.degraded) alert(`'${senderName}'의 모델을 편입했습니다(기본).\n⚠️ DB에 출처 컬럼(source_*)이 아직 없어 출처 필터·가용일·자동숨김은 동작하지 않습니다. SQL 적용 후 다시 편입하면 전체 기능이 켜집니다.`);
+        else alert(`'${senderName}'의 모델을 대대행(소속사)으로 편입했습니다.\n'모델' 메뉴에서 마진(공급가·기준액)만 입력하면 됩니다. (세무=소속사 10% 고정, 업체정보 자동)`);
+      }
       else alert("등록 실패: " + (r?.error || "알 수 없는 오류"));
     } finally { setBusyId(""); }
   };

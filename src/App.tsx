@@ -804,7 +804,7 @@ export default function App() {
   const handleImportSharedModel = async (
     sm: any,
     src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }
-  ): Promise<{ ok: boolean; id?: string; error?: string }> => {
+  ): Promise<{ ok: boolean; id?: string; error?: string; degraded?: boolean }> => {
     try {
       const gender = sm.gender === "M" ? "M" : "F";
       const natType = "K";
@@ -839,8 +839,21 @@ export default function App() {
         source_model_id: sm.source_model_id || null,
         memo: senderName ? `${senderName} 대대행(발송 편입)` : "대대행(발송 편입)",
       };
-      await sb("models", "POST", nm);
-      setModels(prev => [nm, ...prev]);
+      try {
+        await sb("models", "POST", nm);
+        setModels(prev => [nm, ...prev]);
+      } catch (e1: any) {
+        // V4 출처 컬럼(source_*) 미적용 시 → 출처 필드 빼고 재시도(기본 대대행 편입은 되게).
+        // ⚠️ 이 경우 출처 필터·가용일·자동숨김은 동작 안 함 → SQL 적용 후 재편입해야 전체 기능 사용.
+        const msg = String(e1?.message || e1);
+        if (/source_(agency|model|distribution)|PGRST204|schema cache/i.test(msg)) {
+          const { source_agency_id, source_agency_name, source_distribution_id, source_model_id, ...basic } = nm;
+          await sb("models", "POST", basic);
+          setModels(prev => [basic as any, ...prev]);
+          return { ok: true, id: newId, degraded: true };
+        }
+        throw e1;
+      }
       return { ok: true, id: newId };
     } catch (e: any) {
       return { ok: false, error: String(e?.message || e) };
