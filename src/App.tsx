@@ -164,6 +164,10 @@ export default function App() {
 
   // 필터
   const [modelQ,      setModelQ]      = useState("");
+  // 받은(대대행) 발송 중 '아직 유효한' 출처 발송 id 집합 — 만료/철회된 출처의 편입 모델은 목록에서 자동 숨김.
+  // distIdsLoaded=false(조회 전·실패)면 숨기지 않음(오숨김 방지).
+  const [activeDistIds, setActiveDistIds] = useState<Set<string>>(new Set());
+  const [distIdsLoaded, setDistIdsLoaded] = useState(false);
   const [customerQ,   setCustomerQ]   = useState("");
   const [bookingQ,    setBookingQ]    = useState("");
   const [bookingStatusF,  setBookingStatusF]  = useState("ALL");
@@ -597,6 +601,15 @@ export default function App() {
       const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
       setModelOffs(mo||[]);
     } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    // 받은(대대행) 발송 중 유효한 출처 id 집합 — 만료/철회된 출처의 편입 모델 자동 숨김용.
+    // 실패(테이블 미생성/RLS) 시 distIdsLoaded=false 유지 → 숨기지 않음(안전).
+    try {
+      const recs = await sb("distribution_recipients","GET",null,`?recipient_agency_id=eq.${agencyId}&select=distribution:talent_distributions(id,status,expires_at)`);
+      const now = Date.now();
+      const ids = new Set<string>();
+      (recs||[]).forEach((r:any)=>{ const d=r.distribution; if (d && d.status==="active" && (!d.expires_at || new Date(d.expires_at).getTime()>now)) ids.add(d.id); });
+      setActiveDistIds(ids); setDistIdsLoaded(true);
+    } catch { setDistIdsLoaded(false); }
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
@@ -1828,8 +1841,14 @@ async function sharePdf(){
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
   const settlementProjects = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.project_name)s.add(b.project_name)}); return Array.from(s); },[settlementData]);
 
+  // 로스터(목록·검색·포트폴리오·패키지)용 모델 — 출처 발송이 만료/철회된 편입 모델은 숨김.
+  // ⚠️ 섭외·정산·매출·캘린더는 원본 `models`를 그대로 써서 이력이 유지된다(여긴 숨김 미적용).
+  const rosterModels = useMemo(()=>{
+    if (!distIdsLoaded) return models; // 출처 상태 조회 전/실패 → 숨기지 않음
+    return models.filter(m => !(m.source_distribution_id && !activeDistIds.has(m.source_distribution_id)));
+  }, [models, activeDistIds, distIdsLoaded]);
   const filteredModels = useMemo(()=>{
-    if (!modelQ.trim()) return models;
+    if (!modelQ.trim()) return rosterModels;
     const q = modelQ.trim().toLowerCase();
     const custMap = new Map<string,any>(customers.map(c=>[c.id,c]));
     const matchedByCustomer = new Set<string>();
@@ -1844,8 +1863,8 @@ async function sharePdf(){
       m.specialty?.toLowerCase().includes(t) || m.career?.toLowerCase().includes(t) || m.country?.toLowerCase().includes(t) ||
       m.source_agency_name?.toLowerCase().includes(t) || (t==="대대행" && !!m.source_agency_id) ||
       (Array.isArray(m.fields)&&m.fields.join(" ").toLowerCase().includes(t)) || matchedByCustomer.has(m.id);
-    return models.filter(m => terms.some(t => hit(m, t)));
-  }, [models, bookings, customers, modelQ]);
+    return rosterModels.filter(m => terms.some(t => hit(m, t)));
+  }, [rosterModels, bookings, customers, modelQ]);
   const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
   // 분야 직접입력값을 에이전시 영구 목록(client_categories)에 등록
   const addClientCategory = async (name: string) => {
@@ -2121,9 +2140,9 @@ async function sharePdf(){
         {/* ════ 모델 ════ */}
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} legacyIdCount={myRole==="owner"?legacyIdCount:0} onMigrateIds={migrateModelIds} />}
 
-        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
+        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={rosterModels} customers={customers} agency={agency} isMobile={isMobile} />}
 
-        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} onEditModel={openEditModel} />}
+        {page==="studio" && <ModelStudioView models={rosterModels} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} onEditModel={openEditModel} />}
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
