@@ -829,7 +829,11 @@ export default function App() {
         specialty: sm.specialty ?? null, fields: Array.isArray(sm.fields) ? sm.fields : (sm.fields ?? null),
         fee_day: sm.fee_day ?? null, fee_half: sm.fee_half ?? null, fee_hour: sm.fee_hour ?? null,
         photos, thumb_url: photos[0] || null,
-        // 대대행(소속사) 고정 — A에게 세금계산서 10%로 정산
+        // 연락처/이메일 = 발송업체(A) 정보 (전화=A 대표/연락처, 이메일=A 메일 — 일정 수락도 이 메일로)
+        phone: pi.contact || null,
+        email: pi.tax_email || null,
+        instagram_url: sm.instagram_url || null,
+        // 소속사 고정 — A에게 세금계산서 10%로 정산
         payout_tax_type: "company", payout_pay_type: "rate",
         // A 업체정보 자동 (소속 에이전시 정보로 정산서 발행)
         agency_name: pi.company_name || senderName || null,
@@ -3093,9 +3097,9 @@ async function sharePdf(){
           {/* 링크/연락 — 인스타 · 카톡 · 구글드라이브 · 아이모 · 통장 순 */}
           <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
             {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 →</a>}
-            {selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
-            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
-            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
+            {!selectedModel.source_agency_id&&selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
+            {!selectedModel.source_agency_id&&selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
+            {!selectedModel.source_agency_id&&selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
             {selectedModel.bank_info&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.card2, color:C.textSub, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}><Banknote size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedModel.bank_info}</span>}
             {/* 외국인 지급방식 + 지급상세 (Payoneer/Wise/현금 포함) */}
             {selectedModel.is_foreigner && selectedModel.payment_method && (()=>{
