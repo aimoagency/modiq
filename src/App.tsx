@@ -86,9 +86,9 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   style.id = "pretendard-global";
   style.textContent = `@font-face { font-family: 'Pretendard-fallback'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'), local('Malgun Gothic'), local('Noto Sans KR'), local('Roboto'); size-adjust: 105.6%; ascent-override: 95.2%; descent-override: 24.1%; line-gap-override: 0%; }
 *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
-:root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#f0f2f5; --c-text-sub:#c8ccd8; --c-muted:#9aa1ad; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
+:root { --c-bg:#141218; --c-card:#211F26; --c-card2:#2B2930; --c-border:#49454F; --c-text:#E6E0E9; --c-text-sub:#CAC4D0; --c-muted:#938F99; --c-sidebar:#1D1B20; --c-side-hover:#2B2930; --c-nav-active:#36343B; --c-primary:#D0BCFF; --c-on-primary:#381E72; --c-primary-container:#4F378B; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#5b626d; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }
+html.light { --c-bg:#FEF7FF; --c-card:#FFFFFF; --c-card2:#F3EDF7; --c-border:#CAC4D0; --c-text:#1D1B20; --c-text-sub:#49454F; --c-muted:#79747E; --c-sidebar:#F7F2FA; --c-side-hover:#ECE6F0; --c-nav-active:#E8DEF8; --c-primary:#6750A4; --c-on-primary:#FFFFFF; --c-primary-container:#EADDFF; }\n#root { min-height: 100vh; }
 /* 전역 폰트 확대 — 인라인 px 폰트를 한 번에 키우기 위해 루트 비례 확대. 웹 ~+2pt / 모바일 ~+1pt 체감. (조정 가능) */
 #root { zoom: 1.14; }
 @media (max-width: 767px) { #root { zoom: 1.07; } }`;
