@@ -3451,20 +3451,20 @@ async function sharePdf(){
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ color:C.red, fontWeight:700 }}>*필수</span></p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {mIsForeign ? (
+              {selectedModel?.source_agency_id ? (
+                <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>🔒 소속사 (계산서 10%) · {selectedModel.source_agency_name||"발송처"} 발송 편입{mIsForeign?" · 외국인":""}</span>
+              ) : mIsForeign ? (
                 <>
                   <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
                   <span style={{ fontSize:11, color:C.muted }}>🔒 세율·주소·식별번호는 [비자·정산 정보]에서 입력</span>
                 </>
-              ) : selectedModel?.source_agency_id ? (
-                <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>🔒 소속사 (계산서 10%) · {selectedModel.source_agency_name||"발송처"} 발송 편입</span>
               ) : (
                 ([["freelancer","프리랜서 (3.3%)"],["company","소속사 (계산서 10%)"]] as const).map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>setMTaxType(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${mTaxType===k?C.blue:C.border}`, background:mTaxType===k?C.blue+"22":"transparent", color:mTaxType===k?C.blue:C.muted, fontSize:12, fontWeight:mTaxType===k?700:500, cursor:"pointer" }}>{l}</button>
                 ))
               )}
             </div>
-            {!mIsForeign && mTaxType==="company" && (
+            {mTaxType==="company" && (selectedModel?.source_agency_id || !mIsForeign) && (
               <div style={{ border:`1px solid ${C.blue}44`, borderRadius:8, padding:"10px 12px", margin:"0 0 12px", background:C.blue+"0d" }}>
                 <p style={{ margin:"0 0 3px", fontSize:11.5, fontWeight:700, color:C.blue }}>소속 에이전시 정보 <span style={{ fontWeight:500, color:C.muted }}>(모델 개인정보 대신, 세금계산서 10%로 정산)</span></p>
                 <p style={{ margin:"0 0 9px", fontSize:10.5, color:C.muted }}>{selectedModel?.source_agency_id ? `${selectedModel.source_agency_name||"발송처"}에서 발송받아 자동 편입된 정보입니다. 정산서는 아래 업체 기준으로 발행됩니다.` : "일정·정산 연락은 모델이 아니라 아래 에이전시로 갑니다."}</p>
@@ -3586,7 +3586,7 @@ async function sharePdf(){
               </label>
               <input style={inp} placeholder="카카오톡 아이디" value={mKakao} onChange={e=>setMKakao(e.target.value)} />
             </div>}
-            {(mIsForeign || mTaxType!=="company") && <div>
+            {(mTaxType!=="company" || (mIsForeign && !selectedModel?.source_agency_id)) && <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 (은행 · 계좌번호)</label>
               <div style={{ display:"flex", gap:6 }}>
                 <select style={{ ...inp, width:120, flexShrink:0 }} value={mBankName} onChange={e=>{ const n=e.target.value; setMBankName(n); setMBank(`${n} ${mBankAcct}`.trim()); }}>
