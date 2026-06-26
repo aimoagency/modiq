@@ -1847,6 +1847,7 @@ async function sharePdf(){
       justifyContent:expanded?"flex-start":"center",
       padding:expanded?"9px 12px":"10px 0", borderRadius:8, border:"none", cursor:"pointer",
       background:page===target?"var(--c-nav-active)":"transparent",
+      boxShadow:page===target?"inset 3px 0 0 0 var(--c-accent)":undefined,
       color:page===target?"white":C.textSub,
       fontSize:13, fontWeight:page===target?700:500, marginBottom:2, textAlign:"left",
       transition:"background 0.15s,color 0.15s", whiteSpace:"nowrap", overflow:"hidden",
@@ -1877,8 +1878,8 @@ async function sharePdf(){
       <div style={{ minHeight:"100vh", width:"100%", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", zoom: isMobile ? 0.935 : 0.877 }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:40, width:"90%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:22 }}>
-            <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</h1>
-            <p style={{ color:"#A8FF00", fontSize:11, margin:0, fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase" }}>talent agency OS</p>
+            <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"var(--c-accent)" }}>m</span>odiq</h1>
+            <p style={{ color:"var(--c-accent)", fontSize:11, margin:0, fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase" }}>talent agency OS</p>
             <p style={{ color:C.muted, fontSize:10, margin:"4px 0 0" }}>v{APP_VERSION}</p>
           </div>
           <div style={{ display:"flex", background:"var(--c-bg)", borderRadius:8, padding:4, marginBottom:22 }}>
@@ -1978,8 +1979,8 @@ async function sharePdf(){
       {!isMobile&&(
       <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 22px", zIndex:300 }}>
         <div style={{ display:"flex", flexDirection:"column", lineHeight:1.05 }}>
-          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
-          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:"#A8FF00", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
+          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:"var(--c-accent)" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
+          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:"var(--c-accent)", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <span style={{ display:"flex", alignItems:"center", gap:7 }}>
@@ -2032,7 +2033,7 @@ async function sharePdf(){
       {/* ── 모바일 상단 헤더 ── */}
       {isMobile&&(
         <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", zIndex:300 }}>
-          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</p>
+          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:"var(--c-accent)" }}>m</span>odiq</p>
           <span style={{ fontSize:12, color:C.muted }}>{agency.name}</span>
         </div>
       )}
