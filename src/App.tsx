@@ -1312,6 +1312,17 @@ export default function App() {
       else { input.all_day = true; input.date = ev.date; }
       return input;
     };
+    // 일정(일시·장소) 변경·재등록 시 모델에게 '일정 변경 안내' 메일 발송 — 비구글은 구독 링크 동봉(자동 동기화 유도).
+    const sendChangeMail = async () => {
+      if (!tm?.email) return;
+      try {
+        const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+        const dom = (tm.email.split("@")[1] || "").toLowerCase();
+        let subUrl = "";
+        if (dom && dom !== "gmail.com" && dom !== "googlemail.com") { const ct = await ensureCalToken(tm); if (ct) subUrl = calSubscribePageUrl(ct); }
+        await sendCalEmail(tm.email, ev, tm?.name || "", subUrl, agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type }, true);
+      } catch {}
+    };
 
     // 취소: 구글 일정 삭제(성공했을 때만 id 정리 — 미연동·토큰만료면 id 유지해 재시도 가능) + (opts.mail) 취소 안내 메일
     if (tb.status === "CANCELLED") {
@@ -1332,11 +1343,13 @@ export default function App() {
     // ① 연동된 일정 있음 → 일시·장소 변경을 in-place 반영(중복·잔존 방지, sendUpdates=all 로 모델 통지)
     if (liveEventId) {
       try { await gcalSync(gcalInput("update", liveEventId)); } catch {}
+      if (opts.mail) await sendChangeMail();   // 연동된 일정 변경 → 앱에서 변경 안내 메일(구글 통지에만 의존하지 않음)
       return;
     }
     // ② 일정 없음 + 모델이 이미 수락 → 이벤트 재생성(취소 후 재확정 등). gcal-sync 가 모델 재초대.
     if (accepted) {
       try { const r = await gcalSync(gcalInput("create")); if (r.ok && r.event_id) await saveEventId(r.event_id); } catch {}
+      if (opts.mail) await sendChangeMail();   // 수락 후 재등록(취소→재확정 등) → 변경 안내 메일
       return;
     }
     // ③ 일정 없음 + 미수락 + 확정 트리거 → 초대(수락 요청) 메일 발송

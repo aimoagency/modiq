@@ -86,6 +86,7 @@ const TYPE_BI: Record<string, { kr: string; en: string; color: string }> = {
 export const sendCalEmail = (
   to: string, ev: CalEvent, modelName = "", subscribeUrl = "", agencyName = "", replyTo = "",
   meta: { project?: string; brand?: string; type?: string } = {},
+  updated = false,   // true면 '일정 변경 안내'(스케줄 변경 후 재발송)
 ) => {
   const project = (meta.project || "").trim();
   const brand = (meta.brand || "").trim();
@@ -108,7 +109,7 @@ export const sendCalEmail = (
   const html = `
     <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e8eaed;border-radius:12px;overflow:hidden;color:#16181f">
       <div style="padding:18px 22px 14px;border-bottom:1px solid #eef0f3">
-        <div style="font-size:11px;letter-spacing:1.5px;color:#8a93a0">SCHEDULE NOTICE · 일정 안내</div>
+        <div style="font-size:11px;letter-spacing:1.5px;color:#8a93a0">${updated ? "SCHEDULE UPDATED · 일정 변경 안내" : "SCHEDULE NOTICE · 일정 안내"}</div>
         ${ty ? `<div style="margin-top:8px"><span style="display:inline-block;background:${ty.color};color:#ffffff;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px">${ty.en}</span></div>` : ""}
         <div style="font-size:18px;font-weight:700;margin-top:8px">${esc(headline)}</div>
         ${agencyName ? `<div style="font-size:12px;color:#8a93a0;margin-top:2px">from ${esc(agencyName)}</div>` : ""}
@@ -117,12 +118,13 @@ export const sendCalEmail = (
         <table style="width:100%;border-collapse:collapse">${rows}</table>
       </div>
       <div style="padding:2px 22px 20px">
+        ${updated ? `<p style="margin:0 0 10px;font-size:12px;color:#e8590c;font-weight:700">⚠️ 일정이 변경되었습니다 · Schedule updated — 아래로 캘린더를 갱신해 주세요.</p>` : ""}
         <a href="${googleCalUrl(ev)}" style="display:block;text-align:center;background:#1a73e8;color:#fff;text-decoration:none;padding:12px;border-radius:8px;font-weight:700;font-size:14px">Add to Google Calendar · 구글 캘린더에 추가</a>
         <p style="font-size:12px;color:#8a93a0;margin:12px 0 0;line-height:1.7">${modelName ? esc(modelName) + "님 · " : ""}Apple · Naver · Outlook: open the attached <b>.ics</b> · 첨부된 .ics 파일을 여세요.${subscribeUrl ? `<br>Subscribe to all schedules · 모든 일정 자동 받기 → <a href="${esc(subscribeUrl)}" style="color:#1a73e8;text-decoration:none">Subscribe</a>` : ""}</p>
       </div>
     </div>`;
   const text = [
-    `[SCHEDULE NOTICE · 일정 안내] ${headline}`,
+    `[${updated ? "SCHEDULE UPDATED · 일정 변경 안내" : "SCHEDULE NOTICE · 일정 안내"}] ${headline}`,
     ty ? `Type: ${ty.en}` : "",
     project ? `Project: ${project}` : "",
     brand ? `Brand: ${brand}` : "",
@@ -135,7 +137,7 @@ export const sendCalEmail = (
   ].filter(Boolean).join("\n");
   return sendEmail({
     to,
-    subject: `${agencyName ? `[${agencyName}] ` : ""}일정 안내 · Schedule — ${headline}`,
+    subject: `${agencyName ? `[${agencyName}] ` : ""}${updated ? "일정 변경 안내" : "일정 안내"} · Schedule — ${headline}`,
     html,
     text,
     icsBase64: b64(icsText(ev)),
