@@ -86,9 +86,9 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   style.id = "pretendard-global";
   style.textContent = `@font-face { font-family: 'Pretendard-fallback'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'), local('Malgun Gothic'), local('Noto Sans KR'), local('Roboto'); size-adjust: 105.6%; ascent-override: 95.2%; descent-override: 24.1%; line-gap-override: 0%; }
 *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
-:root { --c-bg:#141218; --c-card:#211F26; --c-card2:#2B2930; --c-border:#49454F; --c-text:#E6E0E9; --c-text-sub:#CAC4D0; --c-muted:#938F99; --c-sidebar:#1D1B20; --c-side-hover:#2B2930; --c-nav-active:#36343B; --c-primary:#D0BCFF; --c-on-primary:#381E72; --c-primary-container:#4F378B; }
+:root { --c-bg:#0B0E0C; --c-card:#141815; --c-card2:#1C211D; --c-border:#2A312C; --c-text:#ECF2EC; --c-text-sub:#B2BBB3; --c-muted:#79827B; --c-sidebar:#0E1210; --c-side-hover:#181D19; --c-nav-active:#1F2620; --c-primary:#A8FF00; --c-on-primary:#0C1500; --c-primary-container:#2C3D00; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#FEF7FF; --c-card:#FFFFFF; --c-card2:#F3EDF7; --c-border:#CAC4D0; --c-text:#1D1B20; --c-text-sub:#49454F; --c-muted:#79747E; --c-sidebar:#F7F2FA; --c-side-hover:#ECE6F0; --c-nav-active:#E8DEF8; --c-primary:#6750A4; --c-on-primary:#FFFFFF; --c-primary-container:#EADDFF; }\n#root { min-height: 100vh; }
+html.light { --c-bg:#F6F8F3; --c-card:#FFFFFF; --c-card2:#EEF2E8; --c-border:#D8DED0; --c-text:#131712; --c-text-sub:#454C44; --c-muted:#6C746B; --c-sidebar:#F1F4EC; --c-side-hover:#E8EEDF; --c-nav-active:#E0EFC4; --c-primary:#5C8A00; --c-on-primary:#FFFFFF; --c-primary-container:#D7F58C; }\n#root { min-height: 100vh; }\ninput:focus, select:focus, textarea:focus { border-color: var(--c-primary) !important; outline: none; }
 /* 전역 폰트 확대 — 인라인 px 폰트를 한 번에 키우기 위해 루트 비례 확대. 웹 ~+2pt / 모바일 ~+1pt 체감. (조정 가능) */
 #root { zoom: 1.14; }
 @media (max-width: 767px) { #root { zoom: 1.07; } }`;

@@ -15,20 +15,20 @@
     <!-- 🔒 보호 영역(CLAUDE.md "대시보드 로딩/첫 화면" 참조) — 아래 인라인 배경/테마 스크립트·부팅 스플래시 제거·수정 금지. -->
     <!-- 첫 페인트부터 정확한 배경색 + 부팅 스플래시: JS 번들이 도착하기 전 흰 화면 깜빡임 제거 -->
     <style>
-      html { background:#141218; }
-      html.light { background:#FEF7FF; }
+      html { background:#0B0E0C; }
+      html.light { background:#F6F8F3; }
       body { margin:0; }
       #root { min-height:100vh; }
       /* 부팅 스플래시: 0.45s 지연 후에만 나타남 → 빠른(캐시) 로딩/새로고침에선 보이지 않고,
          그 사이엔 배경색만 보여 흰 화면 깜빡임은 그대로 방지(콜드스타트 보호 유지). 느린 로딩에서만 페이드인. */
-      .modiq-boot { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:#141218; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; opacity:0; animation:modiqBootReveal 0.18s ease-out 0.45s forwards; }
+      .modiq-boot { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:#0B0E0C; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; opacity:0; animation:modiqBootReveal 0.18s ease-out 0.45s forwards; }
       @keyframes modiqBootReveal { to { opacity:1; } }
-      html.light .modiq-boot { background:#FEF7FF; }
+      html.light .modiq-boot { background:#F6F8F3; }
       .modiq-boot .wm { font-size:34px; font-weight:800; letter-spacing:-1px; color:#f0f2f5; line-height:1; }
       html.light .modiq-boot .wm { color:#111827; }
       .modiq-boot .wm b { color:#A8FF00; font-weight:800; }
       .modiq-boot .sub { font-size:10px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#A8FF00; }
-      .modiq-boot .bar { width:118px; height:3px; border-radius:3px; background:#2a2d3e; overflow:hidden; margin-top:4px; }
+      .modiq-boot .bar { width:118px; height:3px; border-radius:3px; background:#2A312C; overflow:hidden; margin-top:4px; }
       html.light .modiq-boot .bar { background:#e2e5ea; }
       .modiq-boot .bar i { display:block; width:38%; height:100%; border-radius:3px; background:#A8FF00; animation:modiqBoot 1.05s ease-in-out infinite; }
       @keyframes modiqBoot { 0% { transform:translateX(-110%); } 100% { transform:translateX(330%); } }
