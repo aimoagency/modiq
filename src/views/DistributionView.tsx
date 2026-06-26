@@ -29,8 +29,8 @@ const firstPhoto = (m: any): string => {
 const Card = ({ children }: any) => <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>{children}</div>;
 const SectionTitle = ({ children }: any) => <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 800, color: C.text }}>{children}</p>;
 
-export default function DistributionView({ agency, models, createdBy, isMobile, onImportModel }: {
-  agency: any; models: any[]; createdBy?: string; isMobile: boolean;
+export default function DistributionView({ agency, models, createdBy, senderName, isMobile, onImportModel }: {
+  agency: any; models: any[]; createdBy?: string; senderName?: string; isMobile: boolean;
   onImportModel?: (sm: any, src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }) => Promise<{ ok: boolean; id?: string; error?: string; degraded?: boolean }>;
 }) {
   const myId: string = agency?.id;
@@ -111,7 +111,7 @@ export default function DistributionView({ agency, models, createdBy, isMobile, 
       </div>
 
       {tab === "partners" && <PartnersTab {...{ myId, partners, counterparty, nameOf, createdBy, refreshPartners }} />}
-      {tab === "send" && <SendTab {...{ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
+      {tab === "send" && <SendTab {...{ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, senderName, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
       {tab === "sent" && <SentTab {...{ sent, sentLoaded, nameOf, refreshSent }} />}
       {tab === "inbox" && <InboxTab {...{ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }} />}
     </div>
@@ -232,7 +232,7 @@ function PartnersTab({ myId, partners, counterparty, nameOf, createdBy, refreshP
 }
 
 // ═══════════════════════════ 보내기 탭 ═══════════════════════════
-function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, isMobile, onSent }: any) {
+function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, senderName, isMobile, onSent }: any) {
   const [step, setStep] = useState(1);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [recips, setRecips] = useState<Set<string>>(new Set());
@@ -268,7 +268,8 @@ function SendTab({ myId, agency, models, acceptedPartners, counterparty, nameOf,
         models: pickedModels, recipientAgencyIds: Array.from(recips),
         senderPayoutInfo: {
           company_name: agency?.name || null, biz_no: agency?.biz_no || null,
-          rep_name: agency?.rep_name || null, contact: agency?.contact_phone || agency?.rep_phone || null,
+          // 담당자 = 발송한 로그인 사용자(대표면 대표, 담당자면 그 담당자) — 없으면 회사 대표자
+          rep_name: senderName || agency?.rep_name || null, contact: agency?.contact_phone || agency?.rep_phone || null,
           address: agency?.address || null, bank: agency?.payout_bank_info || null,
           tax_email: agency?.payout_tax_email || null,
           gcal_email: agency?.gcal_email || null,

@@ -840,7 +840,7 @@ export default function App() {
         agency_biz_no: pi.biz_no || null,
         agency_contact: pi.rep_name || null,
         agency_phone: pi.contact || null,
-        agency_email: pi.gcal_email || pi.tax_email || null,
+        agency_email: pi.gcal_email || null, // 에이전시 이메일 = A 구글캘린더 메일만(없으면 비움 — 합의)
         bank_info: pi.bank || null,
         address: pi.address || null,
         // 출처(A) 자동 기록 — 에이전시별 필터/추적 + 가용일 라이브 조회(source_model_id)
@@ -2201,7 +2201,7 @@ async function sharePdf(){
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
 
         {/* ════ 발송(Distribution) ════ */}
-        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} isMobile={isMobile} onImportModel={handleImportSharedModel} />}
+        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} senderName={myMember?.name || (myRole==="owner" ? (agency?.rep_name||"") : "") || ""} isMobile={isMobile} onImportModel={handleImportSharedModel} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} agency={agency} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
