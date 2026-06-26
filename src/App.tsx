@@ -86,9 +86,9 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   style.id = "pretendard-global";
   style.textContent = `@font-face { font-family: 'Pretendard-fallback'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'), local('Malgun Gothic'), local('Noto Sans KR'), local('Roboto'); size-adjust: 105.6%; ascent-override: 95.2%; descent-override: 24.1%; line-gap-override: 0%; }
 *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
-:root { --c-bg:#0C0F14; --c-card:#151A21; --c-card2:#1D232C; --c-border:#2A313C; --c-text:#ECEFF3; --c-text-sub:#B0B8C4; --c-muted:#79818E; --c-sidebar:#0E1218; --c-side-hover:#181E26; --c-nav-active:#1E2530; --c-primary:#2E5FE0; --c-on-primary:#FFFFFF; --c-primary-container:#15336E; --c-accent:#e4fc3f; }
+:root { --c-bg:#0C0F14; --c-card:#151A21; --c-card2:#1D232C; --c-border:#2A313C; --c-text:#ECEFF3; --c-text-sub:#B0B8C4; --c-muted:#79818E; --c-sidebar:#0E1218; --c-side-hover:#181E26; --c-nav-active:#1E2530; --c-primary:#2E5FE0; --c-on-primary:#FFFFFF; --c-primary-container:#15336E; --c-on-primary-container:#BBD0FF; --c-accent:#e4fc3f; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#F6F8FB; --c-card:#FFFFFF; --c-card2:#EEF1F6; --c-border:#D9DEE7; --c-text:#121620; --c-text-sub:#444C5A; --c-muted:#6B7382; --c-sidebar:#F1F4F9; --c-side-hover:#E7ECF4; --c-nav-active:#E3EAF6; --c-primary:#1D4ED8; --c-on-primary:#FFFFFF; --c-primary-container:#DCE6FF; --c-accent:#7d9400; }\n#root { min-height: 100vh; }\ninput:focus, select:focus, textarea:focus { border-color: var(--c-primary) !important; outline: none; }
+html.light { --c-bg:#F6F8FB; --c-card:#FFFFFF; --c-card2:#EEF1F6; --c-border:#D9DEE7; --c-text:#121620; --c-text-sub:#444C5A; --c-muted:#6B7382; --c-sidebar:#F1F4F9; --c-side-hover:#E7ECF4; --c-nav-active:#E3EAF6; --c-primary:#1D4ED8; --c-on-primary:#FFFFFF; --c-primary-container:#DCE6FF; --c-on-primary-container:#1D4ED8; --c-accent:#7d9400; }\n#root { min-height: 100vh; }\ninput:focus, select:focus, textarea:focus { border-color: var(--c-primary) !important; outline: none; }
 /* 전역 폰트 확대 — 인라인 px 폰트를 한 번에 키우기 위해 루트 비례 확대. 웹 ~+2pt / 모바일 ~+1pt 체감. (조정 가능) */
 #root { zoom: 1.14; }
 @media (max-width: 767px) { #root { zoom: 1.07; } }`;
@@ -2577,12 +2577,12 @@ async function sharePdf(){
             { t:"bookings",  l:"섭외",     I:ClipboardList },
             { t:"models",    l:"모델",     I:User },
           ] as {t:Page;l:string;I:any}[]).map(({t,l,I})=>(
-            <button key={t} onClick={()=>setPage(t)} style={{ flex:1, background:"none", border:"none", padding:"8px 0 10px", cursor:"pointer", color:page===t?C.blue:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:page===t?700:500 }}>
-              <I size={20} strokeWidth={page===t?2.2:1.8} /><span>{l}</span>
+            <button key={t} onClick={()=>setPage(t)} style={{ flex:1, background:"none", border:"none", padding:"6px 0 9px", cursor:"pointer", color:page===t?C.text:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontSize:10, fontWeight:page===t?700:500 }}>
+              <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:56, height:30, borderRadius:16, background:page===t?"var(--c-primary-container)":"transparent", color:page===t?"var(--c-on-primary-container)":C.muted, transition:"background .15s" }}><I size={20} strokeWidth={page===t?2.2:1.8} /></span><span>{l}</span>
             </button>
           ))}
-          <button onClick={()=>setShowMoreMenu(true)} style={{ flex:1, background:"none", border:"none", padding:"8px 0 10px", cursor:"pointer", color:["customers","settlement","members","plan"].includes(page)?C.blue:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:500 }}>
-            <Menu size={20} strokeWidth={1.8} /><span>더보기</span>
+          <button onClick={()=>setShowMoreMenu(true)} style={{ flex:1, background:"none", border:"none", padding:"6px 0 9px", cursor:"pointer", color:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?C.text:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontSize:10, fontWeight:500 }}>
+            <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:56, height:30, borderRadius:16, background:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?"var(--c-primary-container)":"transparent", color:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?"var(--c-on-primary-container)":C.muted, transition:"background .15s" }}><Menu size={20} strokeWidth={1.8} /></span><span>더보기</span>
           </button>
         </div>
       )}
