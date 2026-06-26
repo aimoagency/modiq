@@ -842,6 +842,7 @@ export default function App() {
         agency_phone: pi.contact || null,
         agency_email: pi.gcal_email || pi.tax_email || null,
         bank_info: pi.bank || null,
+        address: pi.address || null,
         // 출처(A) 자동 기록 — 에이전시별 필터/추적 + 가용일 라이브 조회(source_model_id)
         source_agency_id: src?.senderAgencyId || null,
         source_agency_name: senderName || pi.company_name || null,
@@ -3485,6 +3486,20 @@ async function sharePdf(){
                     <input style={{ ...inp, marginBottom:0 }} value={mAgencyPhone} onChange={e=>setMAgencyPhone(e.target.value)} placeholder="010-0000-0000" />
                   </div>
                 </div>
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>주소 <span style={{ color:C.muted }}>(세금계산서 · 사업장 소재지)</span></label>
+                  <input style={{ ...inp, marginBottom:0 }} value={mAddress} onChange={e=>setMAddress(e.target.value)} placeholder="사업장 주소" />
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2 }}/> 정산 입금 계좌 <span style={{ color:C.muted }}>(A에게 지급)</span></label>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <select style={{ ...inp, width:120, flexShrink:0, marginBottom:0 }} value={mBankName} onChange={e=>{ const n=e.target.value; setMBankName(n); setMBank(`${n} ${mBankAcct}`.trim()); }}>
+                      <option value="">은행 선택</option>
+                      {["국민","신한","우리","하나","농협","기업","SC제일","씨티","카카오뱅크","토스뱅크","케이뱅크","새마을금고","우체국","수협","부산","대구","경남","광주","전북","제주"].map(b=><option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <input style={{ ...inp, flex:1, minWidth:0, marginBottom:0 }} placeholder="계좌번호" value={mBankAcct} onChange={e=>{ const a=e.target.value; setMBankAcct(a); setMBank(`${mBankName} ${a}`.trim()); }} />
+                  </div>
+                </div>
                 <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>에이전시 이메일 <span style={{ color:C.muted }}>(일정·정산 연락 — 모델 대신)</span></label>
                 <input style={{ ...inp, marginBottom:0 }} type="email" value={mAgencyEmail} onChange={e=>setMAgencyEmail(e.target.value)} placeholder="agency@example.com" />
               </div>
@@ -3571,7 +3586,7 @@ async function sharePdf(){
               </label>
               <input style={inp} placeholder="카카오톡 아이디" value={mKakao} onChange={e=>setMKakao(e.target.value)} />
             </div>}
-            <div>
+            {(mIsForeign || mTaxType!=="company") && <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 (은행 · 계좌번호)</label>
               <div style={{ display:"flex", gap:6 }}>
                 <select style={{ ...inp, width:120, flexShrink:0 }} value={mBankName} onChange={e=>{ const n=e.target.value; setMBankName(n); setMBank(`${n} ${mBankAcct}`.trim()); }}>
@@ -3580,7 +3595,7 @@ async function sharePdf(){
                 </select>
                 <input style={{ ...inp, flex:1, minWidth:0 }} placeholder="계좌번호" value={mBankAcct} onChange={e=>{ const a=e.target.value; setMBankAcct(a); setMBank(`${mBankName} ${a}`.trim()); }} />
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* AIMO 링크 (발송 편입 모델은 숨김) */}
