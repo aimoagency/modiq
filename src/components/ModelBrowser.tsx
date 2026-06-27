@@ -7,7 +7,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp } from "../theme";
 import { GENDERS, MODEL_CATEGORIES, MODEL_FIELDS, HAIR_LENGTHS } from "../constants";
-import { ageFromSSN6 } from "../lib/utils";
+import { modelAge } from "../lib/utils";
 import SearchInput from "./SearchInput";
 import { useVisibleCount } from "../lib/useVisibleCount";
 
@@ -61,7 +61,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       if (fieldF.length && !(Array.isArray(m.fields) && fieldF.some(f => m.fields.includes(f)))) return false;
       if (hairF.length && !hairF.includes(m.hair_length)) return false;
       // 숫자 범위: 값이 입력된 모델만 거름(미입력=통과, 숨김 방지)
-      const age = m.birth_year ? (new Date().getFullYear() - Number(m.birth_year)) : ageFromSSN6(m.ssn6);
+      const age = modelAge(m);
       if (age != null && aMin != null && age < aMin) return false;
       if (age != null && aMax != null && age > aMax) return false;
       const h = Number(m.height || 0);
@@ -152,7 +152,7 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
           const added = !!addedIds?.has(m.id);
           const pick = !!pickedIds?.has(m.id);
           const on = pick || selectedId === m.id;
-          const age = m.birth_year ? (new Date().getFullYear() - Number(m.birth_year)) : ageFromSSN6(m.ssn6);
+          const age = modelAge(m);
           const sub = [age != null ? `${age}세` : "", m.height ? `${m.height}cm` : "", isForeign(m) ? "외국인" : "", (m.career_years != null && m.career_years !== "") ? `경력 ${m.career_years}년` : ""].filter(Boolean).join(" · ");
           // 포트폴리오 리스트 아바타는 '썸네일(thumb_url)' 기준으로 통일 → 썸네일 삭제 시 리스트도 즉시 반영.
           // (photos[0]을 우선 쓰면 썸네일을 지워도 갤러리 첫 사진이 남아 안 지워진 것처럼 보였음)

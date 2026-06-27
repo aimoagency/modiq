@@ -15,7 +15,7 @@ import { loadSharedSchedule, type SharedBusy } from "./lib/distribution";
 import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
-  makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, ageFromSSN6, validateBizNo,
+  makeModelId, makeClientId, normalizeInstagram, visaDday, getTrialDaysLeft, modelAge, birthYearFromId, validateBizNo,
   bookingTotal, overchargeTotal, clientBalance, bookingAgencyFee, bookingModelPay,
   modelTaxType, modelGross, modelWithholding, clientCharge,
   bookingSession, sessionLabel, foreignerRate, payCfg,
@@ -353,7 +353,8 @@ export default function App() {
 
   // ── 모델 폼 ──
   const [mName,      setMName]      = useState("");
-  const [mSSN,       setMSSN]       = useState("");
+  const [mSSN,       setMSSN]       = useState("");      // 주민 앞6자리(yymmdd) — 주민번호 입력 시 자동 채움(보조)
+  const [mBirthYear, setMBirthYear] = useState("");      // 출생연도(yyyy) — 기본정보 입력, 나이 계산용
   const [mAddress,    setMAddress]    = useState("");   // 모델 주소 (세무신고용)
   const [mNationalId, setMNationalId] = useState("");   // 식별번호 평문 (저장 후 즉시 비움)
   const [showIdInput, setShowIdInput] = useState(false); // 마스킹 대신 입력칸 표시
@@ -362,7 +363,6 @@ export default function App() {
   const [mCategory,  setMCategory]  = useState("");
   const [mCareerYears, setMCareerYears] = useState(""); // 경력(년) — 수동 숫자 입력, 소수 가능
   const [mGender,    setMGender]    = useState(""); // 성별 M/F (ID 생성용)
-  const [mBirthYear, setMBirthYear] = useState(""); // 출생연도(YYYY) — 발송용
   const [mRate,      setMRate]      = useState(0);
   const [mCountry,     setMCountry]     = useState("대한민국");
   const [mEntry,       setMEntry]       = useState("");
@@ -873,9 +873,9 @@ export default function App() {
 
   const openEditModel = (m: any) => {
     setSelectedModel(m);
-    setMName(m.name||""); setMSSN(m.ssn6||""); setMPhone(m.phone||""); setMEmail(m.email||"");
+    setMName(m.name||""); setMSSN(m.ssn6||""); setMBirthYear(m.birth_year?String(m.birth_year):(m.ssn6?String(birthYearFromId(m.ssn6)||""):"")); setMPhone(m.phone||""); setMEmail(m.email||"");
     setMGender(m.gender||(m.category==="남성"?"M":m.category==="여성"?"F":""));
-    setMCategory(m.category||""); setMCareerYears(m.career_years!=null?String(m.career_years):""); setMBirthYear(m.birth_year!=null?String(m.birth_year):""); setMRate(m.rate||0);
+    setMCategory(m.category||""); setMCareerYears(m.career_years!=null?String(m.career_years):""); setMRate(m.rate||0);
     setMCountry(m.country||"대한민국"); setMEntry(m.visa_entry||""); setMExit(m.visa_exit||"");
     setMIsForeign(!!m.is_foreigner); setMVisaType(m.visa_type||""); setMHasAlienCard(!!m.has_alien_card); setMPayMethod(m.payment_method||""); setMPayDetail(m.payment_detail&&typeof m.payment_detail==="object"?m.payment_detail:{}); setMTaxRate(Number(m.tax_rate)||0);
     setMInstagram(m.instagram_url||""); setMDrive(m.drive_url||"");
@@ -1437,6 +1437,17 @@ export default function App() {
       else { input.all_day = true; input.date = ev.date; }
       return input;
     };
+    // 일정(일시·장소) 변경·재등록 시 모델에게 '일정 변경 안내' 메일 발송 — 비구글은 구독 링크 동봉(자동 동기화 유도).
+    const sendChangeMail = async () => {
+      if (!tm?.email) return;
+      try {
+        const ev = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
+        const dom = (tm.email.split("@")[1] || "").toLowerCase();
+        let subUrl = "";
+        if (dom && dom !== "gmail.com" && dom !== "googlemail.com") { const ct = await ensureCalToken(tm); if (ct) subUrl = calSubscribePageUrl(ct); }
+        await sendCalEmail(tm.email, ev, tm?.name || "", subUrl, agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type }, true);
+      } catch {}
+    };
 
     // 취소: 구글 일정 삭제(성공했을 때만 id 정리 — 미연동·토큰만료면 id 유지해 재시도 가능) + (opts.mail) 취소 안내 메일
     if (tb.status === "CANCELLED") {
@@ -1459,11 +1470,13 @@ export default function App() {
     // ① 연동된 일정 있음 → 일시·장소 변경을 in-place 반영(중복·잔존 방지, sendUpdates=all 로 모델 통지)
     if (liveEventId) {
       try { await gcalSync(gcalInput("update", liveEventId)); } catch {}
+      if (opts.mail) await sendChangeMail();   // 연동된 일정 변경 → 앱에서 변경 안내 메일(구글 통지에만 의존하지 않음)
       return;
     }
     // ② 일정 없음 + 모델이 이미 수락 → 이벤트 재생성(취소 후 재확정 등). gcal-sync 가 모델 재초대.
     if (accepted) {
       try { const r = await gcalSync(gcalInput("create")); if (r.ok && r.event_id) await saveEventId(r.event_id); } catch {}
+      if (opts.mail) await sendChangeMail();   // 수락 후 재등록(취소→재확정 등) → 변경 안내 메일
       return;
     }
     // ③ 일정 없음 + 미수락 + 확정 트리거 → 초대(수락 요청) 메일 발송
@@ -3035,7 +3048,7 @@ async function sharePdf(){
             <div style={{ minWidth:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <h2 style={{ margin:0, color:C.text }}>{selectedModel.name}</h2>
-                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=selectedModel.birth_year?(new Date().getFullYear()-Number(selectedModel.birth_year)):ageFromSSN6(selectedModel.ssn6); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
+                {(()=>{ const g=selectedModel.gender==="F"?"여성":selectedModel.gender==="M"?"남성":""; const a=modelAge(selectedModel); const txt=[g, a!==null?`${a}세`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:12, padding:"3px 9px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
               </div>
               <p style={{ margin:"4px 0 8px", fontSize:12, color:C.muted }}>ID: {selectedModel.id}</p>
               <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -3053,7 +3066,6 @@ async function sharePdf(){
             {(()=>{ const imp=!!selectedModel.source_agency_id; const phoneV=imp?selectedModel.agency_phone:selectedModel.phone; const emailV=imp?selectedModel.agency_email:selectedModel.email; return ([
               ["전화번호", phoneV?<a href={`tel:${phoneV}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{phoneV}</a>:null],
               ["이메일",   emailV],
-              ...(imp?[]:[["기본 단가(참고)", selectedModel.rate ? `${Number(selectedModel.rate).toLocaleString()}원` : "-"]] as [string,any][]),
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
               ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
@@ -3311,8 +3323,8 @@ async function sharePdf(){
               <input style={inp} value={mName} onChange={e=>setMName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도(YYYY) *</label>
-              <input style={inp} type="text" inputMode="numeric" maxLength={4} placeholder="예: 1998" value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} />
+              <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도 (YYYY) *</label>
+              <input style={inp} type="text" inputMode="numeric" maxLength={4} value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} placeholder="예: 1995 (주민번호 입력 시 자동)" />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3532,7 +3544,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>(내국인)</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); }} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); const dg=v.replace(/[^0-9]/g,""); const f6=dg.slice(0,6); if(f6.length===6){ setMSSN(f6); const by=birthYearFromId(dg); if(by) setMBirthYear(String(by)); } }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
@@ -3724,7 +3736,7 @@ async function sharePdf(){
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>{idLabel} <span style={{ color:C.muted }}>({mHasAlienCard?"외국인등록증":"단기체류·여권"})</span></label>
               {showInput ? (
                 <span style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const f6=v.replace(/[^0-9]/g,"").slice(0,6); if(f6.length===6) setMSSN(f6); } }} placeholder={idPh} autoComplete="off" />
+                  <input style={{ ...inp, marginBottom:0, flex:1, minWidth:160 }} value={mNationalId} onChange={e=>{ const v=e.target.value; setMNationalId(v); if(idType!=="passport"){ const dg=v.replace(/[^0-9]/g,""); const f6=dg.slice(0,6); if(f6.length===6){ setMSSN(f6); const by=birthYearFromId(dg); if(by) setMBirthYear(String(by)); } } }} placeholder={idPh} autoComplete="off" />
                   {mEditMode && <button type="button" onClick={()=>saveModelNationalId(selectedModel.id)} disabled={!mNationalId.trim()} style={{ ...btnS(C.blue, !mNationalId.trim()), fontSize:12, padding:"8px 14px" }}>저장</button>}
                   {mEditMode && masked && <button type="button" onClick={()=>{ setShowIdInput(false); setMNationalId(""); }} style={{ ...btnS(C.muted), fontSize:12, padding:"8px 12px" }}>취소</button>}
                 </span>
@@ -3844,7 +3856,6 @@ async function sharePdf(){
                         <div style={{ flex:1 }}>
                           <span style={{ fontWeight:700, color:C.text, fontSize:13 }}>{m.name}</span>
                           {m.category ? <span style={{ fontSize:11, color:C.muted, marginLeft:6 }}>{m.category}</span> : null}
-                          {m.rate>0 ? <span style={{ fontSize:11, color:"#c9a96e", marginLeft:6 }}>기본단가 {m.rate.toLocaleString()}원</span> : null}
                           {m.is_foreigner ? <span style={{ fontSize:11, color:C.yellow, marginLeft:6 }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {visaDday(m.visa_exit)}</span> : null}
                         </div>
                         <span style={{ fontSize:11, color:C.blue, fontWeight:700 }}>+ 추가</span>

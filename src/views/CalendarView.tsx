@@ -59,7 +59,8 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const monthStr    = `${calYear}-${String(calMonth+1).padStart(2,"0")}`;
   const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
-  // 필터 적용된 섭외 — 취소(CANCELLED) 건은 캘린더에서 제외(섭외 리스트엔 그대로 남음)
+  // 필터 적용된 섭외 (취소건 CANCELLED 는 캘린더에서 제외 — 점·셀·일별목록·타임라인·충돌표시 모두.
+  //  섭외 리스트(BookingsView)에는 그대로 남는다.)
   const filteredBookings = (modelFilter ? bookings.filter(b=>b.model_id===modelFilter) : bookings).filter(b=>b.status!=="CANCELLED");
 
   const bookingsByDate: Record<string, any[]> = {};
