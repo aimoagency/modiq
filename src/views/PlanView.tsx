@@ -70,7 +70,7 @@ export default function PlanView({ agency, myRole, handleChangePlan }: {
                 <span style={{ fontSize:34, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:"-1px" }}>{fmtWon(plan.price)}</span>
                 <span style={{ fontSize:14, color:C.muted, fontWeight:600 }}>/월</span>
               </div>
-              <p style={{ margin:"0 0 14px", fontSize:11, color:C.muted, fontWeight:600 }}>부가세 포함 · 공급가 {fmtWon(Math.round(plan.price/1.1))} + VAT</p>
+              <p style={{ margin:"0 0 14px", fontSize:11, color:C.muted, fontWeight:600 }}>부가세 포함</p>
               {/* 담당자 칩 */}
               <div style={{ display:"inline-flex", alignSelf:"flex-start", alignItems:"center", gap:5, padding:"4px 11px",
                 borderRadius:999, background:plan.color+"18", color:plan.color, fontSize:12, fontWeight:800, marginBottom:18 }}>
