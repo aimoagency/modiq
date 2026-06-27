@@ -2063,9 +2063,9 @@ async function sharePdf(){
           <p style={{ margin:"0 0 14px" }}><Ban size={40} color={C.red} /></p>
           <h2 style={{ color:C.text, margin:"0 0 8px" }}>무료 체험이 만료되었습니다</h2>
           <p style={{ color:C.textSub, marginBottom:28 }}>계속 사용하려면 요금제를 선택하세요.<br/>데이터는 안전하게 보관되어 있습니다.</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12, marginBottom:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))", gap:10, marginBottom:20 }}>
             {PLANS.map(plan=>(
-              <div key={plan.id} style={{ background:"white", borderRadius:10, padding:16, cursor:"pointer", border:"2px solid transparent", transition:"border 0.2s" }}
+              <div key={plan.id} style={{ background:"white", borderRadius:10, padding:16, cursor:"pointer", border:`2px solid ${plan.best?plan.color:"transparent"}`, transition:"border 0.2s" }}
                 onClick={()=>handleChangePlan(plan.id)}
                 onMouseEnter={e=>(e.currentTarget.style.border=`2px solid ${plan.color}`)}
                 onMouseLeave={e=>(e.currentTarget.style.border="2px solid transparent")}

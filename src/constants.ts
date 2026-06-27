@@ -9,20 +9,63 @@ export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"rev
 // (메뉴/페이지/라우팅이 모두 이 플래그로 감싸져 있어 코드 롤백 없이 끌 수 있다).
 export const FEATURE_DISTRIBUTION = true;
 
-// ── 요금제 ─────────────────────────────────────────────────────
+// ── 요금제 (v3.0 — Trial·Starter·Pro·Team·Enterprise) ──────────
+// ⚠️ baseMembers/additionalPrice/alimtalk 는 멤버 한도·알림톡 게이팅 enforcement 에 직접 쓰인다.
+//    레거시 키(standard)는 기존 고객(plan="standard") 한도 보존을 위해 절대 삭제하지 말 것.
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {
-  trial:    { baseMembers: 1,  additionalPrice: 0,     alimtalk: false },
-  starter:  { baseMembers: 2,  additionalPrice: 20000, alimtalk: false },
-  standard: { baseMembers: 5,  additionalPrice: 15000, alimtalk: true  },
-  pro:      { baseMembers: 10, additionalPrice: 15000, alimtalk: true  },
+  trial:      { baseMembers: 3,  additionalPrice: 0,     alimtalk: true  }, // 14일 무료 체험(전 기능)
+  starter:    { baseMembers: 1,  additionalPrice: 12000, alimtalk: true  },
+  pro:        { baseMembers: 3,  additionalPrice: 12000, alimtalk: true  },
+  team:       { baseMembers: 7,  additionalPrice: 12000, alimtalk: true  },
+  enterprise: { baseMembers: 15, additionalPrice: 12000, alimtalk: true  },
+  // 레거시(기존 standard 고객 한도 보존 — 삭제 금지)
+  standard:   { baseMembers: 5,  additionalPrice: 15000, alimtalk: true  },
 };
+
+// 구매 가능한 4개 유료 티어(카드 표시용) — Trial 은 14일 무료 배너로 별도 안내.
+// best:true = 추천(Team). members = 기본 담당자 수.
 export const PLANS = [
-  { id:"starter",  name:"Starter",  price:79000,  priceYearly:57000,  storage:"10GB",  color:"#4A90D9", popular:false,
-    features:["모델 등록 무제한","고객사 등록 무제한","섭외 관리 무제한","기본 담당자 2명","스토리지 10GB","정산 관리","일정 충돌 감지"] },
-  { id:"standard", name:"Standard", price:149000, priceYearly:107000, storage:"50GB",  color:"#7B68EE", popular:true,
-    features:["Starter 모든 기능","기본 담당자 5명","스토리지 50GB","카카오 알림톡 포함","프로젝트별 정산","월별/담당자별 리포트","우선 고객 지원"] },
-  { id:"pro",      name:"Pro",      price:249000, priceYearly:179000, storage:"200GB", color:"#2ECC71", popular:false,
-    features:["Standard 모든 기능","기본 담당자 10명","스토리지 200GB","자체 카카오 채널","외국인 모델 비자 관리","전담 고객 매니저","API 연동 지원"] },
+  { id:"starter", name:"Starter", price:78000,  members:1,  color:"#4A90D9", best:false,
+    tagline:"1인 에이전시 · 대표 단독 운영",
+    features:["모델·고객사·섭외 무제한","스케줄·더블부킹 방지","3.3% 원천징수 자동계산","세무사용 엑셀·원천징수 내역서","알림톡 300건 · 이메일 500건","대대행 발신·수신"] },
+  { id:"pro", name:"Pro", price:108000, members:3,  color:"#7B68EE", best:false,
+    tagline:"대표 + 직원 1~2명",
+    features:["Starter 모든 기능","담당자 3명","업체별 정산 명세서","알림톡 600건 · 이메일 2,000건","우선 고객 지원"] },
+  { id:"team", name:"Team", price:148000, members:7,  color:"#10b981", best:true,
+    tagline:"팀 단위 · 외국인 모델 에이전시 추천",
+    features:["Pro 모든 기능","담당자 7명","외국인 세무 정산 포함","알림톡 1,000건 · 이메일 5,000건","전담 우선 지원"] },
+  { id:"enterprise", name:"Enterprise", price:218000, members:15, color:"#f59e0b", best:false,
+    tagline:"중대형 · 모든 기능 포함",
+    features:["Team 모든 기능","담당자 15명 (초과 ₩12,000/명)","외국인 세무 정산 포함","알림톡 2,000건 · 이메일 10,000건","API 연동·전담 매니저"] },
+];
+
+// 14일 무료 체험(카드 불필요) — 상단 배너용
+export const PLAN_TRIAL = { name:"Free Trial", days:14, members:3 };
+
+// 기능 비교표(매트릭스) — 값 순서 = [Starter, Pro, Team, Enterprise]
+export const PLAN_MATRIX: { group:string; rows:[string,string,string,string,string][] }[] = [
+  { group:"기본", rows:[
+    ["포트폴리오·패키지 관리","✓","✓","✓","✓"],
+    ["모델 프로필 관리","✓","✓","✓","✓"],
+    ["스케줄·캘린더","✓","✓","✓","✓"],
+    ["더블부킹 방지","✓","✓","✓","✓"],
+  ]},
+  { group:"정산·세무", rows:[
+    ["3.3% 원천징수 자동계산","✓","✓","✓","✓"],
+    ["세무사용 엑셀 내보내기","✓","✓","✓","✓"],
+    ["원천징수 내역서 발행","✓","✓","✓","✓"],
+    ["업체별 정산 명세서","✓","✓","✓","✓"],
+    ["외국인 세무 정산","+4만","+4만","✓","✓"],
+  ]},
+  { group:"커뮤니케이션", rows:[
+    ["알림톡 (modiq 발송)","300건","600건","1,000건","2,000건"],
+    ["세금계산서 발행 알림톡","✓","✓","✓","✓"],
+    ["이메일 발송 (AWS SES)","500건","2,000건","5,000건","10,000건"],
+  ]},
+  { group:"대대행", rows:[
+    ["대대행 발신 (A역할)","✓","✓","✓","✓"],
+    ["대대행 수신 (B역할)","✓","✓","✓","✓"],
+  ]},
 ];
 export const getTotalMemberLimit = (plan: string, extra = 0) => (PLAN_FEATURES[plan]?.baseMembers || 1) + extra;
 
