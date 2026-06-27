@@ -82,6 +82,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   useEffect(() => { if (initModelId) { setSelId(initModelId); setMode("photos"); } }, [initModelId]);
   const [saving, setSaving] = useState(false);
   const [drag, setDrag] = useState(false);
+  // 받은 모델(대대행) 업체 필터 — "" 전체
+  const [srcF, setSrcF] = useState("");
+  const sources = useMemo(() => Array.from(new Set(models.map(m => m.source_agency_name).filter(Boolean))) as string[], [models]);
   // 패키징 모드
   const [fieldF, setFieldF] = useState<string[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -165,8 +168,8 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return models.filter(m => !s || (m.name || "").toLowerCase().includes(s) || (m.category || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)));
-  }, [models, q]);
+    return models.filter(m => (!srcF || m.source_agency_name === srcF) && (!s || (m.name || "").toLowerCase().includes(s) || (m.category || "").toLowerCase().includes(s) || (m.source_agency_name || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s))));
+  }, [models, q, srcF]);
 
   const sel = models.find(m => m.id === selId) || null;
   const photos: string[] = Array.isArray(sel?.photos) ? sel!.photos : [];
@@ -242,9 +245,10 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const pkgCandidates = useMemo(() => {
     const s = q.trim().toLowerCase();
     return models.filter(m => isComplete(m)
-      && (s === "" || (m.name || "").toLowerCase().includes(s))
+      && (!srcF || m.source_agency_name === srcF)
+      && (s === "" || (m.name || "").toLowerCase().includes(s) || (m.source_agency_name || "").toLowerCase().includes(s))
       && (fieldF.length === 0 || (Array.isArray(m.fields) && fieldF.every(f => m.fields.includes(f)))));
-  }, [models, q, fieldF]);
+  }, [models, q, fieldF, srcF]);
 
   const togglePick = (id: string) => setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -294,7 +298,13 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   // ── 좌측: 모델 리스트 ──
   const listPanel = (
     <div style={{ width: isMobile ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, ...(isMobile ? {} : { borderRight: `1px solid ${C.border}`, paddingRight: 16 }) }}>
-      <SearchInput placeholder="이름·카테고리·분야 검색" value={q} onChange={setQ} />
+      <SearchInput placeholder="이름·카테고리·분야·업체명 검색" value={q} onChange={setQ} />
+      {sources.length > 0 && (
+        <select value={srcF} onChange={e => setSrcF(e.target.value)} style={{ ...inp, marginBottom: 0 }}>
+          <option value="">전체 업체</option>
+          {sources.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      )}
       <div style={{ display: "grid", gap: 6, maxHeight: isMobile ? 200 : "calc(100vh - 200px)", overflowY: "auto" }}>
         {filtered.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>모델이 없습니다.</p>}
         {filtered.map(m => {
@@ -320,7 +330,13 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const packagePanel = (
     <div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-        <SearchInput placeholder="이름 검색" value={q} onChange={setQ} style={{ marginBottom: 0, maxWidth: 260 }} />
+        <SearchInput placeholder="이름·업체명 검색" value={q} onChange={setQ} style={{ marginBottom: 0, maxWidth: 260 }} />
+        {sources.length > 0 && (
+          <select value={srcF} onChange={e => setSrcF(e.target.value)} style={{ ...inp, marginBottom: 0, maxWidth: 200 }}>
+            <option value="">전체 업체</option>
+            {sources.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
         <span style={{ fontSize: 12, color: C.muted }}>분야:</span>
         {MODEL_FIELDS.map(f => {
           const on = fieldF.includes(f);

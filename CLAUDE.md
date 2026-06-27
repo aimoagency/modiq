@@ -14,6 +14,11 @@
 - 기존 이력과 동일하게 **merge commit** 방식(squash/rebase 아님).
 - PR의 `mergeable_state`가 `unstable`이면 보통 배포 프리뷰(Netlify/Vercel) 빌드 중일 뿐이므로(충돌 `dirty` 아님) 머지 가능.
 
+## 업무 처리 절차 (사용자 지정 · 반드시 준수)
+- 모든 작업은 **기획 → 설계 → 개발 → 검증(typecheck/build) → 테스트 → 검토** 순서로 진행하고, **검토를 마친 뒤** 결과를 제시한다.
+- 제시 전 반드시 **사용자 입장에서 오류·불편이 없는지** 점검한다(입력/포커스, 권한 분기, 빈 상태, 모바일, 에러 메시지, 되돌리기 등).
+- 단순 단답이 아니라면, 무엇을 검증·테스트했고 무엇이 사용자 확인이 필요한지 함께 밝힌다.
+
 ## 수정 원칙 (사용자 지정 · 반드시 준수)
 - **기존 필터/수식은 절대 임의로 수정하지 않는다.** (검색 필터, 정산·세무·매출 계산식 등)
 - **수식 수정이 불가피하면**, 수정 전/후 결과가 어떻게 달라지는지 먼저 확인하고, 목적에 부합하는지 검증한 뒤 변경한다.
@@ -26,6 +31,7 @@
 - **반복되는 요청·합의 사항은 이 MD에 기록**한다.
 
 ## 작업 메모 (반복 확인 사항)
+- 🤝 **발송(Distribution) V4 — 대대행 편입(합의)**: A가 받은 모델을 B가 "내 모델로 등록"하면 **대대행(소속사 `payout_tax_type="company"`) 고정**으로 편입된다(프리랜서/외국인 변경 불가·외국인 토글 숨김). **A 업체정보 자동 입력**(`agency_name/agency_biz_no/agency_contact/agency_phone/bank_info`)은 **발송 스냅샷 `talent_distributions.sender_payout_info`**(jsonb: company_name·biz_no·rep_name·contact·address·bank)에서 가져온다 — A는 회사설정(`agencies.payout_bank_info` + 기존 상호·사업자번호·대표·주소)에 **1회 등록**, 발송 시 `SendTab`이 스냅샷으로 실어 보냄. B는 모델별 **마진(공급가 `fee_*` · 기준액 `payout_*_value`)만** 입력. 출처는 `models.source_agency_id/source_agency_name/source_distribution_id`에 자동 기록(모델목록 '출처' 필터 + '대대행' 배지). 정산화면은 기존 소속사 계산(`modelPayout=기준액×1.1`)을 **"A 지급액 (○○ 대대행)"** 으로 표기(집행은 수동) — **계산식 신규 생성 금지, 기존 company 경로 재사용**. ⚠️ DB: `supabase/talent_distribution_v4_subagency.sql`(컬럼 추가, 재실행 가능). **이 SQL 미적용 시 발송·편입·회사설정 저장이 실패**하므로 코드 배포 전 반드시 적용(모델 목록 로드는 `loadData`가 `MODEL_COLS_V4`→`MODEL_COLS` 자동 폴백으로 보호됨).
 - 등록 모달 폭: 모델 추가·고객사 추가·섭외(단일/프로젝트) 추가는 모두 `Modal ... wide`(maxWidth **680px**)로 통일되어 있다. 폭을 바꿀 땐 네 모달을 함께 동일 값으로 유지.
 - 포트폴리오(`studio`)·패키지(`packages`) 메뉴는 데스크탑 `navItems`·모바일 더보기 메뉴·뷰(`ModelStudioView`/`PackagesView`)에 모두 존재한다. (삭제 금지)
 - 정산 탭 분류(합의): **정산대기=촬영완료(COMPLETED) & (고객입금·모델지급 둘 다 완료가 아님)** · **정산완료=고객입금 AND 모델지급 둘 다 완료(또는 상태 SETTLED)** · **미입금잔금=고객 미입금**. (정산 금액 계산식과 별개 — 탭 분류 조건만. 임의 변경 금지)

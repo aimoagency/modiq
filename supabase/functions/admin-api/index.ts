@@ -68,12 +68,36 @@ Deno.serve(async (req: Request) => {
     if (action === "delete_tenant") {
       const agencyId = String(body?.agency_id || "");
       if (!agencyId) return json({ error: "agency_id required" }, 400);
+      // DB 행 삭제(admin_delete_tenant). storage.objects는 SQL 직접삭제가 금지돼 RPC에서 제외 → 아래 Storage API로 정리.
       const { data: rows, error } = await admin.rpc("admin_delete_tenant", { p_agency_id: agencyId });
       if (error) return json({ error: error.message }, 500);
       const ids = ((rows as { deleted_user_id: string }[]) || []).map((r) => r.deleted_user_id).filter(Boolean);
       let removed = 0;
       for (const uid of ids) { const { error: de } = await admin.auth.admin.deleteUser(uid); if (!de) removed++; }
-      return json({ ok: true, deleted_auth_users: removed });
+      // 모델 사진(model-photos 버킷, 경로=<agency_id>/...) 재귀 삭제. 실패해도 테넌트 삭제 자체는 성공 처리.
+      let deletedFiles = 0;
+      try {
+        const bucket = admin.storage.from("model-photos");
+        const dirs = [agencyId];
+        const paths: string[] = [];
+        while (dirs.length) {
+          const dir = dirs.pop()!;
+          for (let offset = 0; ; offset += 100) {
+            const { data: entries } = await bucket.list(dir, { limit: 100, offset });
+            if (!entries || !entries.length) break;
+            for (const e of entries) {
+              const full = `${dir}/${e.name}`;
+              if (e.id === null) dirs.push(full); else paths.push(full); // id null = 하위 폴더 → 재귀
+            }
+            if (entries.length < 100) break;
+          }
+        }
+        for (let i = 0; i < paths.length; i += 100) {
+          const { data: rm } = await bucket.remove(paths.slice(i, i + 100));
+          deletedFiles += (rm?.length || 0);
+        }
+      } catch (_se) { /* 스토리지 정리 실패는 무시(고아 파일만 남음) */ }
+      return json({ ok: true, deleted_auth_users: removed, deleted_files: deletedFiles });
     }
     if (action === "members") {
       const agencyId = String(body?.agency_id || "");

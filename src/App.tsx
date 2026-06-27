@@ -6,10 +6,12 @@ import {
   PLAN_FEATURES, PLANS, getTotalMemberLimit,
   MODEL_CATEGORIES, GENDERS, MODEL_FIELDS, HAIR_LENGTHS, EYE_COLORS, CLIENT_INDUSTRIES, SHOOT_TYPES_PHOTO, SHOOT_TYPES_VIDEO,
   USAGE_SCOPES, USAGE_PERIODS, USAGE_REGIONS, COUNTRIES, HOURS, MINS, statusOptionsForType,
+  FEATURE_DISTRIBUTION,
 } from "./constants";
 import { generateModelId, generateCastId, genderNatCode, natTypeOf, nextModelSeq, nextCastSeq, randomId } from "./lib/ids";
 import type { AuthMode, Page } from "./constants";
 import { sb, sbAuth, setAuthTokens, getAuthTokens, refreshSession, setOnAuthFail, persistThumb } from "./lib/supabase";
+import { loadSharedSchedule, type SharedBusy } from "./lib/distribution";
 import {
   fmt, fmtNum, parseNum, pad, fmtDate, fmt12, fmtTime,
   toHHMM, parseHHMM, toMin, scheduleConflict, visaViolation,
@@ -46,7 +48,7 @@ function lazyRetry<T extends ComponentType<any>>(factory: () => Promise<{ defaul
   }));
 }
 const CalendarView = lazyRetry(() => import("./views/CalendarView"));
-import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark } from "./components/icons";
+import { Home, Calendar, ClipboardList, User, Users, Building2, Store, Coins, CreditCard, Pencil, Save, Folder, FolderOpen, Plane, Link2, Banknote, MessageSquare, Crown, PartyPopper, AlertTriangle, Ban, Camera, Clapperboard, Lightbulb, Sun, Moon, Menu, Search, ExternalLink, TrendingUp, Gauge, CalendarCheck, ClipboardCheck, Mannequin, Building, BarChart, CoinStack, Agents, CardCheck, CardStack, Settings, AimoMark, Handshake } from "./components/icons";
 import { useIsMobile } from "./lib/useIsMobile";
 import { sendAlimtalkBoth } from "./lib/alimtalk";
 import DashboardView from "./views/DashboardView"; // 첫 화면 — 즉시 렌더 위해 메인 번들에 포함(지연 로딩 제외)
@@ -63,6 +65,7 @@ const ModelStudioView = lazyRetry(() => import("./views/ModelStudioView"));
 const PackagePublicView = lazyRetry(() => import("./views/PackagePublicView"));
 const CalendarAddView = lazyRetry(() => import("./views/CalendarAddView"));
 const CalSubscribeView = lazyRetry(() => import("./views/CalSubscribeView"));
+const DistributionView = lazyRetry(() => import("./views/DistributionView"));
 import { bookingToCalEvent, calShareUrl, genCalToken, calSubscribePageUrl } from "./lib/calendar";
 import { sendCalEmail, sendCancelEmail, sendInviteEmail } from "./lib/email";
 import { gcalSync } from "./lib/gcal";
@@ -162,6 +165,18 @@ export default function App() {
 
   // 필터
   const [modelQ,      setModelQ]      = useState("");
+  // 받은(대대행) 발송 중 '아직 유효한' 출처 발송 id 집합 — 만료/철회된 출처의 편입 모델은 목록에서 자동 숨김.
+  // distIdsLoaded=false(조회 전·실패)면 숨기지 않음(오숨김 방지).
+  const [activeDistIds, setActiveDistIds] = useState<Set<string>>(new Set());
+  const [distIdsLoaded, setDistIdsLoaded] = useState(false);
+  // 편입(대대행) 모델의 A쪽 점유일 — source_model_id 기준 라이브 조회. 모델 캘린더에 '외부 점유'로 표시.
+  const [sharedBusy, setSharedBusy] = useState<Record<string, SharedBusy[]>>({});
+  // 대대행 모델: A쪽(발송처) 점유일이면 그 날은 사용 불가(날짜 단위·시간 비공개) → 섭외 시 HOLD 판정에 사용.
+  // ⚠️ B가 이미 그 모델로 같은 날 잡아둔 건이 있으면 제외(A가 B 일정을 등록해 되돌아온 '반사' 중복 방지).
+  const subAgencyBusy = (model: any, date?: string): boolean =>
+    !!model?.source_model_id && !!date &&
+    (sharedBusy[model.source_model_id] || []).some((x: any) => (x.shoot_date || "").slice(0, 10) === date) &&
+    !bookings.some((b: any) => b.model_id === model.id && b.shoot_date === date && b.status !== "CANCELLED");
   const [customerQ,   setCustomerQ]   = useState("");
   const [bookingQ,    setBookingQ]    = useState("");
   const [bookingStatusF,  setBookingStatusF]  = useState("ALL");
@@ -280,6 +295,8 @@ export default function App() {
         const c = scheduleConflict(lStart, lEnd, b.start_time, b.end_time, pBookingType, b.booking_type, lLoc, b.location);
         if (c.conflict) { autoHold = true; holdReason = c.reason; break; }
       }
+      // 대대행: A쪽(발송처) 점유일이면 그 모델은 그 날 불가 → HOLD (날짜 단위)
+      if (!autoHold && subAgencyBusy(model, lDate)) { autoHold = true; holdReason = `${model?.source_agency_name || "발송처"} 스케줄 확인 요망`; }
       const finalStatus = autoHold ? "HOLD" : pStatus;
       const nb = {
         id:generateCastId(_agNo, _baseCastSeq+i), project_id: projId, model_id: line.modelId,
@@ -392,7 +409,7 @@ export default function App() {
   const [mAgencyPhone,   setMAgencyPhone]   = useState(""); // 담당자 연락처
   const [mAgencyEmail,   setMAgencyEmail]   = useState(""); // 에이전시 이메일(일정·정산 연락)
   const [mAgencyBizNo,   setMAgencyBizNo]   = useState(""); // 사업자등록번호(세금계산서)
-  const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("rate");
+  const [mPayType,  setMPayType]  = useState<"rate"|"fixed">("fixed");
   const [mPayValue, setMPayValue] = useState(0); // (구) 단일 정산값 — 하위호환
   // 정산방식 값(세션별): 비율이면 %, 정액이면 원
   const [mPayDayValue,  setMPayDayValue]  = useState(0);
@@ -550,7 +567,9 @@ export default function App() {
   // 모델 일반 조회 컬럼 — 무거운 base64 이미지 컬럼(compcard ~2MB/8행)을 제외해 첫 로딩 속도 개선.
   // compcard는 컴카드 생성/저장 전용이라 어디서도 표시·조회하지 않으므로 빼도 안전(편집 PATCH에도 미포함).
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
-  const MODEL_COLS = "id,name,ssn6,birth_year,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url";
+  const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
+  // V4 대대행 출처 컬럼(마이그레이션 적용 후 존재) — 미적용 환경에선 loadData가 자동 폴백
+  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -564,8 +583,17 @@ export default function App() {
       try { const rows = await sb(table,"GET",null,query); fetched[table] = rows||[]; return rows||[]; }
       catch (e) { allOk = false; console.error(`로드 실패: ${table}`, e); return null; }
     };
+    // 모델: V4 출처 컬럼 포함 조회 → 컬럼 미존재(마이그레이션 전)면 기본 컬럼으로 1회 폴백(앱 깨짐 방지)
+    const fetchModels = async (): Promise<any[]|null> => {
+      const q = (cols:string) => `?agency_id=eq.${agencyId}&order=created_at.desc&select=${cols}`;
+      try { const rows = await sb("models","GET",null,q(MODEL_COLS_V4)); fetched["models"]=rows||[]; return rows||[]; }
+      catch {
+        try { const rows = await sb("models","GET",null,q(MODEL_COLS)); fetched["models"]=rows||[]; return rows||[]; }
+        catch (e2) { allOk=false; console.error("로드 실패: models", e2); return null; }
+      }
+    };
     const [mm, cc, bb, pp] = await Promise.all([
-      fetch1("models",    `?agency_id=eq.${agencyId}&order=created_at.desc&select=${MODEL_COLS}`),
+      fetchModels(),
       fetch1("customers", `?agency_id=eq.${agencyId}&order=created_at.desc`),
       fetch1("bookings",  `?agency_id=eq.${agencyId}&order=shoot_date.desc`),
       fetch1("projects",  `?agency_id=eq.${agencyId}&order=created_at.desc`),
@@ -584,6 +612,20 @@ export default function App() {
       const mo = await sb("model_offs","GET",null,`?agency_id=eq.${agencyId}&order=start_date.desc`);
       setModelOffs(mo||[]);
     } catch { setModelOffs([]); } // model_offs 테이블 미생성 시 무시
+    // 받은(대대행) 발송 중 유효한 출처 id 집합 — 만료/철회된 출처의 편입 모델 자동 숨김용.
+    // 실패(테이블 미생성/RLS) 시 distIdsLoaded=false 유지 → 숨기지 않음(안전).
+    try {
+      const recs = await sb("distribution_recipients","GET",null,`?recipient_agency_id=eq.${agencyId}&select=distribution:talent_distributions(id,status,expires_at)`);
+      const now = Date.now();
+      const ids = new Set<string>();
+      (recs||[]).forEach((r:any)=>{ const d=r.distribution; if (d && d.status==="active" && (!d.expires_at || new Date(d.expires_at).getTime()>now)) ids.add(d.id); });
+      setActiveDistIds(ids); setDistIdsLoaded(true);
+    } catch { setDistIdsLoaded(false); }
+    // 편입 모델의 A쪽 점유일(가용일) 라이브 조회 — source_model_id 보유 모델만.
+    try {
+      const srcIds = (mm||[]).map((m:any)=>m.source_model_id).filter(Boolean);
+      if (srcIds.length) setSharedBusy(await loadSharedSchedule(srcIds));
+    } catch { /* RPC 미적용/실패 시 표시만 생략(안전) */ }
     // ⚠️ packages(사진 패키지)는 용량이 매우 커서 첫 진입에서 제외 — 패키지/스튜디오 진입 시 지연 로딩(loadPackages)
   };
 
@@ -731,7 +773,7 @@ export default function App() {
   const syncBankInfoFromForeign = (bank: string, account: string) => {
     setMBankName(bank); setMBankAcct(account); setMBank(`${bank} ${account}`.trim());
   };
-  const resetModelForm = () => { setMName(""); setMSSN(""); setMBirthYear(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("rate"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
+  const resetModelForm = () => { setMName(""); setMSSN(""); setMPhone(""); setMEmail(""); setMCategory(""); setMCareerYears(""); setMGender(""); setMBirthYear(""); setMRate(0); setMEntry(""); setMExit(""); setMIsForeign(false); setMVisaType(""); setMHasAlienCard(false); setMPayMethod(""); setMPayDetail({}); setMTaxRate(0); setMInstagram(""); setMDrive(""); setMKakao(""); setMBank(""); setMBankName(""); setMBankAcct(""); setMThumb(""); setMAimoUrl(""); setMMemo(""); setMCountry("대한민국"); setMTaxType("freelancer"); setMPayType("fixed"); setMPayValue(0); setMPayDayValue(0); setMPayHalfValue(0); setMPayHourValue(0); setMFeeDay(0); setMFeeHalf(0); setMFeeHour(0); setMHeight(""); setMShoe(""); setMBust(""); setMWaist(""); setMHip(""); setMHair(""); setMEye(""); setMTattoo(false); setMUnderwear(false); setMFields([]); setMSpecialty(""); setMCareer(""); setMCareerOpen(false); setMFollowers(""); setMHairColor(""); setMSizeUnit("inch"); setMAddress(""); setMNationalId(""); setShowIdInput(false); setMAgencyName(""); setMAgencyContact(""); setMAgencyPhone(""); setMAgencyEmail(""); setMAgencyBizNo(""); };
   // 사이즈 단위 변환 (저장은 항상 cm)
   const sizeToCm = (v: string) => (mSizeUnit === "inch" && v && !isNaN(Number(v)) ? String(Math.round(Number(v) * 2.54)) : v);
   const convSizeVal = (v: string, to: "cm"|"inch") => (v === "" || isNaN(Number(v)) ? v : to === "inch" ? String(Math.round(Number(v) / 2.54 * 10) / 10) : String(Math.round(Number(v) * 2.54)));
@@ -744,7 +786,7 @@ export default function App() {
     const _natType = isFgn ? "X" : "K";
     const _agencyNo = (agency as any).agency_no || 1;
     const newModelId = generateModelId(genderNatCode(mGender, _natType), _agencyNo, nextModelSeq(models));
-    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, name:mName, ssn6:mSSN, birth_year:mBirthYear?Number(mBirthYear):null, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
+    const nm = { id:newModelId, gender:mGender, nationality_type:_natType, birth_year:mBirthYear!==""?Number(mBirthYear):null, share_consent:true, name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null, agency_id:agency.id };
     try {
       nm.thumb_url = await persistThumb(mThumb, agency.id, newModelId); // 썸네일 base64 → Storage URL(행 경량화)
       nm.bank_info = effectiveBankInfo(); // 외국인 국내계좌 → 통장 자동 반영(비어있을 때만)
@@ -753,6 +795,80 @@ export default function App() {
       if (mNationalId.trim() && canViewFinance) await saveModelNationalId(newModelId);
       resetModelForm(); setShowModelForm(false);
     } catch (e) { alert("모델 추가 실패: "+String(e)); }
+  };
+
+  // ── 받은(공유) 모델 → 대대행(소속사)으로 편입 (V4) ──
+  // 발송 스냅샷의 공유 필드(이름·신체·사진·노출가 등)만 복사하고, 세무유형은 '소속사(company) 10% 고정',
+  // A 업체정보(상호·사업자번호·연락처·계좌)는 발송 스냅샷(payoutInfo)에서 자동 채운다. 출처(A)도 자동 기록.
+  // 민감정보(주민번호 등)는 발송 자체가 안 되므로 제외. 국적정보 없어 내국인(K) 기본.
+  const handleImportSharedModel = async (
+    sm: any,
+    src?: { senderName?: string; senderAgencyId?: string; distributionId?: string; payoutInfo?: any }
+  ): Promise<{ ok: boolean; id?: string; error?: string; degraded?: boolean }> => {
+    try {
+      const gender = sm.gender === "M" ? "M" : "F";
+      const isFgn = !!sm.is_foreigner;
+      const natType = isFgn ? "X" : "K";
+      const agNo = (agency as any)?.agency_no || 1;
+      const photos = Array.isArray(sm.photos) ? sm.photos.filter((p: any) => typeof p === "string" && p) : [];
+      const newId = generateModelId(genderNatCode(gender, natType), agNo, nextModelSeq(models));
+      const pi = src?.payoutInfo || {};
+      const senderName = src?.senderName || "";
+      const nm: any = {
+        id: newId, agency_id: agency.id, name: sm.display_name || "(이름없음)",
+        gender, nationality_type: natType, is_foreigner: isFgn, share_consent: true,
+        country: sm.country || (isFgn ? "외국" : "대한민국"),
+        category: sm.category ?? null,
+        career_years: sm.career_years ?? null,
+        visa_entry: isFgn ? (sm.visa_entry || null) : null,
+        visa_exit: isFgn ? (sm.visa_exit || null) : null,
+        birth_year: sm.birth_year ?? null,
+        height: sm.height ?? null, bust: sm.bust ?? null, waist: sm.waist ?? null, hip: sm.hip ?? null, shoe: sm.shoe ?? null,
+        hair_length: sm.hair_length ?? null, hair_color: sm.hair_color ?? null, eye_color: sm.eye_color ?? null,
+        tattoo: sm.tattoo ?? false, underwear_ok: sm.underwear_ok ?? false,
+        specialty: sm.specialty ?? null, fields: Array.isArray(sm.fields) ? sm.fields : (sm.fields ?? null),
+        fee_day: sm.fee_day ?? null, fee_half: sm.fee_half ?? null, fee_hour: sm.fee_hour ?? null,
+        photos, thumb_url: photos[0] || null,
+        // 연락처/이메일 = 발송업체(A) 정보 (전화=A 연락처 / 이메일=A 구글캘린더 연동 메일 — 일정 수락이 A 캘린더로)
+        phone: pi.contact || null,
+        email: pi.gcal_email || pi.tax_email || null,
+        instagram_url: sm.instagram_url || null,
+        // 소속사 고정 — A에게 세금계산서 10%로 정산
+        payout_tax_type: "company", payout_pay_type: "rate",
+        // A 업체정보 자동 (소속 에이전시 정보로 정산서 발행)
+        agency_name: pi.company_name || senderName || null,
+        agency_biz_no: pi.biz_no || null,
+        agency_contact: pi.rep_name || null,
+        agency_phone: pi.contact || null,
+        agency_email: pi.gcal_email || null, // 에이전시 이메일 = A 구글캘린더 메일만(없으면 비움 — 합의)
+        bank_info: pi.bank || null,
+        address: pi.address || null,
+        // 출처(A) 자동 기록 — 에이전시별 필터/추적 + 가용일 라이브 조회(source_model_id)
+        source_agency_id: src?.senderAgencyId || null,
+        source_agency_name: senderName || pi.company_name || null,
+        source_distribution_id: src?.distributionId || null,
+        source_model_id: sm.source_model_id || null,
+        memo: senderName ? `${senderName} 발송 편입` : "발송 편입",
+      };
+      try {
+        await sb("models", "POST", nm);
+        setModels(prev => [nm, ...prev]);
+      } catch (e1: any) {
+        // V4 출처 컬럼(source_*) 미적용 시 → 출처 필드 빼고 재시도(기본 대대행 편입은 되게).
+        // ⚠️ 이 경우 출처 필터·가용일·자동숨김은 동작 안 함 → SQL 적용 후 재편입해야 전체 기능 사용.
+        const msg = String(e1?.message || e1);
+        if (/source_(agency|model|distribution)|PGRST204|schema cache/i.test(msg)) {
+          const { source_agency_id, source_agency_name, source_distribution_id, source_model_id, ...basic } = nm;
+          await sb("models", "POST", basic);
+          setModels(prev => [basic as any, ...prev]);
+          return { ok: true, id: newId, degraded: true };
+        }
+        throw e1;
+      }
+      return { ok: true, id: newId };
+    } catch (e: any) {
+      return { ok: false, error: String(e?.message || e) };
+    }
   };
 
   const openEditModel = (m: any) => {
@@ -768,14 +884,14 @@ export default function App() {
     setMHeight(m.height||""); setMShoe(m.shoe||""); setMBust(convSizeVal(m.bust||"","inch")); setMWaist(convSizeVal(m.waist||"","inch")); setMHip(convSizeVal(m.hip||"","inch")); setMHair(m.hair_length||""); setMHairColor(m.hair_color||""); setMEye(m.eye_color||""); setMTattoo(!!m.tattoo); setMUnderwear(!!m.underwear_ok); setMFields(Array.isArray(m.fields)?m.fields:[]); setMSpecialty(m.specialty||""); setMCareer(m.career||""); setMCareerOpen(!!m.career); setMFollowers(m.instagram_followers||""); setMSizeUnit("inch");
     setMAddress(m.address||""); setMNationalId(""); setShowIdInput(false);
     setMAgencyName(m.agency_name||""); setMAgencyContact(m.agency_contact||""); setMAgencyPhone(m.agency_phone||""); setMAgencyEmail(m.agency_email||""); setMAgencyBizNo(m.agency_biz_no||"");
-    setMTaxType(m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
+    setMTaxType(m.source_agency_id?"company":m.payout_tax_type==="company"?"company":(m.payout_tax_type==="foreigner"||m.is_foreigner)?"foreigner":"freelancer"); setMPayType(m.payout_pay_type==="fixed"?"fixed":"rate"); setMPayValue(m.payout_pay_value||0);
     setMPayValue(m.payout_pay_value ?? 0); setMPayDayValue(m.payout_day_value ?? m.payout_pay_value ?? 0); setMPayHalfValue(m.payout_half_value ?? 0); setMPayHourValue(m.payout_hour_value ?? 0);
     setMFeeDay(m.fee_day ?? 0); setMFeeHalf(m.fee_half ?? 0); setMFeeHour(m.fee_hour ?? 0);
     setMEditMode(true);
   };
 
   const [modelBaseline, setModelBaseline] = useState("");
-  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, birth_year:mBirthYear?Number(mBirthYear):null, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
+  const buildModelData = () => { const isFgn = mIsForeign; return ({ name:mName, ssn6:mSSN, phone:mPhone, email:mEmail, gender:mGender, nationality_type:isFgn?"X":"K", birth_year:mBirthYear!==""?Number(mBirthYear):null, share_consent:true, category:mCategory, career_years:mCareerYears!==""?Number(mCareerYears):null, rate:mRate, is_foreigner:isFgn, country:mCountry, visa_type:isFgn?mVisaType:null, has_alien_card:isFgn?mHasAlienCard:false, payment_method:isFgn?mPayMethod:null, payment_detail:isFgn?mPayDetail:{}, tax_rate:isFgn&&mTaxRate?mTaxRate:null, visa_entry:isFgn&&mEntry?mEntry:null, visa_exit:isFgn&&mExit?mExit:null, instagram_url:normalizeInstagram(mInstagram), drive_url:mDrive, kakao_id:mKakao, bank_info:mBank, thumb_url:mThumb, aimo_url:mAimoUrl, memo:mMemo, payout_tax_type:mTaxType, payout_pay_type:mPayType, payout_pay_value:mPayDayValue, payout_day_value:mPayDayValue, payout_half_value:mPayHalfValue, payout_hour_value:mPayHourValue, fee_day:mFeeDay, fee_half:mFeeHalf, fee_hour:mFeeHour, height:mHeight, shoe:mShoe, bust:sizeToCm(mBust), waist:sizeToCm(mWaist), hip:sizeToCm(mHip), hair_length:mHair, hair_color:mHairColor, eye_color:mEye, tattoo:mTattoo, underwear_ok:mUnderwear, fields:mFields, specialty:mSpecialty, career:mCareer, instagram_followers:mFollowers, address:mAddress, agency_name:mTaxType==="company"?mAgencyName:null, agency_contact:mTaxType==="company"?mAgencyContact:null, agency_phone:mTaxType==="company"?mAgencyPhone:null, agency_email:mTaxType==="company"?mAgencyEmail:null, agency_biz_no:mTaxType==="company"?mAgencyBizNo:null }); };
   useEffect(() => { if (showModelForm || mEditMode) setModelBaseline(JSON.stringify(buildModelData())); }, [showModelForm, mEditMode, selectedModel?.id]);
   const handleSaveModel = async () => {
     if (!mName) return alert("모델명 필수");
@@ -1054,7 +1170,8 @@ export default function App() {
     });
     const eIsShoot = !!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract;
     const eInactive = selectedBooking.status==="CANCELLED"; // 취소 건은 일정에서 빠지므로 충돌 무관
-    const eHold = !eInactive && blocks(selectedBooking, othersSameDay);
+    // 대대행: A쪽(발송처) 점유일로 옮기면 그 날 불가 → HOLD (날짜 단위)
+    const eHold = !eInactive && (blocks(selectedBooking, othersSameDay) || subAgencyBusy(models.find(m=>m.id===selectedBooking.model_id), selectedBooking.shoot_date));
     const reason = "동일 모델 일정 충돌";
     const meetingsToHold = (eIsShoot && !eInactive) ? othersSameDay.filter(b=>!BOOKING_TYPES[b.booking_type||"SHOOT"]?.hasContract && b.status!=="HOLD").map(b=>b.id) : [];
     if (meetingsToHold.length>0) {
@@ -1158,6 +1275,8 @@ export default function App() {
         if (c.conflict) { autoHold = true; holdReason = c.reason; }
       }
     }
+    // 대대행: A쪽(발송처) 점유일이면 그 날은 불가 → HOLD (날짜 단위)
+    if (!autoHold && subAgencyBusy(models.find(m=>m.id===bModel), bDate)) { autoHold = true; holdReason = `${models.find(m=>m.id===bModel)?.source_agency_name || "발송처"} 스케줄 확인 요망`; }
     // 촬영이 기존 미팅과 겹치면 확인 (확인 시 미팅 HOLD 처리)
     if (meetingsToHold.length>0) {
       const labels = [...new Set(sameDay.filter(b=>meetingsToHold.includes(b.id)).map(b=>BOOKING_TYPES[b.booking_type||"SHOOT"]?.label))].join(", ");
@@ -1172,7 +1291,7 @@ export default function App() {
       for (const mid of meetingsToHold) { await sb("bookings","PATCH",{status:"HOLD"},`?id=eq.${mid}`); list=list.map(b=>b.id===mid?{...b,status:"HOLD"}:b); }
       setBookings(list);
       resetBookingForm(); setShowBookingForm(false);
-      if (autoHold) alert(`⚠️ HOLD 처리됨\n사유: ${holdReason}\n같은 날 동일 모델 섭외와 시간이 충돌합니다.`);
+      if (autoHold) alert(`⚠️ HOLD 처리됨\n사유: ${holdReason}`);
       else if (meetingsToHold.length>0) alert(`✅ 촬영 등록 완료\n겹치는 미팅 ${meetingsToHold.length}건이 HOLD로 변경됐습니다. 고객사와 일정을 조율하세요.`);
     } catch(e) { alert("섭외 추가 실패: "+String(e)); }
   };
@@ -1256,7 +1375,10 @@ export default function App() {
   // 섭외 초대(수락 요청) 메일 발송 + 응답 토큰/상태(pending) 보장. 실패해도 앱 흐름 방해 X.
   // 수락형 흐름: 이 메일을 먼저 보내고, 모델이 수락해야(booking-respond) 캘린더가 생성된다.
   const sendBookingInvite = async (tb: any, tm: any, tc: any) => {
-    if (!tm?.email) return;
+    // 소속사 모델은 A 업체로 수락/거절을 받는다 — 이메일(=A 구글캘린더 연동 메일) 우선, 없으면 계산서 메일.
+    const forAgency = tm?.payout_tax_type === "company";
+    const recipient = forAgency ? (tm?.email || tm?.agency_email) : tm?.email;
+    if (!recipient) return;
     let token = tb.model_resp_token;
     const patch: any = {};
     if (!token) { token = genCalToken(); patch.model_resp_token = token; }
@@ -1273,13 +1395,16 @@ export default function App() {
       // 비구글 이메일(네이버·카카오·아웃룩 등)은 구글 게스트 초대가 캘린더에 자동 동기화되지 않으므로,
       // 수락 요청 메일에 "한 번 구독" 링크를 함께 안내해 이후 일시·장소 변경이 자동 반영되게 한다.
       // 구글(gmail/googlemail) 모델은 subUrl="" → 메일은 기존과 100% 동일.
-      const emailDomain = (tm?.email || "").split("@")[1]?.toLowerCase() || "";
+      // 모델 캘린더 구독 링크는 모델 본인에게만 의미 — 대대행(A 업체 수신)엔 붙이지 않는다.
       let subUrl = "";
-      if (emailDomain && emailDomain !== "gmail.com" && emailDomain !== "googlemail.com") {
-        const ct = await ensureCalToken(tm);
-        if (ct) subUrl = calSubscribePageUrl(ct);
+      if (!forAgency) {
+        const emailDomain = (recipient || "").split("@")[1]?.toLowerCase() || "";
+        if (emailDomain && emailDomain !== "gmail.com" && emailDomain !== "googlemail.com") {
+          const ct = await ensureCalToken(tm);
+          if (ct) subUrl = calSubscribePageUrl(ct);
+        }
       }
-      await sendInviteEmail(tm.email, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type }, subUrl);
+      await sendInviteEmail(recipient, ev, { bookingId: tb.id, token }, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type, forAgency }, subUrl);
     } catch {}
   };
 
@@ -1329,10 +1454,12 @@ export default function App() {
       if (liveEventId) {
         try { const r = await gcalSync({ action: "delete", agency_id: agency.id, event_id: liveEventId }); if (r.ok) await saveEventId(null); } catch {}
       }
-      if (opts.mail && tm?.email) {
+      // 소속사는 A 업체(=구글캘린더 메일 우선)로 취소 통지.
+      const cancelTo = (tm?.payout_tax_type === "company") ? (tm?.email || tm?.agency_email) : tm?.email;
+      if (opts.mail && cancelTo) {
         try {
           const ev2 = bookingToCalEvent(tb, tm?.name || "모델", tc?.name || "고객사");
-          await sendCancelEmail(tm.email, ev2, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
+          await sendCancelEmail(cancelTo, ev2, tm?.name || "", agency?.name || "", agency?.owner_email || "", { project: tb.project_name, brand: tc?.name, type: tb.booking_type });
         } catch {}
       }
       return;
@@ -1779,8 +1906,14 @@ async function sharePdf(){
   const settlementMonths   = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.shoot_date)s.add(b.shoot_date.slice(0,7))}); return Array.from(s).sort().reverse(); },[settlementData]);
   const settlementProjects = useMemo(()=>{ const s=new Set<string>(); settlementData.forEach(b=>{if(b.project_name)s.add(b.project_name)}); return Array.from(s); },[settlementData]);
 
+  // 로스터(목록·검색·포트폴리오·패키지)용 모델 — 출처 발송이 만료/철회된 편입 모델은 숨김.
+  // ⚠️ 섭외·정산·매출·캘린더는 원본 `models`를 그대로 써서 이력이 유지된다(여긴 숨김 미적용).
+  const rosterModels = useMemo(()=>{
+    if (!distIdsLoaded) return models; // 출처 상태 조회 전/실패 → 숨기지 않음
+    return models.filter(m => !(m.source_distribution_id && !activeDistIds.has(m.source_distribution_id)));
+  }, [models, activeDistIds, distIdsLoaded]);
   const filteredModels = useMemo(()=>{
-    if (!modelQ.trim()) return models;
+    if (!modelQ.trim()) return rosterModels;
     const q = modelQ.trim().toLowerCase();
     const custMap = new Map<string,any>(customers.map(c=>[c.id,c]));
     const matchedByCustomer = new Set<string>();
@@ -1793,9 +1926,10 @@ async function sharePdf(){
     const hit = (m:any, t:string) =>
       m.name?.toLowerCase().includes(t) || m.phone?.includes(t) || m.email?.toLowerCase().includes(t) ||
       m.specialty?.toLowerCase().includes(t) || m.career?.toLowerCase().includes(t) || m.country?.toLowerCase().includes(t) ||
+      m.source_agency_name?.toLowerCase().includes(t) ||
       (Array.isArray(m.fields)&&m.fields.join(" ").toLowerCase().includes(t)) || matchedByCustomer.has(m.id);
-    return models.filter(m => terms.some(t => hit(m, t)));
-  }, [models, bookings, customers, modelQ]);
+    return rosterModels.filter(m => terms.some(t => hit(m, t)));
+  }, [rosterModels, bookings, customers, modelQ]);
   const customerCategories = useMemo(()=> Array.from(new Set(customers.map((c:any)=>c.category).filter(Boolean))) as string[], [customers]);
   // 분야 직접입력값을 에이전시 영구 목록(client_categories)에 등록
   const addClientCategory = async (name: string) => {
@@ -1957,6 +2091,7 @@ async function sharePdf(){
     { target:"studio"     as Page, label:"포트폴리오", icon:Camera },
     { target:"packages"   as Page, label:"패키지",   icon:CardStack },
     { target:"customers"  as Page, label:"고객사",   icon:Building },
+    ...(FEATURE_DISTRIBUTION?[{ target:"distribution" as Page, label:"발송", icon:Handshake }]:[]),
     ...(canViewFinance?[
       { target:"revenue"    as Page, label:"매출 현황", icon:BarChart },
       { target:"settlement" as Page, label:"정산",     icon:CoinStack },
@@ -2056,6 +2191,7 @@ async function sharePdf(){
             bookings={bookings}
             models={models}
             customers={customers}
+            sharedBusy={sharedBusy}
             onSelectBooking={openBookingFresh}
             initModelId={calInitModel}
             initDate={calInitDate||undefined}
@@ -2070,12 +2206,15 @@ async function sharePdf(){
         {/* ════ 모델 ════ */}
         {page==="models" && <ModelsView filteredModels={filteredModels} modelQ={modelQ} setModelQ={setModelQ} setShowModelForm={setShowModelForm} setSelectedModel={openModelFresh} setMEditMode={setMEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("model")} legacyIdCount={myRole==="owner"?legacyIdCount:0} onMigrateIds={migrateModelIds} />}
 
-        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={models} customers={customers} agency={agency} isMobile={isMobile} />}
+        {page==="packages" && <PackagesView packages={packages} setPackages={setPackages} models={rosterModels} customers={customers} agency={agency} isMobile={isMobile} />}
 
-        {page==="studio" && <ModelStudioView models={models} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} onEditModel={openEditModel} />}
+        {page==="studio" && <ModelStudioView models={rosterModels} setModels={setModels} setPackages={setPackages} agency={agency} isMobile={isMobile} initModelId={studioInitModel} onEditModel={openEditModel} />}
 
         {/* ════ 고객사 ════ */}
         {page==="customers" && <CustomersView filteredCustomers={filteredCustomers} customerQ={customerQ} setCustomerQ={setCustomerQ} setShowCustomerForm={setShowCustomerForm} setSelectedCustomer={openCustomerFresh} setCEditMode={setCEditMode} bookings={bookings} isMobile={isMobile} onBulkAdd={()=>setBulkEntity("customer")} />}
+
+        {/* ════ 발송(Distribution) ════ */}
+        {page==="distribution" && FEATURE_DISTRIBUTION && <DistributionView agency={agency} models={models} createdBy={session?.email||myMember?.name||""} senderName={myMember?.name || (myRole==="owner" ? (agency?.rep_name||"") : "") || ""} isMobile={isMobile} onImportModel={handleImportSharedModel} />}
 
         {/* ════ 정산 ════ */}
         {page==="revenue" && canViewFinance && <RevenueView bookings={bookings} models={models} customers={customers} agency={agency} isMobile={isMobile} onSelectBooking={openBookingFresh} />}
@@ -2117,6 +2256,13 @@ async function sharePdf(){
                   return <div style={{ margin:"6px 0 12px", padding:"9px 12px", borderRadius:9, fontSize:12.5, fontWeight:700, color:col, background:col+"15", border:`1px solid ${col}40` }}>{txt}</div>;
                 })()}
                 <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:700, color:C.muted }}>① 이 건만 보내기</p>
+
+                {m?.payout_tax_type==="company" && (
+                <div onClick={async()=>{ setShowSendMenu(false); await sendBookingInvite(selectedBooking, m, customers.find(c=>c.id===selectedBooking.customer_id)); alert(`${m.agency_name||"발송처"}(소속사) 이메일로 일정 확인 요청을 보냈습니다.\n수락/거절 결과는 '모델 응답'에 표시됩니다.`); }} style={{ border:`1px solid ${C.green}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:C.green+"12" }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:C.text }}>✉️ 소속사에 일정 확인 요청 <span style={{ fontSize:11, color:C.green, fontWeight:700 }}>수락/거절</span></div>
+                  <div style={{ fontSize:12, color:C.muted, marginTop:3, lineHeight:1.5 }}>발송처(A) 구글캘린더 이메일로 수락/거절 요청 발송. A가 가능 여부를 확정/거절하면 '모델 응답'에 표시돼요.</div>
+                </div>
+                )}
 
                 <div onClick={async()=>{ setShowSendMenu(false); await doGcalSync(); }} style={{ border:`1px solid ${(synced?C.green:C.blue)}66`, borderRadius:10, padding:"12px 14px", marginBottom:8, cursor:"pointer", background:(synced?C.green:C.blue)+"12" }}>
                   <div style={{ fontSize:14, fontWeight:800, color:C.text }}>📅 구글 캘린더 {synced?"갱신":"등록"} <span style={{ fontSize:11, color:synced?C.green:C.blue, fontWeight:700 }}>{synced?"등록됨 ✓":"추천"}</span></div>
@@ -2534,7 +2680,7 @@ async function sharePdf(){
             </div>
           )}
           {/* 모델 응답 상태(수락형 흐름) */}
-          {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date&&selectedBooking.model_response&&(()=>{
+          {["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&(["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)||models.find(x=>x.id===selectedBooking.model_id)?.payout_tax_type==="company")&&!!selectedBooking.shoot_date&&selectedBooking.model_response&&(()=>{
             const map:Record<string,{t:string;c:string}>={ pending:{t:"수락 대기",c:C.orange}, accepted:{t:"✓ 수락됨",c:C.green}, declined:{t:"✕ 거절",c:C.red} };
             const s=map[selectedBooking.model_response]||{t:selectedBooking.model_response,c:C.muted};
             return (
@@ -2546,7 +2692,9 @@ async function sharePdf(){
           })()}
           {/* 하단 작업 바 (개선2: 상태/내용과 분리) */}
           {(()=>{
-            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)&&!!selectedBooking.shoot_date;
+            const _sbModel=models.find(x=>x.id===selectedBooking.model_id); const _isSub=_sbModel?.payout_tax_type==="company";
+            // 소속사(편입) 모델은 협의중·HOLD에서도 'A에게 일정 확인 요청'을 보낼 수 있어야 한다(가용 여부 확인 목적).
+            const canSend=["SHOOT","MEETING"].includes(selectedBooking.booking_type||"SHOOT")&&!!selectedBooking.shoot_date&&selectedBooking.status!=="CANCELLED"&&(["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status)||_isSub);
             const canVoucher=!!BOOKING_TYPES[selectedBooking.booking_type||"SHOOT"]?.hasContract&&["CONFIRMED","COMPLETED","SETTLED"].includes(selectedBooking.status);
             if(!editingBooking && !canSend && !canVoucher) return null;
             return (
@@ -2594,6 +2742,7 @@ async function sharePdf(){
             { t:"studio" as Page, l:"포트폴리오", I:Camera },
             { t:"packages" as Page, l:"패키지", I:CardStack },
             { t:"customers" as Page, l:"고객사", I:Building2 },
+            ...(FEATURE_DISTRIBUTION?[{ t:"distribution" as Page, l:"발송", I:Handshake }]:[]),
             ...(canViewFinance?[{ t:"revenue" as Page, l:"매출 현황", I:TrendingUp },{ t:"settlement" as Page, l:"정산", I:Coins }]:[]),
             ...(myRole==="owner"?[{ t:"members" as Page, l:"담당자", I:Users }]:[]),
             ...(myRole==="owner"?[{ t:"company" as Page, l:"회사정보", I:Building2 }]:[]),
@@ -2785,7 +2934,7 @@ async function sharePdf(){
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ color:C.text, fontWeight:700 }}>모델 실지급 {t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:t==="company"?"(소속사)":"(프리랜서)"}</span>
+                  <span style={{ color:C.text, fontWeight:700 }}>{t==="company"?`A 지급액 ${mdl?.source_agency_name?`(${mdl.source_agency_name})`:"(소속사)"}`:`모델 실지급 ${t==="foreigner"?`(${mdl?.visa_type==="E6"?"E6/3.3%":mdl?.visa_type==="C4"?"C4/20%":`외국인/${foreignerRate(mdl)}%`})`:"(프리랜서)"}`}</span>
                   <span style={{ color:C.green, fontWeight:800 }}>{payout.toLocaleString()}원</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
@@ -2914,18 +3063,18 @@ async function sharePdf(){
           </div>
           <button type="button" onClick={()=>openEditModel(selectedModel)} aria-label="수정" title="수정" style={{ position:"absolute", top:10, right:isMobile?60:50, width:isMobile?40:32, height:isMobile?40:32, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", border:`1px solid ${C.purple}`, background:C.card2, color:C.purple, cursor:"pointer", zIndex:60, padding:0 }}><Pencil size={isMobile?18:15}/></button>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:14, marginBottom:16 }}>
-            {[
-              ["전화번호", selectedModel.phone?<a href={`tel:${selectedModel.phone}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{selectedModel.phone}</a>:null],
-              ["이메일",   selectedModel.email],
+            {(()=>{ const imp=!!selectedModel.source_agency_id; const phoneV=imp?selectedModel.agency_phone:selectedModel.phone; const emailV=imp?selectedModel.agency_email:selectedModel.email; return ([
+              ["전화번호", phoneV?<a href={`tel:${phoneV}`} style={{ color:C.blue, textDecoration:"none", fontWeight:600 }}>{phoneV}</a>:null],
+              ["이메일",   emailV],
               ["세무 유형", modelTaxType(selectedModel)==="foreigner"?"외국인 (전액)":modelTaxType(selectedModel)==="company"?"소속사 (계산서 10%)":"프리랜서 (3.3%)"],
               ["정산 방식", selectedModel.payout_pay_value ? (selectedModel.payout_pay_type==="fixed"?`정액 ${Number(selectedModel.payout_pay_value).toLocaleString()}원`:`수수료 ${selectedModel.payout_pay_value}%`) : "-"],
               ...(selectedModel.country?[["국가", selectedModel.country]] as [string,any][]:[]),
-            ].map(([k,v])=>(
+            ] as [string,any][]).map(([k,v])=>(
               <div key={String(k)}>
                 <p style={{ margin:0, fontSize:11, color:C.muted }}>{k}</p>
                 <p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{v||"-"}</p>
               </div>
-            ))}
+            )); })()}
             {selectedModel.is_foreigner&&<>
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>입국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.text }}>{fmtDate(selectedModel.visa_entry)}</p></div>
               <div><p style={{ margin:0, fontSize:11, color:C.muted }}>출국일</p><p style={{ margin:"3px 0 0", fontSize:14, fontWeight:600, color:C.yellow }}>{fmtDate(selectedModel.visa_exit)}</p></div>
@@ -2970,9 +3119,9 @@ async function sharePdf(){
           {/* 링크/연락 — 인스타 · 카톡 · 구글드라이브 · 아이모 · 통장 순 */}
           <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
             {selectedModel.instagram_url&&<a href={selectedModel.instagram_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E1306C22", color:"#E1306C", border:"1px solid #E1306C50", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Camera size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 인스타그램 →</a>}
-            {selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
-            {selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
-            {selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
+            {!selectedModel.source_agency_id&&selectedModel.kakao_id&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#FEE50022", color:"#3A1D1D", border:"1px solid #FEE50066", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}>💬 카톡 {selectedModel.kakao_id}</span>}
+            {!selectedModel.source_agency_id&&selectedModel.drive_url&&<a href={selectedModel.drive_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}50`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, textDecoration:"none" }}><Folder size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> 구글 드라이브 →</a>}
+            {!selectedModel.source_agency_id&&selectedModel.aimo_url&&<a href={selectedModel.aimo_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#4f46e522,#06b6d422)", border:"1px solid #4f46e550", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, textDecoration:"none", color:"#818cf8" }}><Link2 size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> AIMO 프로필 →</a>}
             {selectedModel.bank_info&&<span style={{ display:"inline-flex", alignItems:"center", gap:6, background:C.card2, color:C.textSub, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600 }}><Banknote size={13} style={{ verticalAlign:-2, flexShrink:0 }}/> {selectedModel.bank_info}</span>}
             {/* 외국인 지급방식 + 지급상세 (Payoneer/Wise/현금 포함) */}
             {selectedModel.is_foreigner && selectedModel.payment_method && (()=>{
@@ -3175,7 +3324,7 @@ async function sharePdf(){
             </div>
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>출생연도 (YYYY) *</label>
-              <input style={inp} value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} inputMode="numeric" placeholder="예: 1995 (주민번호 입력 시 자동)" />
+              <input style={inp} type="text" inputMode="numeric" maxLength={4} value={mBirthYear} onChange={e=>setMBirthYear(e.target.value.replace(/[^0-9]/g,"").slice(0,4))} placeholder="예: 1995 (주민번호 입력 시 자동)" />
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
@@ -3281,14 +3430,15 @@ async function sharePdf(){
             />
           </div>
 
-          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 */}
+          {/* 외국인 모델 — 토글 + 비자·정산 팝업 진입 (발송 편입 모델은 소속사 고정이라 숨김) */}
+          {!selectedModel?.source_agency_id &&
           <div style={{ border:`1px solid ${mIsForeign?C.blue:C.border}`, borderRadius:8, padding:"12px 14px", marginBottom:14, background:mIsForeign?C.blue+"11":C.card2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <button type="button" onClick={()=>{ const nv=!mIsForeign; setMIsForeign(nv); setMTaxType(nv?"foreigner":"freelancer"); if(nv){ if(!mVisaType) setMVisaType("E6"); setShowForeignModal(true); } }} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${mIsForeign?C.blue:C.border}`, background:mIsForeign?C.blue+"22":"transparent", color:mIsForeign?C.blue:C.muted, fontSize:12, fontWeight:mIsForeign?700:500, cursor:"pointer" }}><Plane size={12} style={{ verticalAlign:-2 }}/> 외국인 모델 {mIsForeign?"ON":"OFF"}</button>
               {mIsForeign && <span style={{ fontSize:11, color:C.muted }}>{mVisaType==="E6"?"E-6 (연예흥행) · 원천 3.3%":mVisaType==="C4"?"C-4 (단기취업) · 원천 20%":mVisaType==="OTHER"?"기타 비자 · 원천 20%":"비자 미선택"}{mEntry?` · 입국 ${mEntry}`:""}{mExit?` · 만료 ${mExit}`:""}</span>}
             </div>
             {mIsForeign && <button type="button" onClick={()=>setShowForeignModal(true)} style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.blue}`, background:C.blue, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer" }}>{mVisaType ? "비자·정산 정보 확인" : "비자·정산 정보 입력"}</button>}
-          </div>
+          </div>}
 
           {/* ── 모델료 (Day / Half day / Hour) ── */}
           <div style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px", margin:"4px 0 10px", background:C.card2 }}>
@@ -3313,7 +3463,9 @@ async function sharePdf(){
             <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:700, color:C.text }}>정산 · 세무 <span style={{ color:C.red, fontWeight:700 }}>*필수</span></p>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>세무 유형</span>
-              {mIsForeign ? (
+              {selectedModel?.source_agency_id ? (
+                <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>🔒 소속사 (계산서 10%) · {selectedModel.source_agency_name||"발송처"} 발송 편입{mIsForeign?" · 외국인":""}</span>
+              ) : mIsForeign ? (
                 <>
                   <span style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${C.blue}`, background:C.blue+"22", color:C.blue, fontSize:12, fontWeight:700 }}>{mVisaType==="E6"?"외국인 (E6/3.3%)":mVisaType==="C4"?"외국인 (C4/20%)":mVisaType==="OTHER"?"외국인 (기타/20%)":"외국인 (비자율)"}</span>
                   <span style={{ fontSize:11, color:C.muted }}>🔒 세율·주소·식별번호는 [비자·정산 정보]에서 입력</span>
@@ -3324,10 +3476,10 @@ async function sharePdf(){
                 ))
               )}
             </div>
-            {!mIsForeign && mTaxType==="company" && (
+            {mTaxType==="company" && (selectedModel?.source_agency_id || !mIsForeign) && (
               <div style={{ border:`1px solid ${C.blue}44`, borderRadius:8, padding:"10px 12px", margin:"0 0 12px", background:C.blue+"0d" }}>
-                <p style={{ margin:"0 0 3px", fontSize:11.5, fontWeight:700, color:C.blue }}>소속 에이전시 정보 <span style={{ fontWeight:500, color:C.muted }}>(대대행 — 모델 개인정보 대신, 세금계산서 10%로 정산)</span></p>
-                <p style={{ margin:"0 0 9px", fontSize:10.5, color:C.muted }}>일정·정산 연락은 모델이 아니라 아래 에이전시로 갑니다.</p>
+                <p style={{ margin:"0 0 3px", fontSize:11.5, fontWeight:700, color:C.blue }}>소속 에이전시 정보 <span style={{ fontWeight:500, color:C.muted }}>(모델 개인정보 대신, 세금계산서 10%로 정산)</span></p>
+                <p style={{ margin:"0 0 9px", fontSize:10.5, color:C.muted }}>{selectedModel?.source_agency_id ? `${selectedModel.source_agency_name||"발송처"}에서 발송받아 자동 편입된 정보입니다. 정산서는 아래 업체 기준으로 발행됩니다.` : "일정·정산 연락은 모델이 아니라 아래 에이전시로 갑니다."}</p>
                 <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10, marginBottom:10 }}>
                   <div>
                     <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}>소속 에이전시명</label>
@@ -3350,6 +3502,8 @@ async function sharePdf(){
                 <input style={{ ...inp, marginBottom:0 }} type="email" value={mAgencyEmail} onChange={e=>setMAgencyEmail(e.target.value)} placeholder="agency@example.com" />
               </div>
             )}
+            {/* 정산방식(수수료/정액) — 발송 편입(소속사) 모델은 숨김(기준액=노출가 고정, 마진은 섭외 공급가로) */}
+            {!selectedModel?.source_agency_id && (<>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, color:C.muted, minWidth:60 }}>정산 방식</span>
               {([["rate","수수료(%)"],["fixed","정액(원)"]] as const).map(([k,l])=>(
@@ -3370,9 +3524,10 @@ async function sharePdf(){
                 </div>
               ))}
             </div>
+            </>)}
           </div>
 
-          {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── 소속사(대대행)는 원천징수 무관이라 숨김 · 외국인은 [비자·정산 정보] 모달에서 입력 */}
+          {/* ── 세무 신고용 정보 (대표·정산권한자 전용) ── 소속사는 원천징수 무관이라 숨김 · 외국인은 [비자·정산 정보] 모달에서 입력 */}
           {canViewFinance && mTaxType!=="company" && !mIsForeign && (()=>{
             const idLabel = "주민등록번호";
             const idPh = "13자리 (- 없이)";
@@ -3413,22 +3568,22 @@ async function sharePdf(){
               </label>
               <input style={inp} type="text" placeholder="@아이디 또는 URL" value={mInstagram} onChange={e=>setMInstagram(e.target.value)} />
             </div>
-            <div>
+            {!selectedModel?.source_agency_id && <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#4285F4", marginBottom:5 }}>
                 <svg width="13" height="13" viewBox="0 0 87.3 78" fill="none"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066DA"/><path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.5 1.2L6.6 11.4C5.25 12.2 4.1 13.3 3.3 14.65L43.65 25z" fill="#00AC47"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.95 0H25.45c-1.55 0-3.1.4-4.5 1.2L43.65 25z" fill="#EA4335"/><path d="M43.65 53H27.5L13.75 76.8c1.4.8 2.95 1.2 4.5 1.2h50.4c1.55 0 3.1-.4 4.5-1.2L57.4 53H43.65z" fill="#00832D"/><path d="M73.65 25H43.65l13.75 28h16.25l-2.5-4.35L87.3 25H73.65z" fill="#FFBA00"/><path d="M87.3 25H73.65L57.4 53H73.65L87.3 25z" fill="#FF6D00"/></svg>
                 구글 드라이브
               </label>
               <input style={inp} type="url" placeholder="https://drive.google.com/..." value={mDrive} onChange={e=>setMDrive(e.target.value)} />
-            </div>
+            </div>}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)", gap:10 }}>
-            <div>
+            {!selectedModel?.source_agency_id && <div>
               <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, marginBottom:5, color:"#3A2A00" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24"><ellipse cx="12" cy="11" rx="10" ry="8.5" fill="#FEE500"/><circle cx="9" cy="11" r="1.2" fill="#3A1D00"/><circle cx="12" cy="11" r="1.2" fill="#3A1D00"/><circle cx="15" cy="11" r="1.2" fill="#3A1D00"/></svg>
                 <span style={{ color:"#c9a000" }}>카카오톡 ID</span>
               </label>
               <input style={inp} placeholder="카카오톡 아이디" value={mKakao} onChange={e=>setMKakao(e.target.value)} />
-            </div>
+            </div>}
             <div>
               <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5 }}><Banknote size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 통장 (은행 · 계좌번호)</label>
               <div style={{ display:"flex", gap:6 }}>
@@ -3441,14 +3596,14 @@ async function sharePdf(){
             </div>
           </div>
 
-          {/* AIMO 링크 */}
-          <div>
+          {/* AIMO 링크 (발송 편입 모델은 숨김) */}
+          {!selectedModel?.source_agency_id && <div>
             <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, marginBottom:5 }}>
               <span style={{ background:"linear-gradient(135deg,#4f46e5,#06b6d4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", fontWeight:800, fontSize:13, letterSpacing:"-0.5px" }}>AIMO</span>
               <span style={{ color:C.muted }}>모델 페이지 링크 (aimo.kr)</span>
             </label>
             <input style={inp} type="url" placeholder="https://aimo.kr/models/..." value={mAimoUrl} onChange={e=>setMAimoUrl(e.target.value)} />
-          </div>
+          </div>}
 
           <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:5, marginTop:4 }}>메모</label>
           <textarea style={{ ...inp, height:60, resize:"none" }} placeholder="특이사항" value={mMemo} onChange={e=>setMMemo(e.target.value)} />

@@ -2,7 +2,12 @@ export const APP_VERSION = "1.2.0";
 export const SESSION_KEY = "modiq_session_v6";
 export const DATA_CACHE_KEY = "modiq_data_cache_v1";
 export type AuthMode = "login"|"signup";
-export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages"|"studio";
+export type Page = "dashboard"|"bookings"|"models"|"customers"|"settlement"|"revenue"|"members"|"plan"|"calendar"|"company"|"packages"|"studio"|"distribution";
+
+// ── 기능 플래그 ────────────────────────────────────────────────
+// 발송(Distribution): 에이전시 간 모델 자료 단방향 발송. 문제 시 false로 즉시 비활성화
+// (메뉴/페이지/라우팅이 모두 이 플래그로 감싸져 있어 코드 롤백 없이 끌 수 있다).
+export const FEATURE_DISTRIBUTION = true;
 
 // ── 요금제 ─────────────────────────────────────────────────────
 export const PLAN_FEATURES: Record<string, { baseMembers: number; additionalPrice: number; alimtalk: boolean }> = {

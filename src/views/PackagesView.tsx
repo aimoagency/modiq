@@ -221,7 +221,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const pickModels = useMemo(() => {
     const q = pickQ.trim().toLowerCase();
     const used = new Set((draft?.items || []).map(i => i.model_id).filter(Boolean));
-    return models.filter(m => !used.has(m.id) && (!q || (m.name || "").toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q)));
+    return models.filter(m => !used.has(m.id) && (!q || (m.name || "").toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q) || (m.source_agency_name || "").toLowerCase().includes(q)));
   }, [models, pickQ, draft]);
 
   // ──────────────────────────────── 목록 화면 ────────────────────────────────
@@ -440,7 +440,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
         <div onClick={() => setModelPick(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, width: "92%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 16, color: C.text }}>모델 선택</h3>
-            <SearchInput placeholder="이름·카테고리 검색" value={pickQ} onChange={setPickQ} autoFocus />
+            <SearchInput placeholder="이름·카테고리·업체명 검색" value={pickQ} onChange={setPickQ} autoFocus />
             <div style={{ overflowY: "auto", display: "grid", gap: 6 }}>
               {pickModels.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>모델이 없습니다.</p>}
               {pickModels.map(m => (

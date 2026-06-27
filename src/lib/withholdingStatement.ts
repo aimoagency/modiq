@@ -206,7 +206,7 @@ export const buildTransactionStatementHtml = (inp: TxStatementInput): string => 
     </table>
 
     <p style="font-size:11px;color:#8a93a0;line-height:1.7;margin:0 0 16px">
-      · 소속사(대대행) 모델은 원천징수 대상이 아니며, 공급가액에 부가가치세 10%가 가산됩니다.<br>
+      · 소속사 모델은 원천징수 대상이 아니며, 공급가액에 부가가치세 10%가 가산됩니다.<br>
       · 본 거래명세서는 거래내역 확인용이며, <b>정식 세금계산서는 공급자(소속 에이전시)가 발행</b>합니다.<br>
       · 세금계산서 수취 후 부가세 신고 시 매입세액으로 공제됩니다.
     </p>

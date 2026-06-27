@@ -27,6 +27,8 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
 }) {
   const [open, setOpen] = useState(!isMobile);
   const [q, setQ] = useState("");
+  const [srcF, setSrcF] = useState(""); // 받은 모델(대대행) 업체 필터 — "" 전체
+  const sources = useMemo(() => Array.from(new Set(models.map((m: any) => m.source_agency_name).filter(Boolean))) as string[], [models]);
   const [genderF, setGenderF] = useState<string[]>([]);
   const [natF, setNatF] = useState<string[]>([]);
   const [catF, setCatF] = useState<string[]>([]);
@@ -51,7 +53,8 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
     const fmax = feeMax === "" ? null : Number(feeMax) * 10000;
     const cmin = num(carMin), cmax = num(carMax);
     return models.filter(m => {
-      if (s && !((m.name || "").toLowerCase().includes(s) || (m.specialty || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)))) return false;
+      if (s && !((m.name || "").toLowerCase().includes(s) || (m.specialty || "").toLowerCase().includes(s) || (m.source_agency_name || "").toLowerCase().includes(s) || (Array.isArray(m.fields) && m.fields.join(",").toLowerCase().includes(s)))) return false;
+      if (srcF && m.source_agency_name !== srcF) return false;
       if (genderF.length && !genderF.includes(m.gender)) return false;
       if (natF.length) { const f = isForeign(m) ? "외국인" : "국내"; if (!natF.includes(f)) return false; }
       if (catF.length && !catF.includes(m.category)) return false;
@@ -75,11 +78,11 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
       if (car != null && cmax != null && car > cmax) return false;
       return true;
     });
-  }, [models, q, genderF, natF, catF, fieldF, hairF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax, carMin, carMax]);
+  }, [models, q, srcF, genderF, natF, catF, fieldF, hairF, ageMin, ageMax, hMin, hMax, shMin, shMax, feeMin, feeMax, carMin, carMax]);
 
-  const reset = () => { setQ(""); setGenderF([]); setNatF([]); setCatF([]); setFieldF([]); setHairF([]); setAgeMin(DEF.ageMin); setAgeMax(DEF.ageMax); setHMin(DEF.hMin); setHMax(DEF.hMax); setShMin(DEF.shMin); setShMax(DEF.shMax); setFeeMin(DEF.feeMin); setFeeMax(DEF.feeMax); setCarMin(DEF.carMin); setCarMax(DEF.carMax); };
+  const reset = () => { setQ(""); setSrcF(""); setGenderF([]); setNatF([]); setCatF([]); setFieldF([]); setHairF([]); setAgeMin(DEF.ageMin); setAgeMax(DEF.ageMax); setHMin(DEF.hMin); setHMax(DEF.hMax); setShMin(DEF.shMin); setShMax(DEF.shMax); setFeeMin(DEF.feeMin); setFeeMax(DEF.feeMax); setCarMin(DEF.carMin); setCarMax(DEF.carMax); };
   const rangesChanged = (ageMin !== DEF.ageMin || ageMax !== DEF.ageMax ? 1 : 0) + (hMin !== DEF.hMin || hMax !== DEF.hMax ? 1 : 0) + (shMin !== DEF.shMin || shMax !== DEF.shMax ? 1 : 0) + (feeMin !== DEF.feeMin || feeMax !== DEF.feeMax ? 1 : 0) + (carMin !== DEF.carMin || carMax !== DEF.carMax ? 1 : 0);
-  const active = genderF.length + natF.length + catF.length + fieldF.length + hairF.length + (q.trim() ? 1 : 0) + rangesChanged;
+  const active = genderF.length + natF.length + catF.length + fieldF.length + hairF.length + (q.trim() ? 1 : 0) + (srcF ? 1 : 0) + rangesChanged;
 
   const chip = (on: boolean): CSSProperties => ({ minWidth: 46, textAlign: "center", padding: "4px 10px", borderRadius: 14, border: `1px solid ${on ? C.blue : C.border}`, background: on ? C.blue + "22" : "transparent", color: on ? C.blue : C.muted, fontSize: 11.5, fontWeight: on ? 700 : 500, cursor: "pointer", boxSizing: "border-box" });
   const sec: CSSProperties = { fontSize: 11, color: C.muted, fontWeight: 700, margin: "12px 0 5px" };
@@ -98,8 +101,14 @@ export default function ModelBrowser({ models, isMobile = false, onSelect, selec
 
   const filterControls = (
     <div>
-      <SearchInput placeholder="이름·특기 검색" value={q} onChange={setQ} style={{ marginBottom: 8 }} />
-      <p style={{ ...sec, marginTop: 0 }}>성별</p>
+      <SearchInput placeholder="이름·특기·업체명 검색" value={q} onChange={setQ} style={{ marginBottom: 8 }} />
+      {sources.length > 0 && (
+        <select value={srcF} onChange={e => setSrcF(e.target.value)} style={{ ...inp, marginBottom: 0 }}>
+          <option value="">전체 업체 (받은 모델)</option>
+          {sources.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      )}
+      <p style={{ ...sec, marginTop: 12 }}>성별</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{GENDERS.map(([c, l]) => <span key={c} onClick={() => toggle(genderF, setGenderF, c)} style={chip(genderF.includes(c))}>{l}</span>)}</div>
       <p style={sec}>국적</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{["국내", "외국인"].map(v => <span key={v} onClick={() => toggle(natF, setNatF, v)} style={chip(natF.includes(v))}>{v}</span>)}</div>

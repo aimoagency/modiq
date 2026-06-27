@@ -153,7 +153,7 @@ export const sendCalEmail = (
 export const sendInviteEmail = (
   to: string, ev: CalEvent, ids: { bookingId: string; token: string },
   modelName = "", agencyName = "", replyTo = "",
-  meta: { project?: string; brand?: string; type?: string } = {},
+  meta: { project?: string; brand?: string; type?: string; forAgency?: boolean } = {},
   subscribeUrl = "",
 ) => {
   const project = (meta.project || "").trim();
@@ -189,7 +189,9 @@ export const sendInviteEmail = (
         <table style="width:100%;border-collapse:collapse">${rows}</table>
       </div>
       <div style="padding:2px 22px 20px">
-        <p style="font-size:13px;color:#16181f;margin:0 0 12px;line-height:1.7">${modelName ? esc(modelName) + "님, " : ""}위 일정을 확인하고 <b>수락</b> 또는 <b>거절</b>해 주세요.<br><span style="color:#8a93a0;font-size:12px">Please review and accept or decline. Accepting adds it to the calendar.</span></p>
+        <p style="font-size:13px;color:#16181f;margin:0 0 12px;line-height:1.7">${meta.forAgency
+          ? `귀사 소속 모델 <b>${esc(modelName)}</b>님의 섭외 요청입니다. 위 일정을 확인하고 <b>수락</b> 또는 <b>거절</b>해 주세요.<br><span style="color:#8a93a0;font-size:12px">A booking request for your model. Please accept or decline.</span>`
+          : `${modelName ? esc(modelName) + "님, " : ""}위 일정을 확인하고 <b>수락</b> 또는 <b>거절</b>해 주세요.<br><span style="color:#8a93a0;font-size:12px">Please review and accept or decline. Accepting adds it to the calendar.</span>`}</p>
         <table style="width:100%;border-collapse:separate;border-spacing:6px 0"><tr>
           <td style="width:60%"><a href="${acceptUrl}" style="display:block;text-align:center;background:#10b981;color:#fff;text-decoration:none;padding:13px;border-radius:8px;font-weight:800;font-size:15px">✓ 수락 / Accept</a></td>
           <td style="width:40%"><a href="${declineUrl}" style="display:block;text-align:center;background:#ffffff;color:#ef4444;text-decoration:none;padding:12px;border-radius:8px;font-weight:800;font-size:15px;border:1px solid #fecaca">✕ 거절</a></td>

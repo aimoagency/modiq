@@ -9,7 +9,7 @@ import { User, CalendarDays, CalendarOff, ClipboardList, Clock, MapPin, Folder, 
 import SearchInput from "../components/SearchInput";
 
 // ── 캘린더 컴포넌트 ────────────────────────────────────────────
-export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false }: {
+export default function CalendarView({ bookings, models, customers, onSelectBooking, onAddBooking, initModelId = "", initDate = "", modelOffs = [], onAddModelOff, onDeleteModelOff, isMobile = false, sharedBusy = {} }: {
   bookings: any[]; models: any[]; customers: any[];
   onSelectBooking: (b: any) => void;
   onAddBooking: (preModel?: string, preDate?: string) => void;
@@ -19,6 +19,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   onAddModelOff?: (model_id: string, start: string, end: string, reason?: string) => void;
   onDeleteModelOff?: (id: string) => void;
   isMobile?: boolean;
+  sharedBusy?: Record<string, { shoot_date: string }[]>; // 대대행 모델 A쪽 점유일(source_model_id 기준)
 }) {
   const today = new Date();
   // 대시보드 등에서 특정 날짜로 진입 시: 해당 월로 이동 + 그 날짜를 선택 상태로 → 우측 패널 자동 오픈
@@ -77,6 +78,17 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
 
   const selDateBookings = selDate ? (bookingsByDate[selDate]||[]) : [];
 
+  // 대대행 모델 'A쪽 점유일'(가용일) — 모델 필터 시, 그 모델의 source_model_id 기준 날짜만.
+  // ⚠️ 시간은 표시하지 않는다(상대 매출 추정 방지). B가 그 날 잡아도 '외부점유' 표시는 유지(A 스케줄 확인 필요 표식).
+  const extBusyDates: Set<string> = (() => {
+    const s = new Set<string>();
+    const srcId = modelFilter ? models.find(m=>m.id===modelFilter)?.source_model_id : null;
+    if (srcId && sharedBusy[srcId]) {
+      sharedBusy[srcId].forEach(b => { const d = (b.shoot_date||"").slice(0,10); if (d) s.add(d); });
+    }
+    return s;
+  })();
+
 
   // 모델 휴무: 해당 날짜에 걸친 휴무들 (모델 필터 시 그 모델만)
   const modelName = (id:string) => models.find(m=>m.id===id)?.name || "?";
@@ -102,13 +114,16 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
   const visaEntry = filteredModel?.visa_entry || null;
   const visaExit  = filteredModel?.visa_exit  || null;
 
-  // 날짜가 비자 유효 범위 밖인지
+  // 날짜가 비자 유효 범위 밖인지 (출국일 '당일 포함' 그 이후는 불가로 처리)
   const isOutsideVisa = (date: string) => {
     if (!filteredModel?.is_foreigner || !visaEntry || !visaExit) return false;
-    return date < visaEntry || date > visaExit;
+    return date < visaEntry || date >= visaExit;
   };
 
   const filterModel = models.find(m=>m.id===modelFilter);
+  // 모델 필터 칩: 섭외(예약)가 있는 모델만 노출(등록만 된 모델까지 전부 나열되는 것 방지). 현재 선택 모델은 항상 포함.
+  const bookedModelIds = new Set(bookings.map((b:any)=>b.model_id).filter(Boolean));
+  const filterModels = models.filter(m=>bookedModelIds.has(m.id) || m.id===modelFilter);
 
   return (
     <div>
@@ -125,7 +140,7 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
         <span style={{ fontSize:12, color:C.muted, fontWeight:600 }}>모델 필터:</span>
         <button onClick={()=>setModelFilter("")} style={{ padding:"4px 12px", borderRadius:20, border:`1px solid ${!modelFilter?C.blue:C.border}`, background:!modelFilter?C.blue+"22":"transparent", color:!modelFilter?C.blue:C.muted, fontSize:12, fontWeight:600, cursor:"pointer" }}>전체</button>
-        {models.map(m=>{
+        {filterModels.map(m=>{
           const isSel = modelFilter===m.id;
           return (
             <button key={m.id} onClick={()=>{ setModelFilter(isSel?"":m.id); setSelDate(null); }}
@@ -285,9 +300,11 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             const isSel      = cell.cur&&cell.date===selDate;
             const outsideVisa= cell.cur&&cell.date?isOutsideVisa(cell.date):false;
             const dayBookings= cell.date?(bookingsByDate[cell.date]||[]):[];
-            const isVisaExit = !!cell.date && !!visaExit && cell.date===visaExit;
+            const isVisaExit  = !!cell.date && !!visaExit  && cell.date===visaExit;
+            const isVisaEntry = !!cell.date && !!visaEntry && cell.date===visaEntry;
             const krHol  = cell.date ? KR_HOLIDAYS[cell.date] : undefined;
             const dayOffs = cell.cur && cell.date ? offsForDate(cell.date) : [];
+            const isExtBusy = !!cell.cur && !!cell.date && extBusyDates.has(cell.date); // 대대행 A쪽 점유(날짜만)
 
             // ── [추가] 충돌 정보 ──
             const dayConflict = cell.date ? conflictByDate[cell.date] : undefined;
@@ -305,17 +322,21 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
                 onMouseEnter={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=C.card2; }}
                 onMouseLeave={e=>{ if(cell.cur&&!isSel) e.currentTarget.style.background=isToday?C.card2:"transparent"; }}
               >
+                {/* 비자 입국일 표시선 */}
+                {isVisaEntry&&<div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:C.green, borderRadius:"2px 2px 0 0" }} />}
                 {/* 비자 만료일 표시선 */}
                 {isVisaExit&&<div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:C.red, borderRadius:"2px 2px 0 0" }} />}
 
                 {/* 날짜 숫자 */}
                 <div style={{ marginBottom:3, textAlign:isMobile?"center":"left" }}>
-                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":"transparent", color:isToday?"white":isVisaExit?C.red:!cell.cur?C.border:krHol?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
+                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:22, height:22, borderRadius:"50%", fontSize:12, fontWeight:isToday?800:600, background:isToday?C.blue:isVisaExit?C.red+"22":isVisaEntry?C.green+"22":"transparent", color:isToday?"white":isVisaExit?C.red:isVisaEntry?C.green:!cell.cur?C.border:krHol?C.red:col===0?C.red:col===6?C.blue:C.text }}>{cell.day}</span>
                   {/* [추가] 충돌 ⚠️ 배지 */}
                   {dayConflict&&<span title={dayConflict.worst==="OVERLAP"?"시간 겹침 충돌":"완충시간 부족"} style={{ marginLeft:3, display:"inline-flex", alignItems:"center", verticalAlign:"middle" }}><AlertTriangle size={isMobile?9:11} color={conflictColor!} strokeWidth={2.4} style={{ flexShrink:0 }}/></span>}
+                  {!isMobile&&isVisaEntry&&<span style={{ fontSize:9, color:C.green, fontWeight:700, marginLeft:2 }}>입국</span>}
                   {!isMobile&&isVisaExit&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>출국</span>}
                   {!isMobile&&krHol&&<span style={{ fontSize:9, color:C.red, fontWeight:700, marginLeft:2 }}>{krHol}</span>}
                   {dayOffs.length>0&&<span title={dayOffs.map((o:any)=>`${modelName(o.model_id)} 휴무 (${fmtD(o.start_date)}~${fmtD(o.end_date)})`).join("\n")} style={{ fontSize:9, color:C.muted, fontWeight:700, marginLeft:2, whiteSpace:"nowrap" }}><CalendarOff size={9} style={{ verticalAlign:-1, flexShrink:0 }}/>{isMobile?"":(modelFilter?" 휴무":` 휴무 ${dayOffs.length}`)}</span>}
+                  {isExtBusy&&<span title="발송처에서 점유 중 — 외부 일정(날짜만 공유)" style={{ fontSize:9, color:C.orange, fontWeight:800, marginLeft:2, whiteSpace:"nowrap" }}>● {isMobile?"":"외부점유"}</span>}
                 </div>
 
                 {/* 섭외 표시: 모바일=점, 데스크톱=뱃지 */}
@@ -381,6 +402,14 @@ export default function CalendarView({ bookings, models, customers, onSelectBook
             </div>
           </div>
 
+          {/* 발송처 외부 점유 안내(날짜만 — 시간·내용 비공개) */}
+          {selDate&&extBusyDates.has(selDate)&&(
+            <div style={{ background:C.orange+"14", border:`1px solid ${C.orange}55`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>
+              <span style={{ fontSize:12.5, color:C.text }}>
+                <Flag size={12} color={C.orange} style={{ verticalAlign:-2, flexShrink:0 }}/> 이 날은 <strong>발송처에서 점유 중</strong>입니다. 일정 가능 여부는 메일 등으로 협의하세요. <span style={{ color:C.muted }}>(시간·내용은 비공개)</span>
+              </span>
+            </div>
+          )}
           {/* 모델 휴무 안내 */}
           {selDate&&offsForDate(selDate).length>0&&(
             <div style={{ background:C.muted+"14", border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", marginBottom:12 }}>

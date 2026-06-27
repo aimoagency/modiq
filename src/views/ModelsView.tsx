@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { C, inp, btnS } from "../theme";
-import RevenueRanking from "../components/RevenueRanking";
-import { periodRange } from "../lib/utils";
-import { visaDday, modelAge } from "../lib/utils";
-import { User, Phone, Plane } from "../components/icons";
+import { useState, useMemo } from "react";
+import { C, btnS } from "../theme";
+import { visaDday, ageFromSSN6 } from "../lib/utils";
+import { User, Phone, Coins, Plane } from "../components/icons";
 import SearchInput from "../components/SearchInput";
 import { useVisibleCount } from "../lib/useVisibleCount";
 
@@ -16,14 +14,23 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   legacyIdCount?: number;
   onMigrateIds?: ()=>void;
 }) {
-  const [sortMode, setSortMode] = useState<"reg"|"rev">("reg");
-  const [revBasis, setRevBasis] = useState<"real"|"expected">("real");
-  const [periodPreset, setPeriodPreset] = useState("3m");
-  const [cFrom, setCFrom] = useState("");
-  const [cTo, setCTo] = useState("");
-  const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
+  // 발송업체 필터 + 이름 정렬(가나다/ABC)
+  const [srcFilter, setSrcFilter] = useState<string>(""); // "" 전체 · "__own__" 직접등록 · 그 외 발송처명
+  const [sort, setSort] = useState<"reg"|"ganada"|"abc">("reg");
+  const sources = useMemo(() => Array.from(new Set(filteredModels.map(m=>m.source_agency_name).filter(Boolean))) as string[], [filteredModels]);
+  const displayModels = useMemo(() => {
+    let base = filteredModels;
+    if (srcFilter==="__own__") base = filteredModels.filter(m=>!m.source_agency_id);
+    else if (srcFilter) base = filteredModels.filter(m=>m.source_agency_name===srcFilter);
+    if (sort==="reg") return base;
+    const isKo = (s:string)=>/[가-힣]/.test(s||"");
+    const arr = [...base];
+    if (sort==="ganada") arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?-1:1; return String(a.name||"").localeCompare(String(b.name||""),"ko"); });
+    else arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?1:-1; return String(a.name||"").localeCompare(String(b.name||""),"en"); });
+    return arr;
+  }, [filteredModels, srcFilter, sort]);
   // 점진 렌더 — 1000명+ 목록을 한 번에 다 그리지 않음(스크롤 시 추가)
-  const { visible, hasMore, sentinelRef } = useVisibleCount(filteredModels, 60);
+  const { visible, hasMore, sentinelRef } = useVisibleCount(displayModels, 60);
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -36,29 +43,22 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
       </div>
       <SearchInput placeholder="이름·국적·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={setModelQ} />
       <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
-        {(["reg","rev"] as const).map(m=>(
-          <button key={m} onClick={()=>setSortMode(m)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sortMode===m?C.blue:C.border}`, background:sortMode===m?C.blue+"22":"transparent", color:sortMode===m?C.blue:C.muted, fontSize:12, fontWeight:sortMode===m?700:500, cursor:"pointer" }}>{m==="reg"?"등록순":"매출순"}</button>
+        {([["reg","등록순"],["ganada","가나다"],["abc","ABC"]] as const).map(([k,l])=>(
+          <button key={k} onClick={()=>setSort(k)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sort===k?C.blue:C.border}`, background:sort===k?C.blue+"22":"transparent", color:sort===k?C.blue:C.muted, fontSize:12, fontWeight:sort===k?700:500, cursor:"pointer" }}>{l}</button>
         ))}
-        {sortMode==="rev"&&(["real","expected"] as const).map(bb=>(
-          <button key={bb} onClick={()=>setRevBasis(bb)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${revBasis===bb?(bb==="real"?C.green:C.yellow):C.border}`, background:revBasis===bb?(bb==="real"?C.green:C.yellow)+"22":"transparent", color:revBasis===bb?(bb==="real"?C.green:C.yellow):C.muted, fontSize:12, fontWeight:revBasis===bb?700:500, cursor:"pointer" }}>{bb==="real"?"실매출":"예상매출"}</button>
-        ))}
-        {sortMode==="rev"&&([["month","이번 달"],["3m","3개월"],["6m","6개월"],["1y","12개월"],["custom","기간 설정"]] as const).map(([k,l])=>(
-          <button key={k} onClick={()=>setPeriodPreset(k)} style={{ padding:"5px 12px", borderRadius:20, border:`1px solid ${periodPreset===k?C.blue:C.border}`, background:periodPreset===k?C.blue+"22":"transparent", color:periodPreset===k?C.blue:C.muted, fontSize:12, fontWeight:periodPreset===k?700:500, cursor:"pointer" }}>{l}</button>
-        ))}
-        {sortMode==="rev"&&periodPreset==="custom"&&(
-          <span style={{ display:"flex", alignItems:"center", gap:5, ...(isMobile?{width:"100%", marginTop:6}:{}) }}>
-            <input type="date" value={cFrom} onChange={e=>setCFrom(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"4px 7px", fontSize:12 }} />
-            <span style={{ color:C.muted, fontSize:12 }}>~</span>
-            <input type="date" value={cTo} onChange={e=>setCTo(e.target.value)} style={{ ...inp, marginBottom:0, width:isMobile?undefined:"auto", flex:isMobile?1:undefined, minWidth:0, padding:"4px 7px", fontSize:12 }} />
-          </span>
-        )}
+        {/* 발송업체 드롭다운 — 수신(편입)한 모델이 있을 때만 활성화 */}
+        <select value={srcFilter} onChange={e=>setSrcFilter(e.target.value)} disabled={sources.length===0}
+          style={{ marginLeft:"auto", background:C.card2, color:sources.length?C.text:C.muted, border:`1px solid ${C.border}`, borderRadius:8, padding:"6px 10px", fontSize:12, cursor:sources.length?"pointer":"not-allowed", opacity:sources.length?1:0.5, maxWidth:220 }}>
+          <option value="">발송업체 전체</option>
+          <option value="__own__">직접 등록</option>
+          {sources.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
-      {sortMode==="rev" ? <RevenueRanking items={filteredModels} bookings={bookings} idKey="model_id" basis={revBasis} period={period} onSelect={(m)=>{ setSelectedModel(m); setMEditMode(false); }} showThumb isMobile={isMobile} /> :
-       filteredModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
+      {displayModels.length===0 ? <p style={{ color:C.muted }}>모델이 없습니다.</p> : (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:6 }}>
           {visible.map(m=>{
             const dday = m.is_foreigner ? visaDday(m.visa_exit) : "";
-            const age = modelAge(m);
+            const age = m.birth_year ? (new Date().getFullYear() - Number(m.birth_year)) : ageFromSSN6(m.ssn6);
             const ddayColor = dday==="만료" ? C.red : dday.startsWith("D-") && parseInt(dday.slice(2)) <= 7 ? C.orange : C.yellow;
             if (isMobile) return (
               <div key={m.id} onClick={()=>{ setSelectedModel(m); setMEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
@@ -68,10 +68,12 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                     : <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:13, flexShrink:0 }}>{m.name?m.name[0]:"?"}</div>
                   }
                   <strong style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flexShrink:1 }}>{m.name}</strong>
+                  {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 발송 편입`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{m.source_agency_name||"소속사"}</span>}
                   {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}><Plane size={9} style={{ verticalAlign:-1, flexShrink:0 }}/> {dday}</span>}
                   {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:"", (m.career_years!=null&&m.career_years!=="")?`경력 ${m.career_years}년`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{txt}</span>:null; })()}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub, paddingLeft:42 }}>
+                  {m.rate>0&&<span>{m.rate.toLocaleString()}원</span>}
                   {m.payout_pay_value>0&&<span>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                   <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
                 </div>
@@ -95,13 +97,15 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 }
                 {/* 이름 */}
                 <span style={{ fontWeight:800, fontSize:15, color:C.text, minWidth:60 }}>{m.name}</span>
+                {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 발송 편입`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:10, fontWeight:800, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap" }}>{m.source_agency_name||"소속사"}</span>}
                 {/* 성별 · 나이 */}
                 {(()=>{ const g=m.gender==="F"?"여성":m.gender==="M"?"남성":""; const txt=[g, age!==null?`${age}세`:"", (m.career_years!=null&&m.career_years!=="")?`경력 ${m.career_years}년`:""].filter(Boolean).join(" · "); return txt?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{txt}</span>:null; })()}
                 {/* 외국인 D-day */}
                 {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span>}
                 {/* 전화 */}
                 {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ fontSize:12, color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
-                {/* 정산방식 */}
+                {/* 단가/수수료 */}
+                {m.rate>0&&<span style={{ fontSize:12, color:C.textSub }}><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.rate.toLocaleString()}원</span>}
                 {m.payout_pay_value>0&&<span style={{ fontSize:12, color:C.textSub }}>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
                 {/* 브랜드 아이콘 링크 */}
                 {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:3, fontSize:12, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
