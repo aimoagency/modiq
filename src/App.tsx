@@ -569,7 +569,7 @@ export default function App() {
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
   const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
   // V4 대대행 출처 컬럼(마이그레이션 적용 후 존재) — 미적용 환경에선 loadData가 자동 폴백
-  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id";
+  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id,videos";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);

@@ -11,6 +11,7 @@ import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck, Pencil } from "../components/icons";
 import SearchInput from "../components/SearchInput";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
+import { parseVideoUrl, fetchVimeoMeta, type VideoRef } from "../lib/video";
 import { useBackClose } from "../lib/backstack";
 import CompCardModal from "../components/CompCardModal";
 import ModelBrowser from "../components/ModelBrowser";
@@ -91,6 +92,10 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
   const [packaging, setPackaging] = useState(false);
   const [compModel, setCompModel] = useState<any | null>(null); // 컴카드 모달 대상
   const [viewer, setViewer] = useState<number | null>(null); // 사진 확대 뷰어(인덱스)
+  const [vidUrl, setVidUrl] = useState(""); // 영상 링크 입력
+  const [vidErr, setVidErr] = useState(""); // 영상 링크 오류
+  const [vidAdding, setVidAdding] = useState(false); // 영상 추가 진행중(Vimeo 메타 조회)
+  const [videoOpen, setVideoOpen] = useState<VideoRef | null>(null); // 영상 재생 모달
   const [dragIdx, setDragIdx] = useState<number | null>(null); // 갤러리 드래그 정렬
   const [thumbDrag, setThumbDrag] = useState(false); // 갤러리 사진을 썸네일 영역으로 드래그 중
   const [migrating, setMigrating] = useState(false); // 기존 base64 → Storage 이전 진행중
@@ -184,6 +189,33 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     } catch (e) { alert("사진 저장 실패: " + String(e)); }
     setSaving(false);
   };
+
+  // ── 영상(외부 임베드) — models.videos jsonb[] (저장/대역폭 0, YouTube·Vimeo 링크) ──
+  const MAX_VIDEOS = 8;
+  const videos: VideoRef[] = Array.isArray(sel?.videos) ? sel!.videos : [];
+  const saveVideos = async (next: VideoRef[]) => {
+    if (!sel) return;
+    setSaving(true);
+    try {
+      await sb("models", "PATCH", { videos: next }, `?id=eq.${sel.id}`);
+      setModels(prev => prev.map(m => m.id === sel.id ? { ...m, videos: next } : m));
+    } catch (e) { alert("영상 저장 실패: " + String(e) + "\n(models.videos 컬럼 미적용 시 SQL 먼저 실행)"); }
+    setSaving(false);
+  };
+  const addVideo = async () => {
+    if (!sel) return;
+    setVidErr("");
+    const v = parseVideoUrl(vidUrl);
+    if (!v) { setVidErr("YouTube 또는 Vimeo 링크를 인식할 수 없어요."); return; }
+    if (videos.length >= MAX_VIDEOS) { setVidErr(`영상은 최대 ${MAX_VIDEOS}개까지`); return; }
+    if (videos.some(x => x.provider === v.provider && x.id === v.id)) { setVidErr("이미 추가된 영상이에요."); return; }
+    setVidAdding(true);
+    let ref = v;
+    if (v.provider === "vimeo") { const meta = await fetchVimeoMeta(v.id); ref = { ...v, thumb: meta.thumb, title: meta.title }; }
+    await saveVideos([...videos, ref]);
+    setVidUrl(""); setVidAdding(false);
+  };
+  const removeVideo = (i: number) => saveVideos(videos.filter((_, x) => x !== i));
 
   // 좋아요(즐겨찾기) 저장 — liked_photos 컬럼(사진 데이터 배열)
   const saveLikes = async (next: string[]) => {
@@ -497,6 +529,34 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   </div>
                   <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 를 눌러 추가 (최대 30장)</p>
                 </div>
+                {/* ── 영상(외부 임베드 · YouTube/Vimeo) ── */}
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: C.text }}>영상 <span style={{ fontWeight: 400, color: C.muted, fontSize: 11 }}>· YouTube · Vimeo 링크</span></p>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                    <input style={{ ...inp, marginBottom: 0, flex: 1, minWidth: 0 }} placeholder="https://youtu.be/... 또는 https://vimeo.com/..." value={vidUrl}
+                      onChange={e => { setVidUrl(e.target.value); setVidErr(""); }}
+                      onKeyDown={e => { if (e.key === "Enter") addVideo(); }} />
+                    <button type="button" onClick={addVideo} disabled={vidAdding || !vidUrl.trim()} style={{ ...btnS(C.blue, vidAdding || !vidUrl.trim()), padding: "0 14px", whiteSpace: "nowrap" }}>{vidAdding ? "추가 중…" : "추가"}</button>
+                  </div>
+                  {vidErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: C.red }}>{vidErr}</p>}
+                  {videos.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+                      {videos.map((v, i) => (
+                        <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", aspectRatio: "16/9", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
+                          {v.thumb
+                            ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.85 }} />
+                            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 12 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</div>}
+                          <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, paddingLeft: 3 }}>▶</span>
+                          </span>
+                          <span style={{ position: "absolute", bottom: 4, left: 6, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.5)", padding: "1px 5px", borderRadius: 4 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</span>
+                          <span onClick={e => { e.stopPropagation(); removeVideo(i); }} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>유튜브·비메오 영상 링크를 붙여넣으면 포트폴리오에 재생 카드로 추가돼요 (최대 {MAX_VIDEOS}개 · 저장공간 차지 없음).</p>
+                </div>
               </div>
             </div>
           )}
@@ -516,6 +576,15 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
           </div>
         </div>
       ); })()}
+
+      {videoOpen && (
+        <div onClick={() => setVideoOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <span onClick={() => setVideoOpen(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          <div onClick={e => e.stopPropagation()} style={{ width: "min(960px, 94%)", aspectRatio: "16/9", background: "#000", borderRadius: 10, overflow: "hidden" }}>
+            <iframe src={videoOpen.embed + (videoOpen.provider === "youtube" ? "?autoplay=1&rel=0" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
+          </div>
+        </div>
+      )}
 
       {compModel && <CompCardModal model={compModel} agency={agency} onClose={() => setCompModel(null)}
         onSave={async (compcard) => {
