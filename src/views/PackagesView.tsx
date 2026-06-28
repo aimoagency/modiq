@@ -273,15 +273,16 @@ export default function PackagesView({ packages, setPackages, models, customers,
           let first = true;
           const top = () => { const t = first ? "none" : `1px solid ${C.border}`; first = false; return t; };
           // 액션 버튼 공통 컴팩트 스타일 — 표 행에 맞게 통일(M3 큰 pill 섞임 방지)
-          const aBase: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", fontSize: 12, fontWeight: 600, borderRadius: 6, whiteSpace: "nowrap", cursor: "pointer", lineHeight: 1.2 };
+          const aBase: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "6px 10px", fontSize: 12, fontWeight: 600, borderRadius: 6, whiteSpace: "nowrap", cursor: "pointer", lineHeight: 1.2 };
           const off = { opacity: 0.5, cursor: "not-allowed" as const };
-          const buttons = (p: Pkg) => (<>
-            <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={{ ...aBase, background: C.purple + "1a", color: C.purple, border: `1px solid ${C.purple}33`, ...(busyId === p.id ? off : {}) }}><ExternalLink size={11} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
-            <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...aBase, background: C.blue + "1a", color: C.blue, border: `1px solid ${C.blue}33`, ...(!p.is_public ? off : {}) }}><ExternalLink size={11} /> 링크복사</button>
-            <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...aBase, background: C.card2, color: C.textSub, border: `1px solid ${C.border}`, ...(busyId === p.id ? off : {}) }}><Pencil size={11} /> 편집</button>
-            <button onClick={() => togglePublic(p)} style={{ ...aBase, background: "transparent", color: C.textSub, border: `1px solid ${C.border}` }}>{p.is_public ? "비공개로" : "공개로"}</button>
-            <button onClick={() => remove(p)} style={{ ...aBase, background: "transparent", color: C.red, border: `1px solid ${C.red}44` }}>삭제</button>
+          // 삭제는 분리(카드 우상단) — 4개 주요 액션만 한 줄. fill=true면 모바일에서 균등 분배(flex:1)로 한 줄 채움.
+          const mainButtons = (p: Pkg, fill = false) => (<>
+            <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={{ ...aBase, ...(fill ? { flex: 1 } : {}), background: C.purple + "1a", color: C.purple, border: `1px solid ${C.purple}33`, ...(busyId === p.id ? off : {}) }}><ExternalLink size={11} /> {busyId === p.id ? "여는 중…" : "보기"}</button>
+            <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...aBase, ...(fill ? { flex: 1 } : {}), background: C.blue + "1a", color: C.blue, border: `1px solid ${C.blue}33`, ...(!p.is_public ? off : {}) }}><ExternalLink size={11} /> 링크</button>
+            <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...aBase, ...(fill ? { flex: 1 } : {}), background: C.card2, color: C.textSub, border: `1px solid ${C.border}`, ...(busyId === p.id ? off : {}) }}><Pencil size={11} /> 편집</button>
+            <button onClick={() => togglePublic(p)} style={{ ...aBase, ...(fill ? { flex: 1 } : {}), background: "transparent", color: C.textSub, border: `1px solid ${C.border}` }}>{p.is_public ? "비공개" : "공개"}</button>
           </>);
+          const delBtn = (p: Pkg) => <button onClick={() => remove(p)} style={{ ...aBase, flexShrink: 0, background: "transparent", color: C.red, border: `1px solid ${C.red}44` }}>삭제</button>;
           // 좌측 묶음: 제목 + 인원수 + 업체명 — 모바일은 한 줄에 붙여서
           const left = (p: Pkg) => {
             const count = p.item_count ?? p.items?.length ?? 0;
@@ -315,8 +316,12 @@ export default function PackagesView({ packages, setPackages, models, customers,
                 const bt = top();
                 if (isMobile) return (
                   <div key={p.id} style={{ borderTop: bt, padding: "12px 16px" }}>
-                    <div style={{ marginBottom: 8 }}>{left(p)}</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{buttons(p)}</div>
+                    {/* 상단: 제목 정보 + 우상단 삭제 / 하단: 주요 액션 한 줄 균등 */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>{left(p)}</span>
+                      {delBtn(p)}
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>{mainButtons(p, true)}</div>
                   </div>
                 );
                 const count = p.item_count ?? p.items?.length ?? 0;
@@ -331,8 +336,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
                     <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{p.client_name ? <><Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</> : ""}</span>
                     {/* 모델수 */}
                     <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap", justifySelf: "start" }}><User size={11} style={{ verticalAlign: -2 }} /> 모델 {count}명</span>
-                    {/* 액션 버튼 (오른쪽 끝) */}
-                    <span style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>{buttons(p)}</span>
+                    {/* 액션 버튼 (오른쪽 끝) — 주요 4개 + 삭제 */}
+                    <span style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>{mainButtons(p)}{delBtn(p)}</span>
                   </div>
                 );
               })}
