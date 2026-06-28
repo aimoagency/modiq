@@ -211,11 +211,12 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     if (videos.some(x => x.provider === v.provider && x.id === v.id)) { setVidErr("이미 추가된 영상이에요."); return; }
     setVidAdding(true);
     let ref = v;
-    if (v.provider === "vimeo") { const meta = await fetchVimeoMeta(v.id); ref = { ...v, thumb: meta.thumb, title: meta.title }; }
+    if (v.provider === "vimeo") { const meta = await fetchVimeoMeta(v.id); ref = { ...v, thumb: meta.thumb, title: meta.title, vertical: meta.vertical }; }
     await saveVideos([...videos, ref]);
     setVidUrl(""); setVidAdding(false);
   };
   const removeVideo = (i: number) => saveVideos(videos.filter((_, x) => x !== i));
+  const toggleVideoOrient = (i: number) => saveVideos(videos.map((v, x) => x === i ? { ...v, vertical: !v.vertical } : v));
 
   // 좋아요(즐겨찾기) 저장 — liked_photos 컬럼(사진 데이터 배열)
   const saveLikes = async (next: string[]) => {
@@ -542,7 +543,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   {videos.length > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
                       {videos.map((v, i) => (
-                        <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", aspectRatio: "16/9", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
+                        <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", aspectRatio: v.vertical ? "9/16" : "16/9", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
                           {v.thumb
                             ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.85 }} />
                             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 12 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</div>}
@@ -550,6 +551,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                             <span style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, paddingLeft: 3 }}>▶</span>
                           </span>
                           <span style={{ position: "absolute", bottom: 4, left: 6, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.5)", padding: "1px 5px", borderRadius: 4 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</span>
+                          <span onClick={e => { e.stopPropagation(); toggleVideoOrient(i); }} title="가로/세로 전환" style={{ position: "absolute", bottom: 4, right: 4, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.55)", padding: "2px 6px", borderRadius: 4, cursor: "pointer" }}>{v.vertical ? "세로 9:16" : "가로 16:9"}</span>
                           <span onClick={e => { e.stopPropagation(); removeVideo(i); }} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         </div>
                       ))}
@@ -580,7 +582,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
       {videoOpen && (
         <div onClick={() => setVideoOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <span onClick={() => setVideoOpen(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
-          <div onClick={e => e.stopPropagation()} style={{ width: "min(960px, 94%)", aspectRatio: "16/9", background: "#000", borderRadius: 10, overflow: "hidden" }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...(videoOpen.vertical ? { height: "min(88vh, 100%)", maxWidth: "94%", aspectRatio: "9/16" } : { width: "min(960px, 94%)", aspectRatio: "16/9" }), background: "#000", borderRadius: 10, overflow: "hidden" }}>
             <iframe src={videoOpen.embed + (videoOpen.provider === "youtube" ? "?autoplay=1&rel=0" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
           </div>
         </div>

@@ -10,6 +10,7 @@ export interface VideoRef {
   embed: string;  // iframe src
   thumb: string;  // 썸네일 URL(없으면 "")
   title?: string;
+  vertical?: boolean; // 9:16 세로형(쇼츠·릴스). 자동 감지 + 수동 토글 가능
 }
 
 // URL 파싱 — 인식 못 하면 null.
@@ -22,23 +23,25 @@ export const parseVideoUrl = (raw: string): VideoRef | null => {
     const id = yt[1];
     return { provider: "youtube", id, url,
       embed: `https://www.youtube.com/embed/${id}`,
-      thumb: `https://img.youtube.com/vi/${id}/hqdefault.jpg` };
+      thumb: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+      vertical: /youtube\.com\/shorts\//.test(url) }; // 쇼츠 = 세로 자동
   }
-  // Vimeo: vimeo.com/123456789 (썸네일은 oEmbed로 비동기 조회)
+  // Vimeo: vimeo.com/123456789 (썸네일·비율은 oEmbed로 비동기 조회)
   const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vm) {
     const id = vm[1];
     return { provider: "vimeo", id, url,
-      embed: `https://player.vimeo.com/video/${id}`, thumb: "" };
+      embed: `https://player.vimeo.com/video/${id}`, thumb: "", vertical: false };
   }
   return null;
 };
 
-// Vimeo 썸네일/제목은 공개 oEmbed로 1회 조회(실패해도 무시 → 플레이어 자체 포스터 사용).
-export const fetchVimeoMeta = async (id: string): Promise<{ thumb: string; title: string }> => {
+// Vimeo 썸네일/제목/비율은 공개 oEmbed로 1회 조회(실패해도 무시 → 플레이어 자체 포스터 사용).
+export const fetchVimeoMeta = async (id: string): Promise<{ thumb: string; title: string; vertical: boolean }> => {
   try {
     const r = await fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${id}`);
     const j = await r.json();
-    return { thumb: j?.thumbnail_url || "", title: j?.title || "" };
-  } catch { return { thumb: "", title: "" }; }
+    const w = Number(j?.width) || 0, h = Number(j?.height) || 0;
+    return { thumb: j?.thumbnail_url || "", title: j?.title || "", vertical: w > 0 && h > 0 ? h > w : false };
+  } catch { return { thumb: "", title: "", vertical: false }; }
 };
