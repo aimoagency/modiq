@@ -133,7 +133,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
                 <div key={it.b.id+it.label+idx} onClick={()=>setSelectedBooking(it.b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"max-content minmax(0,1.8fr) max-content max-content minmax(0,1fr)", alignItems:"center", gap:14, borderTop:top(), padding:"11px 4px", cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:"max-content minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", alignItems:"center", gap:14, borderTop:top(), padding:"11px 4px", cursor:"pointer", transition:"background 0.12s" }}>
                   {/* D-day */}
                   <span style={{ fontSize:11, fontWeight:800, color, background:color+"1a", borderRadius:6, padding:"3px 8px", minWidth:54, textAlign:"center" }}>{ddayLabel}</span>
                   {/* 고객사 · 모델 */}
