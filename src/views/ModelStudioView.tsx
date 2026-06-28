@@ -11,7 +11,7 @@ import { MODEL_FIELDS } from "../constants";
 import { User, Camera, CardCheck, Pencil } from "../components/icons";
 import SearchInput from "../components/SearchInput";
 import { type Pkg, type PackageItem, genPkgId, genShareToken, shareUrl } from "../lib/packages";
-import { parseVideoUrl, fetchVimeoMeta, type VideoRef } from "../lib/video";
+import { parseVideoUrl, enrichVideo, VIDEO_LABEL, type VideoRef } from "../lib/video";
 import { useBackClose } from "../lib/backstack";
 import CompCardModal from "../components/CompCardModal";
 import ModelBrowser from "../components/ModelBrowser";
@@ -206,12 +206,11 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
     if (!sel) return;
     setVidErr("");
     const v = parseVideoUrl(vidUrl);
-    if (!v) { setVidErr("YouTube 또는 Vimeo 링크를 인식할 수 없어요."); return; }
+    if (!v) { setVidErr("YouTube·Vimeo·Instagram·TikTok 링크를 인식할 수 없어요. (TikTok은 전체 주소 .../video/숫자 형태로)"); return; }
     if (videos.length >= MAX_VIDEOS) { setVidErr(`영상은 최대 ${MAX_VIDEOS}개까지`); return; }
     if (videos.some(x => x.provider === v.provider && x.id === v.id)) { setVidErr("이미 추가된 영상이에요."); return; }
     setVidAdding(true);
-    let ref = v;
-    if (v.provider === "vimeo") { const meta = await fetchVimeoMeta(v.id); ref = { ...v, thumb: meta.thumb, title: meta.title, vertical: meta.vertical }; }
+    const ref = await enrichVideo(v); // Vimeo·TikTok 썸네일/비율 보강(실패해도 진행)
     await saveVideos([...videos, ref]);
     setVidUrl(""); setVidAdding(false);
   };
@@ -534,7 +533,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                 <div style={{ marginTop: 16 }}>
                   <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: C.text }}>영상 <span style={{ fontWeight: 400, color: C.muted, fontSize: 11 }}>· YouTube · Vimeo 링크</span></p>
                   <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    <input style={{ ...inp, marginBottom: 0, flex: 1, minWidth: 0 }} placeholder="https://youtu.be/... 또는 https://vimeo.com/..." value={vidUrl}
+                    <input style={{ ...inp, marginBottom: 0, flex: 1, minWidth: 0 }} placeholder="YouTube · Vimeo · Instagram · TikTok 링크 붙여넣기" value={vidUrl}
                       onChange={e => { setVidUrl(e.target.value); setVidErr(""); }}
                       onKeyDown={e => { if (e.key === "Enter") addVideo(); }} />
                     <button type="button" onClick={addVideo} disabled={vidAdding || !vidUrl.trim()} style={{ ...btnS(C.blue, vidAdding || !vidUrl.trim()), padding: "0 14px", whiteSpace: "nowrap" }}>{vidAdding ? "추가 중…" : "추가"}</button>
@@ -546,18 +545,18 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                         <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", aspectRatio: v.vertical ? "9/16" : "16/9", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
                           {v.thumb
                             ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.85 }} />
-                            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 12 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</div>}
+                            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 12 }}>{VIDEO_LABEL[v.provider]}</div>}
                           <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <span style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, paddingLeft: 3 }}>▶</span>
                           </span>
-                          <span style={{ position: "absolute", bottom: 4, left: 6, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.5)", padding: "1px 5px", borderRadius: 4 }}>{v.provider === "vimeo" ? "Vimeo" : "YouTube"}</span>
+                          <span style={{ position: "absolute", bottom: 4, left: 6, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.5)", padding: "1px 5px", borderRadius: 4 }}>{VIDEO_LABEL[v.provider]}</span>
                           <span onClick={e => { e.stopPropagation(); toggleVideoOrient(i); }} title="가로/세로 전환" style={{ position: "absolute", bottom: 4, right: 4, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.55)", padding: "2px 6px", borderRadius: 4, cursor: "pointer" }}>{v.vertical ? "세로 9:16" : "가로 16:9"}</span>
                           <span onClick={e => { e.stopPropagation(); removeVideo(i); }} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 12, lineHeight: "20px", textAlign: "center", cursor: "pointer" }}>×</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>유튜브·비메오 영상 링크를 붙여넣으면 포트폴리오에 재생 카드로 추가돼요 (최대 {MAX_VIDEOS}개 · 저장공간 차지 없음).</p>
+                  <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>유튜브·비메오·인스타그램·틱톡 링크를 붙여넣으면 포트폴리오에 재생 카드로 추가돼요 (최대 {MAX_VIDEOS}개 · 저장공간 차지 없음).</p>
                 </div>
               </div>
             </div>
@@ -583,7 +582,7 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
         <div onClick={() => setVideoOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <span onClick={() => setVideoOpen(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
           <div onClick={e => e.stopPropagation()} style={{ ...(videoOpen.vertical ? { height: "min(88vh, 100%)", maxWidth: "94%", aspectRatio: "9/16" } : { width: "min(960px, 94%)", aspectRatio: "16/9" }), background: "#000", borderRadius: 10, overflow: "hidden" }}>
-            <iframe src={videoOpen.embed + (videoOpen.provider === "youtube" ? "?autoplay=1&rel=0" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
+            <iframe src={videoOpen.embed + (videoOpen.provider === "youtube" ? "?autoplay=1&rel=0" : videoOpen.provider === "instagram" ? "" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen scrolling="no" style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
           </div>
         </div>
       )}
