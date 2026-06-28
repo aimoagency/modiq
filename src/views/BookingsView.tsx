@@ -80,6 +80,8 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
           ? <img src={m.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
           : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:size*0.42, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>;
         // ── Vercel식 행: 하나의 컨테이너 안 얇은 divider 행 · 고정 컬럼 정렬 · hover 하이라이트 ──
+        // 엑셀형 균일 컬럼: 헤더·데이터 행이 공유하는 단일 그리드 정의
+        const GRID = "56px 32px minmax(0,2fr) minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) max-content";
         const Row=(b:any, bt:string, inGroup=false)=>{
           const m=models.find((mm:any)=>mm.id===b.model_id);
           const cli=customers.find((c:any)=>c.id===b.customer_id)?.name||"?";
@@ -105,20 +107,18 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
             <div key={b.id} onClick={()=>setSelectedBooking(b)}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
               onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:"76px 28px max-content max-content minmax(0,200px) max-content 1fr max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
+              style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
               <span style={{ display:"inline-flex" }}>{typeBadge}</span>
               {/* 아바타 (자체 컬럼 — 세로 일렬) */}
               <span style={{ display:"inline-flex" }}>{avatar(m,24)}</span>
-              {/* 모델→고객사 (max-content — 잘림 없음) */}
-              <span style={{ display:"flex", alignItems:"center", minWidth:0 }}><strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap" }}>{m?.name||"?"} → {cli}</strong></span>
-              {/* 날짜 (자체 컬럼 — 세로 일렬) */}
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
+              {/* 모델→고객사 */}
+              <span style={{ display:"flex", alignItems:"center", minWidth:0 }}><strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"} → {cli}</strong></span>
+              {/* 날짜 */}
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
               {/* 장소 (빈칸 그대로 유지) */}
               <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.location ? <><MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.location}</> : ""}</span>
               {/* 담당자 (빈칸 그대로 유지) */}
-              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
-              {/* 1fr 스페이서 (금액·상태를 우측 고정) */}
-              <span />
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
               {/* 금액 (우측 정렬·무잘림) */}
               <span style={{ textAlign:"right", color:C.yellow, fontWeight:700, fontSize:13, whiteSpace:"nowrap" }}>{amt>0 ? amt.toLocaleString()+"원" : ""}</span>
               {/* 상태 (오른쪽 끝) */}
@@ -144,6 +144,13 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
         };
         return (
           <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+            {!isMobile && (
+              <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
+                {["유형","","모델 → 고객사","날짜","장소","담당자","금액","상태"].map((t,i)=>(
+                  <span key={i} style={{ textAlign:i===6?"right":undefined, display:i===7?"flex":undefined, justifyContent:i===7?"flex-end":undefined }}>{t}</span>
+                ))}
+              </div>
+            )}
             {(()=>{
               const out:any[]=[]; let first=true;
               const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };

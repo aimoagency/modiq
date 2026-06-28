@@ -124,6 +124,17 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
         visible.forEach(m=>out.push(Row(m, top())));
         return (
           <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+            {!isMobile && (
+              <div style={{ display:"grid", gridTemplateColumns:"44px minmax(0,1.6fr) minmax(0,1fr) 96px minmax(0,1.3fr) minmax(0,1.4fr) max-content", alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
+                <span></span>
+                <span>모델</span>
+                <span>성별 · 나이 · 경력</span>
+                <span>비자</span>
+                <span>연락처</span>
+                <span>단가 · 정산</span>
+                <span style={{ textAlign:"right" }}>섭외</span>
+              </div>
+            )}
             {out}
             {hasMore && <div ref={sentinelRef} style={{ height:1 }} />}
           </div>

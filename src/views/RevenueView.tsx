@@ -11,6 +11,8 @@ import { exportAoaXlsx } from "../lib/xlsx";
 export default function RevenueView({ bookings, models, customers, agency, isMobile = false, onSelectBooking }: {
   bookings: any[]; models: any[]; customers: any[]; agency?: any; isMobile?: boolean; onSelectBooking: (b:any)=>void;
 }) {
+  // 데스크탑 목록 = 엑셀형 균일 컬럼(헤더+데이터 행 동일 grid): 모델→고객사 · 촬영일 · 상태 · 매출(금액+총이익) · 입금
+  const GRID = "minmax(0,2fr) minmax(0,1.1fr) max-content minmax(0,1.4fr) max-content";
   const [preset, setPreset] = useState("3m");
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
@@ -129,6 +131,15 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
       </div>
       {listed.length===0 ? <p style={{ color:C.muted }}>{preset==="upcoming"?"예정된(미래 촬영일) 확정 섭외가 없습니다.":"이 기간에 매출이 없습니다."}</p> : (
         <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+          {!isMobile && (
+            <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
+              <span>모델 → 고객사</span>
+              <span>촬영일</span>
+              <span>상태</span>
+              <span style={{ textAlign:"right" }}>매출 · 총이익</span>
+              <span>입금</span>
+            </div>
+          )}
           {(()=>{
             let first=true; const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
             return listed.map(b=>{
@@ -156,11 +167,11 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
                 <div key={b.id} onClick={()=>onSelectBooking(b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"max-content max-content max-content max-content max-content 1fr", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
-                  <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap" }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
+                  style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
                   <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
                   <span style={{ display:"flex" }}><Badge code={b.status} /></span>
-                  <span style={{ whiteSpace:"nowrap" }}>
+                  <span style={{ whiteSpace:"nowrap", textAlign:"right" }}>
                     <span style={{ fontSize:13.5, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</span>
                     <span style={{ fontSize:11, color:C.blue, marginLeft:8 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
                   </span>

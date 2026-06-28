@@ -2,6 +2,9 @@ import { useState } from "react";
 import { C, btnS, inp } from "../theme";
 import { Users, Crown, Pencil, Save } from "../components/icons";
 
+// 엑셀식 표 — 헤더/데이터 행 공통 컬럼(이름·직책·연락처·이메일·관리)
+const GRID = "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.6fr) max-content";
+
 // 담당자 행 — Vercel식 정렬 컬럼 리스트(보기) → 수정(연필) 시 폼으로 펼침
 function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
   m: any; isOwner: boolean; bt: string;
@@ -102,12 +105,11 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
     <div
       onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-      style={{ display: "grid", gridTemplateColumns: "max-content max-content max-content max-content 1fr max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+      style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
       {nameCell}
       {titleCell}
       <span style={cell(C.muted)}>{m.phone || ""}</span>
       <span style={cell(C.muted)}>{m.email || ""}</span>
-      <span />
       <div style={{ display: "flex", justifyContent: "flex-end", paddingRight: 0, whiteSpace: "nowrap" }}>{actions}</div>
     </div>
   );
@@ -149,6 +151,16 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
           <div style={{ width: `${Math.min(memberPct, 100)}%`, height: "100%", background: memberPct >= 100 ? C.red : C.green, borderRadius: 4 }} />
         </div>
       </div>
+
+      {!isMobile && (
+        <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 14, fontSize: 11, fontWeight: 700, color: C.muted, padding: "9px 16px", background: C.card2, border: `1px solid ${C.border}`, borderRadius: "10px 10px 0 0", borderBottom: `1px solid ${C.border}`, marginBottom: -1, whiteSpace: "nowrap" }}>
+          <span>이름</span>
+          <span>직책</span>
+          <span>연락처</span>
+          <span>이메일</span>
+          <span style={{ textAlign: "right" }}>관리</span>
+        </div>
+      )}
 
       {owners.length > 0 && listContainer(owners, (m, bt) => (
         <MemberRow key={m.id} m={m} isOwner bt={bt} onUpdate={handleUpdateMember} isMobile={isMobile} />
