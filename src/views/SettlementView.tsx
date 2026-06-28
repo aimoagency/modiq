@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C, inp } from "../theme";
 import { fmt, fmtDate, bookingTotal, bookingAgencyFee, bookingModelPay } from "../lib/utils";
 import Badge from "../components/Badge";
-import { Coins, Calendar, User, Folder, CheckCircle2 } from "../components/icons";
+import { Coins, User, Folder, CheckCircle2 } from "../components/icons";
 
 export default function SettlementView({ settlementTab, setSettlementTab, settlementMonth, setSettlementMonth, settlementMonths, settlementModel, setSettlementModel, settlementClient, setSettlementClient, settlementSummary, filteredSettlement, models, customers, openSettlement, onOpenStatement, isMobile = false }: {
   settlementTab: "PENDING"|"SETTLED"|"UNPAID"; setSettlementTab: (v:"PENDING"|"SETTLED"|"UNPAID")=>void;
@@ -66,49 +66,74 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         <span style={{ fontSize:12, fontWeight:700, color:C.textSub }}>에이전시 마진 (수익)</span>
         <span style={{ fontSize:16, fontWeight:800, color:C.green }}>{fmt(settlementSummary.commission)}</span>
       </div>
-      {(filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (
-        <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
-          {filteredSettlement.map(b=>{
-            const model = models.find((m:any)=>m.id===b.model_id);
-            const client = customers.find((c:any)=>c.id===b.customer_id);
-            const fee=bookingTotal(b), pay=bookingModelPay(b,models);
-            return (
-              <div key={b.id} onClick={()=>openSettlement(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, minWidth:0, transition:"border-color 0.2s" }}
-                onMouseEnter={e=>(e.currentTarget.style.borderColor=C.yellow)}
-                onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
-              >
-                {/* 아바타 */}
-                {model?.thumb_url
-                  ? <img src={model.thumb_url} alt="" style={{ width:40, height:40, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                  : <div style={{ width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:15, flexShrink:0 }}>{(model?.name||"?")[0]}</div>
-                }
-                {/* 정보 (좌측) — 매출 리스트와 동일 구조 */}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
-                    <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
-                      {model?.name||"?"} <span style={{ color:C.muted }}>→ {client?.name||"?"}</span>
-                      {b.project_name&&<span style={{ color:C.blue }}> · <Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
-                    </span>
+      {(filteredSettlement.length===0 ? <p style={{ color:C.muted }}>해당 항목이 없습니다.</p> : (()=>{
+        // ── Vercel식 정렬 리스트: 하나의 컨테이너 안 얇은 divider 행 · 고정 컬럼 정렬 · hover 하이라이트 ──
+        // 계산식·탭분류·발급버튼·입금/지급 토글 핸들러는 일절 변경하지 않음 — 행 레이아웃만 통일.
+        let first=true;
+        const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+        const avatar=(model:any, size:number)=> model?.thumb_url
+          ? <img src={model.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+          : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:size*0.42, flexShrink:0 }}>{(model?.name||"?")[0]}</span>;
+        const payBadges=(b:any)=>(
+          <>
+            <Badge code={b.status} type={b.booking_type} />
+            <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
+            <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급</>:"모델 미지급"}</span>
+          </>
+        );
+        return (
+          <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+            {filteredSettlement.map(b=>{
+              const model = models.find((m:any)=>m.id===b.model_id);
+              const client = customers.find((c:any)=>c.id===b.customer_id);
+              const fee=bookingTotal(b), pay=bookingModelPay(b,models);
+              const bt=top();
+              if (isMobile) return (
+                <div key={b.id} onClick={()=>openSettlement(b)} style={{ padding:"10px 14px", borderTop:bt, cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+                    {avatar(model,24)}
+                    <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.muted, fontWeight:400 }}>→ {client?.name||"?"}</span></strong>
+                    {fee>0&&<span style={{ marginLeft:"auto", fontSize:13.5, fontWeight:800, color:C.text, whiteSpace:"nowrap", flexShrink:0 }}>{fee.toLocaleString()}원</span>}
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                    <Badge code={b.status} type={b.booking_type} />
-                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
-                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델 지급</>:"모델 미지급"}</span>
+                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
+                    {b.project_name&&<span style={{ fontSize:12, color:C.blue, whiteSpace:"nowrap" }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    {payBadges(b)}
                   </div>
+                  {fee>0&&<div style={{ fontSize:11, color:C.green, marginTop:4 }}>모델 실지급 {pay.toLocaleString()}원</div>}
                 </div>
-                {/* 금액 (우측 고정) */}
-                {fee>0&&(
-                  <div style={{ flexShrink:0, textAlign:"right", whiteSpace:"nowrap" }}>
-                    <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{fee.toLocaleString()}원</div>
-                    <div style={{ fontSize:11, color:C.green, marginTop:3 }}>모델 실지급 {pay.toLocaleString()}원</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+              );
+              return (
+                <div key={b.id} onClick={()=>openSettlement(b)}
+                  onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
+                  onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
+                  style={{ display:"grid", gridTemplateColumns:"minmax(0,1.6fr) 96px minmax(0,1.5fr) 132px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  {/* 모델 → 고객사 (+프로젝트) */}
+                  <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
+                    {avatar(model,28)}
+                    <span style={{ minWidth:0, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                      <strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
+                      <span style={{ fontSize:12.5, color:C.muted }}> → {client?.name||"?"}</span>
+                      {b.project_name&&<span style={{ fontSize:12.5, color:C.blue }}> · <Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
+                    </span>
+                  </span>
+                  {/* 촬영일 */}
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}</span>
+                  {/* 상태 · 입금/지급 배지 */}
+                  <span style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", minWidth:0 }}>{payBadges(b)}</span>
+                  {/* 금액 (우측 정렬) */}
+                  <span style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+                    {fee>0?(<>
+                      <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{fee.toLocaleString()}원</div>
+                      <div style={{ fontSize:11, color:C.green, marginTop:3 }}>모델 실지급 {pay.toLocaleString()}원</div>
+                    </>):<span style={{ fontSize:13, color:C.muted }}>—</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })())}
     </div>
   );
 }

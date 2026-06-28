@@ -2,9 +2,9 @@ import { useState } from "react";
 import { C, btnS, inp } from "../theme";
 import { Users, Crown, Pencil, Save } from "../components/icons";
 
-// 담당자 카드 — 보기 → 수정(연필) → 저장/취소 (앱 공통 패턴)
-function MemberCard({ m, isOwner, onUpdate, onDelete }: {
-  m: any; isOwner: boolean;
+// 담당자 행 — Vercel식 정렬 컬럼 리스트(보기) → 수정(연필) 시 폼으로 펼침
+function MemberRow({ m, isOwner, bt, onUpdate, onDelete }: {
+  m: any; isOwner: boolean; bt: string;
   onUpdate: (id: string, updates: any) => void;
   onDelete?: (id: string) => void;
 }) {
@@ -21,64 +21,66 @@ function MemberCard({ m, isOwner, onUpdate, onDelete }: {
   };
 
   const lbl = (t: string) => <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{t}</p>;
-  const cardStyle = isOwner
-    ? { background: "#1a2f1a", border: `1px solid ${C.green}40` }
-    : { background: C.card, border: `1px solid ${C.border}` };
+  const cell = (color: string, weight = 400): React.CSSProperties => ({ fontSize: 12.5, color, fontWeight: weight, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
+
+  // 수정 모드: 기존 폼을 그대로 펼침
+  if (edit) {
+    return (
+      <div style={{ padding: "14px 16px", borderTop: bt }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 10 }}>
+          <div>{lbl("이름")}<input style={{ ...inp, marginTop: 5 }} value={name} onChange={e => setName(e.target.value)} placeholder="이름" /></div>
+          <div>{lbl("직위")}<input style={{ ...inp, marginTop: 5 }} value={position} onChange={e => setPosition(e.target.value)} placeholder="예: 매니저" /></div>
+          <div>{lbl("전화번호 (알림톡 발송에 사용)")}<input style={{ ...inp, marginTop: 5 }} value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" /></div>
+          <div>{lbl("이메일 (로그인 계정 · 변경 불가)")}<p style={{ margin: "8px 0 0", fontSize: 13, color: C.muted }}>{m.email}</p></div>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button onClick={save} style={{ ...btnS(C.green), flex: 1 }}><Save size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 저장</button>
+          <button onClick={cancel} style={{ ...btnS("#555"), flex: 1 }}>취소</button>
+        </div>
+      </div>
+    );
+  }
+
+  const actions = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+      {!isOwner && (
+        <button onClick={() => onUpdate(m.id, { can_view_finance: !m.can_view_finance })}
+          aria-label="매출·정산 열람 권한 토글"
+          title={m.can_view_finance ? "이 담당자는 매출·미수금·정산을 볼 수 있어요" : "기본: 매출·미수금·정산 메뉴 숨김"}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+          <span style={{ fontSize: 11, color: m.can_view_finance ? C.green : C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>매출·정산</span>
+          <span style={{ width: 38, height: 22, borderRadius: 11, background: m.can_view_finance ? C.green : C.border, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+            <span style={{ position: "absolute", top: 3, left: m.can_view_finance ? 19 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+          </span>
+        </button>
+      )}
+      <button onClick={() => setEdit(true)} style={{ ...btnS(C.purple), padding: "5px 10px", fontSize: 12 }}>
+        <Pencil size={12} style={{ verticalAlign: -2, flexShrink: 0 }} /> 수정
+      </button>
+      {!isOwner && onDelete && (
+        <button onClick={() => onDelete(m.id)} style={{ ...btnS(C.red), padding: "5px 10px", fontSize: 12 }}>삭제</button>
+      )}
+    </div>
+  );
+
+  // 이름 셀: 대표는 왕관 배지 노출
+  const nameCell = (
+    <span style={{ ...cell(C.text, 700), display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {isOwner && <Crown size={12} color={C.green} style={{ flexShrink: 0 }} />}
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}{isOwner ? " (대표)" : ""}</span>
+    </span>
+  );
 
   return (
-    <div style={{ ...cardStyle, borderRadius: 10, padding: 18, marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        {isOwner
-          ? <p style={{ margin: 0, fontWeight: 700, color: C.green }}><Crown size={12} style={{ verticalAlign: -2, flexShrink: 0 }} /> 최초 관리자 (대표)</p>
-          : <span />}
-        {!edit && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setEdit(true)} style={{ ...btnS(C.purple), padding: "6px 12px", fontSize: 12 }}>
-              <Pencil size={12} style={{ verticalAlign: -2, flexShrink: 0 }} /> 수정
-            </button>
-            {!isOwner && onDelete && (
-              <button onClick={() => onDelete(m.id)} style={{ ...btnS(C.red), padding: "6px 12px", fontSize: 12 }}>삭제</button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {!edit ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 12 }}>
-          <div>{lbl("이름")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.name}</p></div>
-          <div>{lbl("직위")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.position || "-"}</p></div>
-          <div>{lbl("전화번호")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.phone || "-"}</p></div>
-          <div>{lbl("이메일")}<p style={{ margin: "3px 0 0", fontSize: 13, color: C.text }}>{m.email}</p></div>
-        </div>
-      ) : (
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 10 }}>
-            <div>{lbl("이름")}<input style={{ ...inp, marginTop: 5 }} value={name} onChange={e => setName(e.target.value)} placeholder="이름" /></div>
-            <div>{lbl("직위")}<input style={{ ...inp, marginTop: 5 }} value={position} onChange={e => setPosition(e.target.value)} placeholder="예: 매니저" /></div>
-            <div>{lbl("전화번호 (알림톡 발송에 사용)")}<input style={{ ...inp, marginTop: 5 }} value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" /></div>
-            <div>{lbl("이메일 (로그인 계정 · 변경 불가)")}<p style={{ margin: "8px 0 0", fontSize: 13, color: C.muted }}>{m.email}</p></div>
-          </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <button onClick={save} style={{ ...btnS(C.green), flex: 1 }}><Save size={14} style={{ verticalAlign: -2, flexShrink: 0 }} /> 저장</button>
-            <button onClick={cancel} style={{ ...btnS("#555"), flex: 1 }}>취소</button>
-          </div>
-        </div>
-      )}
-
-      {/* 매출·정산 열람 권한 (대표가 담당자에게 부여) */}
-      {!isOwner && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>매출·정산 열람 권한</p>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>{m.can_view_finance ? "이 담당자는 매출·미수금·정산을 볼 수 있어요" : "기본: 매출·미수금·정산 메뉴 숨김"}</p>
-          </div>
-          <button onClick={() => onUpdate(m.id, { can_view_finance: !m.can_view_finance })}
-            aria-label="매출·정산 열람 권한 토글"
-            style={{ width: 46, height: 26, borderRadius: 13, border: "none", cursor: "pointer", background: m.can_view_finance ? C.green : C.border, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-            <span style={{ position: "absolute", top: 3, left: m.can_view_finance ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
-          </button>
-        </div>
-      )}
+    <div
+      onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
+      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+      style={{ display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr) 150px minmax(0,1.4fr) minmax(0,auto)", alignItems: "center", gap: 12, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+      {nameCell}
+      <span style={cell(C.textSub)}>{m.position || "—"}</span>
+      <span style={cell(C.muted)}>{m.phone || "—"}</span>
+      <span style={cell(C.muted)}>{m.email}</span>
+      {actions}
     </div>
   );
 }
@@ -91,6 +93,16 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
 }) {
   const owners = members.filter(m => m.role === "owner");
   const staff = members.filter(m => m.role !== "owner");
+
+  const listContainer = (rows: any[], render: (m: any, bt: string) => React.ReactNode) => {
+    let first = true;
+    const top = () => { const t = first ? "none" : `1px solid ${C.border}`; first = false; return t; };
+    return (
+      <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
+        {rows.map(m => render(m, top()))}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -109,12 +121,16 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
         </div>
       </div>
 
-      {owners.map(m => <MemberCard key={m.id} m={m} isOwner onUpdate={handleUpdateMember} />)}
+      {owners.length > 0 && listContainer(owners, (m, bt) => (
+        <MemberRow key={m.id} m={m} isOwner bt={bt} onUpdate={handleUpdateMember} />
+      ))}
 
       <p style={{ fontWeight: 700, color: C.text, margin: "16px 0 10px" }}>추가 담당자 ({staff.length}명)</p>
       {staff.length === 0
         ? <p style={{ color: C.muted, fontSize: 13 }}>추가된 담당자가 없습니다.</p>
-        : staff.map(m => <MemberCard key={m.id} m={m} isOwner={false} onUpdate={handleUpdateMember} onDelete={handleDeleteMember} />)}
+        : listContainer(staff, (m, bt) => (
+          <MemberRow key={m.id} m={m} isOwner={false} bt={bt} onUpdate={handleUpdateMember} onDelete={handleDeleteMember} />
+        ))}
     </div>
   );
 }

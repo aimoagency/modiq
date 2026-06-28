@@ -268,32 +268,52 @@ export default function PackagesView({ packages, setPackages, models, customers,
             <p style={{ margin: 0, fontSize: 14 }}>아직 패키지가 없습니다.</p>
             <button onClick={startNew} style={{ ...btnS(C.blue), marginTop: 14 }}>+ 첫 패키지 만들기</button>
           </div>
-        ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {packages.map(p => (
-              <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <strong style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{p.title || "무제 패키지"}</strong>
-                  <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>
-                    {p.layout === "compcard" ? "컴카드" : "제안 패키지"}
-                  </span>
-                  <span style={{ fontSize: 12, color: C.muted }}><User size={11} style={{ verticalAlign: -2 }} /> {p.item_count ?? p.items?.length ?? 0}명</span>
-                  {p.client_name && <span style={{ fontSize: 12, color: C.muted }}><Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</span>}
-                  <span style={{ fontSize: 11, color: p.is_public ? C.green : C.muted, marginLeft: isMobile ? 0 : "auto" }}>
-                    {p.is_public ? "● 공개" : "○ 비공개"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                  <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
-                  <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
-                  <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...btnS(C.muted, busyId === p.id) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
-                  <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
-                  <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        ) : (() => {
+          // ── Vercel식 행: 하나의 컨테이너 안 얇은 divider 행 · 좌측 정보 / 우측 버튼 정렬 ──
+          let first = true;
+          const top = () => { const t = first ? "none" : `1px solid ${C.border}`; first = false; return t; };
+          const buttons = (p: Pkg) => (<>
+            <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
+            <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
+            <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...btnS(C.muted, busyId === p.id) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
+            <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
+            <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
+          </>);
+          const meta = (p: Pkg) => (<>
+            <span style={{ fontWeight: 400 }}> · </span>
+            <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{p.layout === "compcard" ? "컴카드" : "제안 패키지"}</span>
+            <span style={{ fontWeight: 400 }}> · <User size={11} style={{ verticalAlign: -2 }} /> {p.item_count ?? p.items?.length ?? 0}명</span>
+            {p.client_name && <span style={{ fontWeight: 400 }}> · <Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</span>}
+            <span style={{ fontWeight: 400, color: p.is_public ? C.green : C.muted }}> · {p.is_public ? "● 공개" : "○ 비공개"}</span>
+          </>);
+          return (
+            <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
+              {packages.map(p => {
+                const bt = top();
+                if (isMobile) return (
+                  <div key={p.id} style={{ borderTop: bt, padding: "10px 14px" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title || "무제 패키지"}</span>
+                      <span style={{ color: C.muted }}>{meta(p)}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{buttons(p)}</div>
+                  </div>
+                );
+                return (
+                  <div key={p.id}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 12, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+                    <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14, fontWeight: 700, color: C.text }}>
+                      {p.title || "무제 패키지"}<span style={{ color: C.muted }}>{meta(p)}</span>
+                    </span>
+                    <span style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>{buttons(p)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
         {preview && (
           <div style={{ position: "fixed", inset: 0, zIndex: 1500, background: "#eceff3", overflowY: "auto" }}>
             <button onClick={() => setPreview(null)} style={{ position: "fixed", top: 14, left: 14, zIndex: 1600, padding: "8px 16px", background: "#1a1d27", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>← 목록으로</button>

@@ -48,40 +48,46 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
       </div>
       {sortMode==="rev" ? <RevenueRanking items={filteredCustomers} bookings={bookings} idKey="customer_id" basis={revBasis} period={period} onSelect={(c)=>{ setSelectedCustomer(c); setCEditMode(false); }} isMobile={isMobile} /> :
        filteredCustomers.length===0 ? <p style={{ color:C.muted }}>고객사가 없습니다.</p> : (
-        <div style={{ display:"grid", gap:6 }}>
-          {filteredCustomers.map(c=>(
-            isMobile ? (
-            <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</strong>
-                {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.category}</span>}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub }}>
-                {c.manager_name&&<span><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
-                <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {bookings.filter((b:any)=>b.customer_id===c.id).length}건 →</span>
-              </div>
-              {(c.phone||c.email)&&(
-                <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub, marginTop:3 }}>
-                  {c.phone&&<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", whiteSpace:"nowrap", flexShrink:0 }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>}
-                  {c.email&&<span style={{ color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</span>}
+        <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+          {(()=>{
+            let first=true;
+            const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+            return filteredCustomers.map(c=>{
+              const bt=top();
+              const cnt=bookings.filter((b:any)=>b.customer_id===c.id).length;
+              if (isMobile) return (
+                <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ padding:"10px 14px", borderTop:bt, cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+                    <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</strong>
+                    {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.category}</span>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:12, color:C.textSub }}>
+                    {c.manager_name&&<span><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
+                    <span style={{ marginLeft:"auto", fontSize:11, color:C.muted }}>섭외 {cnt}건 →</span>
+                  </div>
+                  {(c.phone||c.email)&&(
+                    <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:12, color:C.textSub, marginTop:3 }}>
+                      {c.phone&&<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", whiteSpace:"nowrap", flexShrink:0 }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>}
+                      {c.email&&<span style={{ color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</span>}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            ) : (
-            <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, transition:"border-color 0.2s" }}
-              onMouseEnter={e=>(e.currentTarget.style.borderColor=C.purple)}
-              onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
-            >
-              <span style={{ fontWeight:800, fontSize:15, color:C.text, minWidth:80 }}>{c.name}</span>
-              {c.brand&&<span style={{ fontSize:13, color:C.blue }}>· {c.brand}</span>}
-              {c.category&&<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.category}</span>}
-              {c.manager_name&&<span style={{ fontSize:12, color:C.muted }}><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</span>}
-              {c.phone&&<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ fontSize:12, color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>}
-              {c.email&&<span style={{ fontSize:12, color:C.muted }}><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</span>}
-              <span style={{ marginLeft:"auto", fontSize:11, color:C.muted, whiteSpace:"nowrap" }}>섭외 {bookings.filter((b:any)=>b.customer_id===c.id).length}건 →</span>
-            </div>
-            )
-          ))}
+              );
+              return (
+                <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }}
+                  onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
+                  onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
+                  style={{ display:"grid", gridTemplateColumns:"minmax(0,1.4fr) 96px 120px 150px minmax(0,1.3fr) 90px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  <span style={{ fontSize:12.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.name}{c.brand?<span style={{ color:C.blue, fontWeight:600 }}> · {c.brand}</span>:null}</span>
+                  <span style={{ overflow:"hidden" }}>{c.category?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.category}</span>:null}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.manager_name?<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</>:""}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.phone?<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>:""}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.email?<><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</>:""}</span>
+                  <span style={{ textAlign:"right", fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>섭외 {cnt}건 →</span>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
     </div>
