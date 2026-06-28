@@ -354,6 +354,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
           ? <img src={m.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
           : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:size*0.42, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>;
         let first=true; const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+        // 프로젝트·단건 공통 6컬럼(세로 일렬): [배지] [식별자] [날짜] [부가] [금액] [상태]
+        const ROW_COLS = "max-content minmax(0,2fr) minmax(0,1.3fr) minmax(0,1.5fr) max-content max-content";
         const rows: ReactNode[] = [];
         // 프로젝트 그룹 (섭외 리스트 그룹헤더 기준 — 폴더배지·아바타·프로젝트·고객사·날짜 / 우측 금액)
         Object.entries(projGroup).forEach(([pid, bs])=>{
@@ -363,19 +365,32 @@ export default function DashboardView({ bookings, models, customers, projects, s
           const overdue = bs.some(x=>isOverdue(x.shoot_date));
           const total = bs.reduce((s,b)=>s+bookingTotal(b),0);
           const ms = bs.map(b=>models.find(m=>m.id===b.model_id)).filter(Boolean);
+          if (isMobile) { rows.push(
+            <div key={pid} onClick={()=>onSelectProject(pid)} style={{ padding:"10px 14px", borderTop:top(), cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                <span style={{ flexShrink:0, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}><FolderOpen size={10} style={{ verticalAlign:-2 }}/> 프로젝트</span>
+                <strong style={{ flex:1, minWidth:0, fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
+                {hasHold ? <span style={{ flexShrink:0, background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700 }}>HOLD</span> : null}
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted }}>
+                <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명{overdue?<span style={{ color:C.red, fontWeight:700 }}> · 일정지남</span>:null}</span>
+                {canViewFinance&&total>0 ? <span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{total.toLocaleString()}원</span> : null}
+              </div>
+            </div>
+          ); return; }
           rows.push(
             <div key={pid} onClick={()=>onSelectProject(pid)}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
-              <span style={{ flexShrink:0, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><FolderOpen size={11} style={{ verticalAlign:-2 }}/> 프로젝트</span>
-              <div style={{ display:"flex", flexShrink:0 }}>{ms.slice(0,3).map((m:any,i:number)=>(<span key={i} style={{ marginLeft:i?-7:0, border:`2px solid ${C.card}`, borderRadius:"50%", display:"inline-flex" }}>{avatar(m,20)}</span>))}</div>
-              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
-                <span style={{ color:C.muted }}> · <Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명</span>
-                {overdue ? <span style={{ color:C.red, fontWeight:700 }}> · <AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}
-              </p>
-              {hasHold ? <span style={{ flexShrink:0, background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap" }}>HOLD</span> : null}
-              {canViewFinance&&total>0 ? <span style={{ flexShrink:0, fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{total.toLocaleString()}원</span> : null}
+              style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
+              <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><FolderOpen size={11} style={{ verticalAlign:-2 }}/> 프로젝트</span>
+              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
+                <span style={{ display:"flex", flexShrink:0 }}>{ms.slice(0,3).map((m:any,i:number)=>(<span key={i} style={{ marginLeft:i?-7:0, border:`2px solid ${C.card}`, borderRadius:"50%", display:"inline-flex" }}>{avatar(m,20)}</span>))}</span>
+                <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
+              </span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(bs[0]?.shoot_date)}</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>모델 {bs.length}명{overdue ? <span style={{ color:C.red, fontWeight:700 }}> · <AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}</span>
+              <span style={{ textAlign:"right", fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{canViewFinance&&total>0 ? total.toLocaleString()+"원" : ""}</span>
+              <span style={{ display:"flex", justifyContent:"flex-end" }}>{hasHold ? <span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap" }}>HOLD</span> : null}</span>
             </div>
           );
         });
@@ -402,18 +417,17 @@ export default function DashboardView({ bookings, models, customers, projects, s
           rows.push(
             <div key={b.id} onClick={()=>setSelectedBooking(b)}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
-              <span style={{ flexShrink:0, background:bk.color+"22", color:bk.color, border:`1px solid ${bk.color}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><TypeIcon type={b.booking_type} size={11}/> {bk.label}</span>
-              {avatar(model,24)}
-              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{model?.name||"?"} → {client?.name||"?"}</strong>
-                <span style={{ color:C.muted }}> · <Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{fmtDate(b.shoot_date)}</span>
-                {b.project_name ? <span style={{ color:C.muted }}> · {b.project_name}</span> : null}
-                {isOverdue(b.shoot_date) ? <span style={{ color:C.red, fontWeight:700 }}> · <AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}
-              </p>
-              {!b.deposit_amt&&b.status==="CONFIRMED" ? <span style={{ flexShrink:0, fontSize:11, color:C.red, fontWeight:700, whiteSpace:"nowrap" }}>계약금 미입금</span> : null}
-              {canViewFinance&&amt>0 ? <span style={{ flexShrink:0, fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{amt.toLocaleString()}원</span> : null}
-              <span style={{ flexShrink:0, display:"flex" }}><Badge code={b.status} type={b.booking_type} /></span>
+              style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
+              <span style={{ background:bk.color+"22", color:bk.color, border:`1px solid ${bk.color}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><TypeIcon type={b.booking_type} size={11}/> {bk.label}</span>
+              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>{avatar(model,24)}<strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} → {client?.name||"?"}</strong></span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                {b.project_name ? b.project_name : ""}
+                {isOverdue(b.shoot_date) ? <span style={{ color:C.red, fontWeight:700 }}>{b.project_name?" · ":""}<AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}
+                {!b.deposit_amt&&b.status==="CONFIRMED" ? <span style={{ color:C.red, fontWeight:700 }}>{(b.project_name||isOverdue(b.shoot_date))?" · ":""}계약금 미입금</span> : null}
+              </span>
+              <span style={{ textAlign:"right", fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{canViewFinance&&amt>0 ? amt.toLocaleString()+"원" : ""}</span>
+              <span style={{ display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
             </div>
           );
         });

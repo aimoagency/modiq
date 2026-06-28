@@ -77,14 +77,13 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
                 <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"minmax(0,300px) auto auto minmax(0,160px) minmax(0,200px) 1fr max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,1.6fr) max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   <span style={{ minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><span style={{ fontSize:13.5, color:C.text, fontWeight:700 }}>{c.name}</span>{c.brand?<span style={{ color:C.muted, fontWeight:500, fontSize:12.5 }}> · {c.brand}</span>:null}</span>
-                  <span style={{ overflow:"hidden" }}>{c.category?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.category}</span>:null}</span>
-                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.manager_name?<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</>:""}</span>
-                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.phone?<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>:""}</span>
-                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.email?<><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</>:""}</span>
-                  <span />
-                  <span style={{ textAlign:"right", fontSize:12, color:C.muted, whiteSpace:"nowrap", paddingRight:16 }}>섭외 {cnt}건 →</span>
+                  <span style={{ minWidth:0, overflow:"hidden", whiteSpace:"nowrap" }}>{c.category?<span style={{ background:C.card2, color:C.textSub, fontSize:11, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}>{c.category}</span>:""}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.manager_name?<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</>:""}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.phone?<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>:""}</span>
+                  <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.email?<><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</>:""}</span>
+                  <span style={{ textAlign:"right", fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>섭외 {cnt}건 →</span>
                 </div>
               );
             });

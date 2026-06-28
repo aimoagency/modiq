@@ -156,11 +156,10 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
                 <div key={b.id} onClick={()=>onSelectBooking(b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"minmax(0,300px) auto max-content 1fr max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr) max-content max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
-                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{fmtDate(b.shoot_date)}</span>
                   {payBadge}
-                  <span aria-hidden="true" />
                   <span style={{ textAlign:"right", whiteSpace:"nowrap" }}>
                     <span style={{ fontSize:13.5, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</span>
                     <span style={{ fontSize:11, color:C.blue, marginLeft:8 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>

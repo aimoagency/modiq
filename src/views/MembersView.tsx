@@ -81,8 +81,8 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
           {nameCell}
         </div>
         <div style={{ marginTop: 4, fontSize: 12.5, color: C.muted, display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={cell(C.muted)}>{m.phone || "—"}</span>
-          <span style={cell(C.muted)}>{m.email}</span>
+          <span style={cell(C.muted)}>{m.phone || ""}</span>
+          <span style={cell(C.muted)}>{m.email || ""}</span>
         </div>
         <div style={{ marginTop: 8 }}>{actions}</div>
       </div>
@@ -93,11 +93,10 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
     <div
       onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-      style={{ display: "grid", gridTemplateColumns: "minmax(0,220px) auto minmax(0,240px) 1fr max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+      style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.4fr) max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
       {nameCell}
-      <span style={cell(C.muted)}>{m.phone || "—"}</span>
-      <span style={cell(C.muted)}>{m.email}</span>
-      <span aria-hidden style={{ minWidth: 0 }} />
+      <span style={cell(C.muted)}>{m.phone || ""}</span>
+      <span style={cell(C.muted)}>{m.email || ""}</span>
       <div style={{ display: "flex", justifyContent: "flex-end", paddingRight: 0, whiteSpace: "nowrap" }}>{actions}</div>
     </div>
   );
