@@ -1,8 +1,13 @@
-# Modiq (v1.1.0 · MVP 완료)
+# Modiq (v1.3.0)
 
 탤런트(모델) 관리 OS — 에이전시 운영 SaaS. React + TypeScript + Vite, 백엔드는 Supabase.
 
-> 📕 운영 매뉴얼 · 개발 문서 · Q&A는 [`docs/`](docs/) 폴더 참고 ([개발 문서](docs/DEVELOPMENT.md) · [운영 매뉴얼](docs/MANUAL.md) · [Q&A](docs/FAQ.md))
+> v1.3.0 헤드라인: Material 3 디자인 · 영상 첨부 · 발송 V4(대대행 편입) · 요금제 v3.0 · 리스트 정렬 통일.
+
+> 📕 문서는 [`docs/`](docs/) 폴더 참고 — **문서 허브: [📘 문서 인덱스(Notion 임포트용)](docs/NOTION_INDEX.md)**
+> - 개발: [개발 문서](docs/DEVELOPMENT.md) · [리스트 정렬 규칙](docs/LIST_ALIGNMENT.md)
+> - 사용자 가이드: [단계별 매뉴얼](docs/USER_GUIDE_STEP_BY_STEP.md) · [페르소나 가이드](docs/USER_GUIDE_PERSONA.md)
+> - 운영/지원: [운영 매뉴얼](docs/MANUAL.md) · [Q&A](docs/FAQ.md)
 
 ## 빠른 시작
 

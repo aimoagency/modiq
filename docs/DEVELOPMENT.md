@@ -1,7 +1,15 @@
-# Modiq 개발 문서 (v1.2.0)
+# Modiq 개발 문서 (v1.3.0)
 
 > 탤런트(모델) 관리 OS — 에이전시 운영 SaaS
 > 스택: React + TypeScript + Vite / Supabase(REST + Storage + Edge Functions) / 멀티테넌트(에이전시별)
+> 버전: **v1.3.0** · 갱신일: 2026-06-28 · 대상: 개발자/유지보수자
+
+### v1.3.0 변경 요약(헤드라인)
+1. **Material 3(Material You) 디자인** — 색 팔레트(딥블루 primary·라임 액센트)·pill 버튼·M3 토큰(`theme.ts shape/elev`)·CSS 변수 토큰(`--c-primary` 등, `App.tsx`).
+2. **영상 첨부** — 포트폴리오·패키지에 유튜브/비메오/인스타/틱톡 임베드(`lib/video.ts`, `models.videos` jsonb).
+3. **발송(Distribution) V4 — 대대행 편입** — A가 보낸 모델을 B가 "내 모델로 등록" 시 소속사(company) 고정 편입(`talent_distribution_v4_subagency.sql`).
+4. **요금제 v3.0** — Starter/Pro/Team(BEST)/Enterprise 4티어 + 14일 Trial(`constants.ts` PLANS).
+5. **리스트(엑셀형 표) 정렬 통일** — 섭외 목록 공용 컴포넌트(`components/BookingsList.tsx`) + `docs/LIST_ALIGNMENT.md` 고정 규칙.
 
 ---
 
@@ -36,9 +44,10 @@ npm run preview  # 빌드 결과 미리보기
 src/
 ├── main.tsx              # React 마운트 진입점
 ├── App.tsx               # 앱 전체 셸: 상태·인증·데이터 로드·모달·라우팅 (대형 파일)
-├── constants.ts          # APP_VERSION, 요금제, 상태/타입, 분야·국가 등 모든 상수
-├── theme.ts              # 색상(C), 공통 인풋/버튼 스타일
+├── constants.ts          # APP_VERSION, 요금제(PLANS·PLAN_FEATURES·PLAN_MATRIX·PLAN_TRIAL), 상태/타입, FEATURE_DISTRIBUTION 등 모든 상수
+├── theme.ts              # M3 토큰: 색상(C, CSS변수 매핑) + shape/elev + inp/btnS 공통 스타일
 ├── components/           # 재사용 UI
+│   ├── BookingsList.tsx        # 섭외 목록 공용 컴포넌트(섭외·대시보드 진행중섭외·신규문의 동일 렌더) — LIST_ALIGNMENT 규칙
 │   ├── ModelBrowser.tsx        # 좌측 검색 사이드바(필터+리스트). 스튜디오/패키지 공용
 │   ├── CompCardModal.tsx       # 컴카드(A4 가로) 생성·미리보기
 │   ├── SettlementStatementModal.tsx  # 정산 내역서 + 모델 발급 서류(원천징수/거래명세서)
@@ -64,6 +73,7 @@ src/
     ├── withholdingStatement.ts  # 원천징수 내역서 + 소속사 거래명세서(매입) HTML, 인쇄
     ├── clientStatement.ts       # 매출 거래명세서(고객사) HTML 생성
     ├── packages.ts       # 패키지 타입·ID·공유 토큰·공유 URL
+    ├── video.ts          # 영상 임베드(YouTube/Vimeo/Instagram/TikTok) 파싱·oEmbed 보강(VideoRef)
     ├── calendar.ts       # .ics 생성, 구독 링크
     ├── gcal.ts           # 구글 캘린더 OAuth/동기화 호출
     ├── email.ts          # 이메일(Resend Edge Function) 호출
@@ -102,19 +112,68 @@ src/
 - 세무 식별(대표·정산권한자 전용): `address`, `national_id_masked`(마스킹 표시값), `national_id_type`(rrn/arc/passport). 평문은 DB에 직접 저장하지 않고 `set_model_national_id`/`get_model_national_id` RPC로 **암호화 저장·복호화**, 복호화 접근은 `secure_id_access_log`에 감사 기록.
 - 세무유형: `payout_tax_type`(freelancer/foreigner/company) · 소속사: `agency_name`/`agency_biz_no`/`agency_contact`/`agency_phone`/`agency_email`
 - 사진: `photos`(Storage URL 배열, 최대 30), `liked_photos`, `thumb_url`(대표 썸네일), `compcard`(슬롯 jsonb)
+- 영상(v1.3): `videos`(jsonb 배열, `VideoRef[]` — provider/id/url/embed/thumb/title/vertical). 포트폴리오·패키지에서 외부 링크 임베드(`lib/video.ts`)
 - 모델료: `fee_day`(9h) / `fee_half`(5h) / `fee_hour`(1h)
 - 정산방식: `payout_pay_type`(rate/fixed), `payout_day_value`/`payout_half_value`/`payout_hour_value`
+- 출처(발송 V4 편입, v1.3): `source_agency_id`/`source_agency_name`/`source_distribution_id`/`source_model_id`(모두 TEXT — A 업체에서 편입 시 자동 기록, 모델목록 '출처' 필터·'대대행' 배지)
 - 연동: `cal_token`(캘린더 구독 토큰)
 
 ### 마이그레이션 SQL
 
 `supabase/*.sql` 에 기능별 증분 마이그레이션이 분리돼 있다. 해당 기능에서 "컬럼 없음" 에러가 나면 미실행 상태:
 
-`model_fee_setup` · `payout_session_value_setup` · `payout_dayhalf_setup` · `foreign_model_setup` · `id_system_setup` · `model_offs_setup` · `packages_setup` · `model_profile_setup` · `customers_biz_fields_setup`
+| 영역 | SQL 파일 |
+|---|---|
+| 모델료/정산 | `model_fee_setup` · `payout_session_value_setup` · `payout_dayhalf_setup` |
+| 외국인/세무 | `foreign_model_setup` · `id_system_setup` · `model_national_id_secure`(암호화 RPC·감사로그) |
+| 모델/휴무/패키지 | `model_offs_setup` · `packages_setup` · `model_profile_setup` · `model_birth_year_setup` · `birth_year_backfill` · `package_item_count_setup` |
+| 고객사 | `customers_biz_fields_setup` |
+| 발송(Distribution) | `talent_distribution_shared_schedule` · `talent_distribution_lookup_rpcs` · `talent_distribution_rls_fix` · **`talent_distribution_v4_subagency`(V4 대대행 — 미적용 시 발송·편입·회사설정 저장 실패)** |
+| RLS/FK/어드민 | `rls_tenant_isolation_fix` · `bookings_model_fk_set_null` · `admin_setup` · `admin_agency_members` · `admin_delete_tenant` |
 
+> 📌 **영상(v1.3)**: `alter table public.models add column if not exists videos jsonb;` (별도 파일 없을 수 있음 — 위 1줄 직접 실행). 패키지 영상은 `packages.items[].videos`(jsonb 내부).
 > ⚠️ RLS 사용 시 새 테이블에는 기존 테이블과 동일한 에이전시 격리 정책을 반드시 추가한다.
+> ⚠️ 모든 `*_setup`/`v4`류는 `add column if not exists`라 **재실행 안전**. 기능에서 "컬럼 없음" 에러가 나면 미실행 상태이니 Supabase SQL Editor에서 실행.
 
 ---
+
+## 4-1. Material 3 디자인 토큰 (v1.3)
+
+Material You 팔레트를 **CSS 변수**로 정의하고 `theme.ts`가 이를 감싸 인라인 스타일에 노출한다.
+
+**CSS 변수 토큰** (`App.tsx` 글로벌 `<style>`, `:root`=다크 / `html.light`=라이트):
+
+| 토큰 | 다크 | 라이트 | 용도 |
+|---|---|---|---|
+| `--c-primary` | `#2E5FE0` | `#1D4ED8` | M3 primary(딥블루). 버튼·포커스 테두리·사이드 활성 |
+| `--c-on-primary` | `#FFFFFF` | `#FFFFFF` | primary 위 글자색 |
+| `--c-primary-container` | `#15336E` | `#DCE6FF` | 모바일 탭바 활성 알약 배경 |
+| `--c-on-primary-container` | `#BBD0FF` | `#1D4ED8` | 그 위 아이콘색 |
+| `--c-accent` | `#e4fc3f`(라임) | `#7d9400` | 사이드바 좌측 활성 바·워드마크 "m"(다크) |
+| `--c-bg/-card/-card2/-border/-text/-text-sub/-muted` | 딥 차콜 계열 | 화이트 계열 | 표면·텍스트 중립색 |
+| `--c-sidebar/-side-hover/-nav-active` | — | — | 사이드바 배경/호버/활성 |
+
+**`theme.ts` 토큰/스타일**:
+- `C` — 위 CSS 변수를 키로 매핑(예: `C.blue="var(--c-primary)"`). **키 이름은 기존 인라인 호출 호환을 위해 유지**(`blue`가 primary). `purple/green/red/yellow/orange`는 시맨틱 상태색(유지).
+- `shape` = `{ xs:4, sm:8, md:12, lg:16, xl:28, full:9999 }` — M3 모서리. 버튼은 `full`(stadium/pill), 입력창은 `sm`.
+- `elev` = `{1,2,3}` — M3 elevation 그림자 3단계.
+- `inp` — M3 text field(둥근 모서리·`12px 14px` 패딩, 포커스 시 `--c-primary` 테두리는 글로벌 `input:focus` 규칙).
+- `btnS(bg, disabled)` — pill 버튼. primary(`C.blue`)면 `--c-on-primary` 글자, 그 외 white.
+
+워드마크 "m" 액센트: 라이트=블랙(`#111`), 다크=라임 액센트(사용자 지정: 라이트=최소 컬러·블랙 로고).
+
+> 🔒 디자인 토큰·부팅 스플래시·대시보드 로딩 보호 영역은 `CLAUDE.md` 기준 유지. 임의 변경 금지.
+
+## 4-2. 영상(비디오) 임베드 (v1.3 · `lib/video.ts`)
+
+포트폴리오(모델)·패키지에 외부 영상 링크를 첨부해 임베드한다. **자사 저장·대역폭 0**(외부 임베드, Phase 1).
+
+- 지원: **YouTube**(watch/youtu.be/shorts/embed/live), **Vimeo**, **Instagram**(reel/reels/p/tv), **TikTok**(전체 URL — `vm.tiktok.com` 단축링크 불가).
+- `parseVideoUrl(raw) → VideoRef|null` — URL을 `{provider,id,url,embed,thumb,title?,vertical?}`로 정규화. 인식 못 하면 `null`.
+  - 세로(9:16) 자동: 유튜브 shorts·인스타 reel·틱톡은 `vertical:true`.
+  - 썸네일: 유튜브는 `img.youtube.com/.../hqdefault.jpg`, Vimeo/TikTok은 빈 값 → `enrichVideo`로 보강.
+- `enrichVideo(v) → Promise<VideoRef>` — Vimeo·TikTok 공개 oEmbed 1회 조회로 `thumb/title/vertical` 보강(CORS/실패 시 원본 유지·임베드는 정상). 인스타는 토큰 필요 → 임베드 카드가 자체 표시.
+- 저장: `models.videos`(jsonb `VideoRef[]`), 패키지는 `packages.items[].videos`. 라이트박스 재생.
 
 ## 5. 섭외 상태 & 타입 (constants.ts)
 
@@ -143,6 +202,63 @@ src/
 - 영업이익(월 고정비 반영)은 **미구현** — 로드맵 참고
 
 > 금액은 원 단위 정수로 다룬다. 정산·세무 계산을 수정할 때는 명세서(`SettlementStatementModal`·`ClientStatementModal`)와 매출 엑셀 출력을 함께 검증한다. 기존 필터/수식(매출 인정 `REVENUE_STATUSES`, `clientCharge` 등)은 임의 수정 금지.
+
+---
+
+## 6-1. 발송(Distribution) V4 — 대대행 편입 (v1.3)
+
+에이전시 간 모델 자료 단방향 발송 + **B가 받은 모델을 "내 모델로 등록"하면 소속사(대대행) 고정 편입**.
+
+**흐름**
+1. **A 업체(발신)**: 회사설정에 법인 정산정보를 **1회** 등록(`agencies.payout_bank_info`+`payout_tax_email`+기존 상호/사업자번호/대표/주소). 발송 시 `SendTab`이 이를 발송 본문 스냅샷 `talent_distributions.sender_payout_info`(jsonb: `company_name·biz_no·rep_name·contact·address·bank`)에 실어 보냄.
+2. **B 업체(수신)**: 받은 모델을 "내 모델로 등록" → **`payout_tax_type="company"`(소속사) 고정** 편입(프리랜서/외국인 변경 불가·외국인 토글 숨김). A 업체정보(`agency_name/agency_biz_no/agency_contact/agency_phone/bank_info`)는 위 스냅샷에서 **자동 입력**. B는 모델별 **마진(공급가 `fee_*` · 기준액 `payout_*_value`)만** 입력.
+3. **출처 자동 기록**: `models.source_agency_id/source_agency_name/source_distribution_id/source_model_id`(TEXT). 모델목록 '출처' 필터 + '대대행' 배지.
+4. **정산**: 기존 소속사 계산(`modelPayout=기준액×1.1`)을 **"A 지급액 (○○ 대대행)"** 으로 표기(집행은 수동). **계산식 신규 생성 금지 — 기존 company 경로 재사용.** 발급 서류=거래명세서(공급가+VAT10%, 세금계산서는 소속 에이전시 발행).
+
+**스키마** — `supabase/talent_distribution_v4_subagency.sql`(전부 `add column if not exists`, 재실행 안전):
+
+| 테이블 | 추가 컬럼 |
+|---|---|
+| `agencies` | `payout_bank_info`(text), `payout_tax_email`(text) |
+| `talent_distributions` | `sender_payout_info`(jsonb 스냅샷) |
+| `distribution_models` | `is_foreigner`(bool)·`visa_entry`·`visa_exit`(외국인 가용기간), `category`·`career_years`(numeric)·`country`·`instagram_url`(모델 스냅샷 보강) |
+| `models` | `source_agency_id`·`source_agency_name`·`source_distribution_id`·`source_model_id`(모두 TEXT) + `idx_models_source_agency` 인덱스 |
+
+> ⚠️ `agencies.id`/`talent_distributions.id`는 `AGY_...` 형식 TEXT 식별자(uuid 아님)라 source 컬럼도 **text**. 이전에 uuid로 만들었으면 SQL의 `alter ... type text` 정정문이 무손실 변환.
+> ⚠️ 이 SQL 미적용 시 **발송·편입·회사설정 저장이 실패**. 코드 배포 전 반드시 적용(모델 목록 로드는 `loadData`의 `MODEL_COLS_V4`→`MODEL_COLS` 자동 폴백으로 보호됨). 발송 기능은 `FEATURE_DISTRIBUTION` 플래그(`constants.ts`)로 즉시 on/off 가능.
+
+---
+
+## 6-2. 요금제 v3.0 (v1.3 · `constants.ts`)
+
+Material 카드 디자인의 4티어 + 14일 무료 Trial. **월·부가세 포함·천원 단위.**
+
+| 플랜 | 월요금 | 기본 담당자 | 비고 |
+|---|---|---|---|
+| **Starter** | 78,000 | 1 | 1인 에이전시·대표 단독 |
+| **Pro** | 118,000 | 3 | 대표 + 직원 1~2명 |
+| **Team** (BEST) | 158,000 | 7 | 외국인 세무 정산 포함 |
+| **Enterprise** | 228,000 | 15 | 온보딩 설치·교육, 초과 ₩12,000/명 |
+| (Free Trial) | 0 | 3 | 14일 전 기능 체험(배너) |
+
+- 코드: `PLANS`(카드용 4티어·`best:true`=Team), `PLAN_FEATURES`(한도·알림톡 enforcement에 직접 사용 — `baseMembers/additionalPrice/alimtalk`), `PLAN_MATRIX`(비교표 [Starter,Pro,Team,Enterprise]), `PLAN_TRIAL`(14일·3명), `getTotalMemberLimit(plan, extra)`. 화면=`views/PlanView.tsx`.
+- ⚠️ **레거시 키 `standard`(baseMembers 5)는 기존 `plan="standard"` 고객 한도 보존을 위해 절대 삭제 금지.** Enterprise는 API 연동 제거·온보딩 설치/교육 포함.
+- 기존 고객 전체 trial 리셋(필요 시 SQL): `update public.agencies set plan='trial', trial_ends_at=now()+interval '14 days';`
+
+---
+
+## 6-3. 리스트(엑셀형 표) 정렬 아키텍처 (v1.3 · `docs/LIST_ALIGNMENT.md`)
+
+모든 목록(섭외·매출·정산·고객사·담당자·패키지·대시보드)은 **엑셀형 표**로 렌더하며, 정렬 규칙은 `docs/LIST_ALIGNMENT.md`가 단일 진실원천이다(🔒 임의 변경 금지).
+
+**핵심 아키텍처**
+1. **섭외 목록 공용화** — `src/components/BookingsList.tsx` **하나**로 **섭외 화면 / 대시보드 진행중섭외 / 신규문의**가 동일 렌더(컬럼·정렬·헤더 100% 동일, 한 곳만 고치면 셋 다 반영). props: `bookings, models, customers, isMobile, onSelect, showHeader?, emptyText?`. 신규문의는 핑크 알림 헤더만 두고 `showHeader={false}`로 사용.
+2. **별개 grid 컨테이너 함정** — 헤더 행과 각 데이터 행은 **서로 다른 CSS grid 컨테이너**라 트랙 폭이 컨테이너마다 독립 계산된다. 따라서 헤더+데이터가 공유하는 GRID의 **모든 트랙은 결정적이어야 한다**: 허용=`고정 px`·`minmax(0,N fr)`, **금지=벌거벗은 `max-content`/`auto`**(헤더 글자폭 vs 데이터 배지폭이 달라져 금액·상태 제목이 셀과 어긋남).
+3. **상태(배지) 컬럼=고정 88px.** `BookingsList` GRID(9컬럼): `56px 32px minmax(0,2fr) minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) 88px` = 유형·아바타·모델→고객사·프로젝트·날짜·장소·담당자·금액·상태.
+4. **헤더 라벨 정렬 = 컬럼 데이터 정렬**(좌측 텍스트=좌, 금액=우, 배지=flex-end). **예외: 정산 화면 헤더는 센터.**
+5. **빈칸은 빈 슬롯 유지**(`""` span), **금액은 잘림 금지**(우측 정렬·`nowrap`·필요 시 `minmax(max-content,fr)`).
+
+> 화면별 GRID 현재값은 `docs/LIST_ALIGNMENT.md` 6절 표 참조(매출·정산·고객사·담당자·패키지·대시보드 입금확인).
 
 ---
 
@@ -201,6 +317,7 @@ VITE_SOLAPI_FN_URL=https://<project>.supabase.co/functions/v1/solapi-send
 
 **기능 로드맵**
 0. ~~구글 캘린더 자동 동기화~~ → **v1.2.0 반영**: 수락형 흐름(확정→초대 메일→모델 수락 시 캘린더 생성, 수락 후 변경 갱신·취소 삭제). 메일 발신=modiq·회신=에이전시.
+0-1. ~~Material 3 디자인 / 영상 첨부 / 발송 V4 대대행 / 요금제 v3.0 / 리스트 정렬 통일~~ → **v1.3.0 반영**(위 변경 요약·4-1/4-2/6-1/6-2/6-3 참조).
 1. 모델 수락률/응답 현황 집계(대시보드)
 2. Hour 세션 자동적용 기준 정의
 3. 영업이익 단계(월 고정비 입력 → 매출총이익 → 영업이익)

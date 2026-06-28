@@ -1,5 +1,48 @@
 # modiq 변경 로그
 
+## v1.3.0 — 2026.06.28 · Material 3 디자인 + 영상 + 발송 V4 + 요금제 v3.0 + 리스트 정렬 통일 🎨
+
+화면 전반을 **Material 3(Material You)** 로 리뉴얼하고, 포트폴리오·패키지 **영상 첨부**, 발송 **V4 대대행 편입**, **요금제 v3.0**, 그리고 전체 리스트(엑셀형 표)를 공용 컴포넌트로 **정렬 통일**. 버전 표기 `1.3.0`으로 통일(package.json · constants.ts · 문서 · 앱 내 표시).
+
+### Material 3 디자인
+- 색 팔레트 교체: primary=딥블루(다크 `#2E5FE0` / 라이트 `#1D4ED8`), M3 표면(딥 차콜), 라임 액센트(`#e4fc3f` / 라이트 `#7d9400`). CSS 변수 토큰 추가(`--c-primary`·`--c-on-primary`·`--c-primary-container`·`--c-on-primary-container`·`--c-accent`).
+- 버튼=pill(stadium) 형태 + 패딩/폰트 확대(`btnS`), 입력창=둥근 모서리·여유 패딩·포커스 시 primary 테두리(`inp`). `theme.ts`에 `shape`·`elev` 토큰 추가.
+- 모바일 하단 탭바=M3 Navigation Bar(활성 아이콘 뒤 primary-container 알약 인디케이터). 데스크탑 사이드바 활성=좌측 라임 액센트 바 + 가독 글자색.
+- 워드마크 "m" 액센트: 라이트=블랙(`#111`) / 다크=라임 액센트.
+- ⚠️ 디자인 토큰·부팅 스플래시·대시보드 로딩 보호 영역은 그대로 유지(`CLAUDE.md` 참조).
+
+### 영상(포트폴리오 · 패키지)
+- 모델 포트폴리오·패키지에 **영상 첨부**: 유튜브·비메오·**인스타그램·틱톡** 링크 임베드. **9:16 세로형** 자동 감지 + 가로/세로 토글 지원.
+- 썸네일 정렬(높이 고정 168px 필름스트립식), 라이트박스 재생.
+- 라이브러리 `lib/video.ts`(`parseVideoUrl`·`enrichVideo`·`VideoRef`). 저장: `models.videos`(jsonb), 패키지는 `packages.items[].videos`. 새로고침 시 현재 페이지 유지.
+
+### 발송 V4 — 대대행 편입
+- A 업체가 보낸 모델을 B 업체가 **"내 모델로 등록"** 하면 **대대행(소속사 `payout_tax_type="company"`) 고정**으로 편입(프리랜서/외국인 변경 불가·외국인 토글 숨김).
+- A 업체정보(상호·사업자번호·대표·연락처·주소·계좌)는 발송 스냅샷 **`talent_distributions.sender_payout_info`**(jsonb)에서 자동 입력 — A는 회사설정(`agencies.payout_bank_info` + 기존 상호·사업자·대표·주소)에 **1회 등록**, B는 모델별 **마진(공급가 `fee_*`·기준액 `payout_*_value`)만** 입력.
+- 출처 자동 기록(`models.source_agency_id`·`source_agency_name`·`source_distribution_id`) + 모델목록 **'출처' 필터**·**'대대행' 배지**.
+- 정산: 기존 company 계산(`modelPayout=기준액×1.1`)을 **재사용**해 **"A 지급액(○○ 대대행)"** 표기. 소속사 원천징수 0. 계산식 신규 생성 금지.
+
+### 요금제 v3.0
+- Material 카드 디자인. 플랜: **Starter 78,000 / Pro 118,000 / Team 158,000(BEST) / Enterprise 228,000**(월·부가세 포함, 천원 단위).
+- API 연동 제거 → '전담 고객 매니저'로 대체, Enterprise에 **온보딩 설치·교육 지원** 추가. 가격 밑 문구는 '부가세 포함'만 표기.
+- 코드: `constants.ts`(`PLANS`·`PLAN_FEATURES`·`PLAN_MATRIX`·`PLAN_TRIAL`), `views/PlanView.tsx`.
+
+### 리스트 정렬 통일(엑셀형 · BookingsList)
+- 전체 리스트를 **상단 헤더 + 균일 컬럼 세로 줄맞춤**의 엑셀형 표로 통일(7개 뷰). 규칙은 `docs/LIST_ALIGNMENT.md`에 고정.
+- 섭외 목록 = 공용 컴포넌트 **`components/BookingsList.tsx`** 하나로 **섭외 화면·대시보드 진행중섭외·신규문의**가 동일 렌더.
+- 헤더·데이터 행은 별개 grid 컨테이너 → 공유 GRID의 모든 트랙은 **고정 px 또는 `minmax(0,fr)`**(벌거벗은 `max-content`/`auto` 금지), 상태(배지) 컬럼 **88px 고정**. 헤더 정렬=데이터 정렬(**정산 헤더만 센터**), 빈칸은 빈 슬롯 유지, 금액 무잘림.
+- 매출=매출·계약금·총이익 별도 셀, 입금확인 필요 컬럼 가로 간격 균등 분배.
+
+### 라이트 모드 가독성
+- 라이트=**최소 컬러 + 진한 블랙 본문 텍스트**, 활성 메뉴 가독 글자색, 로고 블랙. (사용자 지정)
+
+### DB 마이그레이션(필요)
+- **영상**: `alter table public.models add column if not exists videos jsonb;`
+- **발송 V4**: `supabase/talent_distribution_v4_subagency.sql`(컬럼 추가, 재실행 안전) — 미적용 시 **발송·편입·회사설정 저장 실패**.
+- **요금제 trial 리셋**: `update public.agencies set plan='trial', trial_ends_at=now()+interval '14 days';`(기존 고객 전체).
+
+---
+
 ## v1.2.0 — 2026.06.24 · 섭외 수락형 일정 동기화 + 메일 발신/회신 정비 📅
 
 확정 즉시 캘린더에 넣던 흐름을 **모델 수락 기반**으로 전환하고, 메일 발신자/회신주소를 정비. 버전 표기 `1.2.0`으로 통일(package.json · constants.ts · 문서 · 앱 내 표시).
