@@ -279,35 +279,43 @@ export default function PackagesView({ packages, setPackages, models, customers,
             <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
             <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
           </>);
-          const meta = (p: Pkg) => (<>
-            <span style={{ fontWeight: 400 }}> · </span>
-            <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10 }}>{p.layout === "compcard" ? "컴카드" : "제안 패키지"}</span>
-            <span style={{ fontWeight: 400 }}> · <User size={11} style={{ verticalAlign: -2 }} /> {p.item_count ?? p.items?.length ?? 0}명</span>
-            {p.client_name && <span style={{ fontWeight: 400 }}> · <Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</span>}
-            <span style={{ fontWeight: 400, color: p.is_public ? C.green : C.muted }}> · {p.is_public ? "● 공개" : "○ 비공개"}</span>
-          </>);
+          // 좌측 묶음: 제목 + 인원수 + 업체명 — 한 셀 안에서 서로 붙어 있게
+          const left = (p: Pkg) => {
+            const count = p.item_count ?? p.items?.length ?? 0;
+            return (
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14, fontWeight: 700, color: C.text }}>
+                  {p.title || "(제목 없음)"}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap" }}>
+                  <User size={11} style={{ verticalAlign: -2 }} /> 모델 {count}명
+                </span>
+                {p.client_name && (
+                  <span style={{ flexShrink: 0, fontSize: 12, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}
+                  </span>
+                )}
+              </span>
+            );
+          };
           return (
             <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
               {packages.map(p => {
                 const bt = top();
                 if (isMobile) return (
-                  <div key={p.id} style={{ borderTop: bt, padding: "10px 14px" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title || "무제 패키지"}</span>
-                      <span style={{ color: C.muted }}>{meta(p)}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{buttons(p)}</div>
+                  <div key={p.id} style={{ borderTop: bt, padding: "12px 16px" }}>
+                    <div style={{ marginBottom: 8 }}>{left(p)}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{buttons(p)}</div>
                   </div>
                 );
                 return (
                   <div key={p.id}
                     onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                    style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 12, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
-                    <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14, fontWeight: 700, color: C.text }}>
-                      {p.title || "무제 패키지"}<span style={{ color: C.muted }}>{meta(p)}</span>
-                    </span>
-                    <span style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>{buttons(p)}</span>
+                    style={{ display: "grid", gridTemplateColumns: "minmax(0,520px) 1fr max-content", alignItems: "center", gap: 14, padding: "12px 16px", borderTop: bt, transition: "background 0.12s" }}>
+                    {left(p)}
+                    <span />
+                    <span style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>{buttons(p)}</span>
                   </div>
                 );
               })}

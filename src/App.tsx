@@ -2230,7 +2230,7 @@ async function sharePdf(){
         {page==="settlement" && canViewFinance && <SettlementView settlementTab={settlementTab} setSettlementTab={setSettlementTab} settlementMonth={settlementMonth} setSettlementMonth={setSettlementMonth} settlementMonths={settlementMonths} settlementModel={settlementModel} setSettlementModel={setSettlementModel} settlementClient={settlementClient} setSettlementClient={setSettlementClient} settlementSummary={settlementSummary} filteredSettlement={filteredSettlement} models={models} customers={customers} openSettlement={openSettlementFresh} onOpenStatement={()=>setShowStatement(true)} isMobile={isMobile} />}
 
         {/* ════ 담당자 ════ */}
-        {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} />}
+        {page==="members"&&myRole==="owner"&&<MembersView members={members} maxMembers={maxMembers} memberPct={memberPct} setShowMemberForm={setShowMemberForm} handleDeleteMember={handleDeleteMember} handleUpdateMember={handleUpdateMember} isMobile={isMobile} />}
         {page==="company"&&myRole==="owner"&&<CompanyView agency={agency} members={members} session={session} onSave={handleSaveCompany} onTransferOwner={handleTransferOwner} onRevokeOwner={handleRevokeOwner} />}
 
         {/* ════ 요금제 ════ */}

@@ -90,7 +90,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
             <div key={m.id} onClick={()=>{ setSelectedModel(m); setMEditMode(false); }}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
               onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:"44px minmax(0,1.4fr) 150px 96px minmax(0,1fr) minmax(0,1.1fr) 110px 84px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+              style={{ display:"grid", gridTemplateColumns:"auto minmax(0,260px) auto auto minmax(0,180px) auto 1fr max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
               {/* 원형 썸네일 */}
               {avatar(36)}
               {/* 이름 + 출처(발송업체) 배지 */}
@@ -99,24 +99,25 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 발송 편입`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:10, fontWeight:800, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{m.source_agency_name||"소속사"}</span>}
               </span>
               {/* 성별 · 나이 · 경력 */}
-              <span style={{ fontSize:12.5, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{chip||""}</span>
+              <span style={{ fontSize:12.5, color:C.textSub, whiteSpace:"nowrap" }}>{chip||""}</span>
               {/* 외국인 D-day */}
-              <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.is_foreigner&&dday ? <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span> : null}</span>
-              {/* 전화 */}
-              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.phone ? <a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a> : ""}</span>
+              <span style={{ whiteSpace:"nowrap" }}>{m.is_foreigner&&dday ? <span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:10, whiteSpace:"nowrap" }}><Plane size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {dday}</span> : null}</span>
+              {/* 전화 + 인스타/AIMO 링크 */}
+              <span style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, fontSize:12.5, color:C.muted, whiteSpace:"nowrap" }}>
+                {m.phone&&<a href={`tel:${m.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none", overflow:"hidden", textOverflow:"ellipsis" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.phone}</a>}
+                {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} title="인스타그램" style={{ display:"inline-flex", alignItems:"center", flexShrink:0, textDecoration:"none" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg></a>}
+                {m.aimo_url&&<a href={m.aimo_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, textDecoration:"none", flexShrink:0, background:"linear-gradient(135deg,#4f46e5,#06b6d4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", fontWeight:700 }}>AIMO</a>}
+              </span>
               {/* 단가/수수료 */}
-              <span style={{ fontSize:12.5, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <span style={{ fontSize:12.5, color:C.textSub, whiteSpace:"nowrap" }}>
                 {m.rate>0&&<span><Coins size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {m.rate.toLocaleString()}원</span>}
                 {m.rate>0&&m.payout_pay_value>0&&" · "}
                 {m.payout_pay_value>0&&<span>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
               </span>
-              {/* 브랜드 아이콘 링크 */}
-              <span style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"flex-end", whiteSpace:"nowrap" }}>
-                {m.instagram_url&&<a href={m.instagram_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ display:"flex", alignItems:"center", gap:3, fontSize:12, color:"#E1306C", textDecoration:"none", whiteSpace:"nowrap" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg> 인스타</a>}
-                {m.aimo_url&&<a href={m.aimo_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:12, textDecoration:"none", whiteSpace:"nowrap", background:"linear-gradient(135deg,#4f46e5,#06b6d4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", fontWeight:700 }}>AIMO</a>}
-              </span>
+              {/* 1fr 스페이서 */}
+              <span />
               {/* 섭외 건수 */}
-              <span style={{ textAlign:"right", fontSize:11, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
+              <span style={{ textAlign:"right", fontSize:11, color:C.muted, whiteSpace:"nowrap", paddingRight:16 }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
             </div>
           );
         };
