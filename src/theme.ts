@@ -20,18 +20,23 @@ export const elev = {
   3:"0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.30)",
 };
 
-// M3 text field 느낌(둥근 모서리·여유 패딩)
+// 모바일 한정 컴팩트(사용자 합의: 모바일은 메트리얼 적용 전 밀도로 — 버튼/입력 작게).
+// 데스크탑(웹)은 M3 그대로. 페이지 로드 시 1회 판정(실기기는 로드시 뷰포트로 결정).
+const MOBILE = typeof window !== "undefined" && typeof window.matchMedia === "function"
+  && window.matchMedia("(max-width: 767px)").matches;
+
+// M3 text field 느낌(둥근 모서리·여유 패딩) — 모바일은 컴팩트
 export const inp: CSSProperties = {
-  width:"100%", minWidth:0, padding:"12px 14px", background:"var(--c-card2)",
-  border:`1px solid ${C.border}`, borderRadius:shape.sm, color:C.text,
-  fontSize:14, boxSizing:"border-box" as const, marginBottom:12,
+  width:"100%", minWidth:0, padding:MOBILE?"9px 12px":"12px 14px", background:"var(--c-card2)",
+  border:`1px solid ${C.border}`, borderRadius:MOBILE?6:shape.sm, color:C.text,
+  fontSize:MOBILE?13:14, boxSizing:"border-box" as const, marginBottom:MOBILE?10:12,
 };
 
-// M3 button — pill(stadium) 형태. primary(C.blue) 버튼은 on-primary 글자, 그 외 white.
+// M3 button — pill(stadium) 형태. primary(C.blue) 버튼은 on-primary 글자, 그 외 white. 모바일은 컴팩트.
 export const btnS = (bg: string, disabled=false): CSSProperties => ({
-  padding:"10px 22px", background:disabled?"var(--c-card2)":bg,
+  padding:MOBILE?"7px 14px":"10px 22px", background:disabled?"var(--c-card2)":bg,
   color:disabled?C.muted:(bg===C.blue?"var(--c-on-primary)":"white"),
-  border:"none", borderRadius:shape.full,
-  cursor:disabled?"not-allowed":"pointer", fontWeight:600, fontSize:14, opacity:disabled?0.6:1,
+  border:"none", borderRadius:MOBILE?8:shape.full,
+  cursor:disabled?"not-allowed":"pointer", fontWeight:600, fontSize:MOBILE?13:14, opacity:disabled?0.6:1,
   whiteSpace:"nowrap",
 });
