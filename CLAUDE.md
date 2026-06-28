@@ -29,6 +29,7 @@
   2) **기존 동작/흐름을 먼저 점검**한 뒤 수정하며,
   3) **연관된 코드·화면**을 함께 살핀다.
 - **반복되는 요청·합의 사항은 이 MD에 기록**한다.
+- 🔒 **리스트(엑셀형 표) 정렬은 `docs/LIST_ALIGNMENT.md`의 고정 규칙을 따른다.** 핵심: ①섭외 목록은 공용 `components/BookingsList.tsx` 하나로 섭외·대시보드 진행중섭외·신규문의가 동일 렌더 ②헤더와 데이터 행은 **별개 grid 컨테이너**라 공유 GRID의 **모든 트랙은 고정 px 또는 `minmax(0,fr)`**여야 하고(벌거벗은 `max-content`/`auto` 금지 — 금액·상태 제목이 셀과 어긋나는 원인), 상태(배지) 컬럼은 고정 88px ③헤더 라벨 정렬=컬럼 데이터 정렬(예외: **정산 헤더는 센터**) ④빈칸은 빈 슬롯 유지 ⑤금액은 잘림 금지. 이 규칙을 깨는 변경은 정렬 깨짐 재발이므로 금지.
 
 ## 작업 메모 (반복 확인 사항)
 - 🤝 **발송(Distribution) V4 — 대대행 편입(합의)**: A가 받은 모델을 B가 "내 모델로 등록"하면 **대대행(소속사 `payout_tax_type="company"`) 고정**으로 편입된다(프리랜서/외국인 변경 불가·외국인 토글 숨김). **A 업체정보 자동 입력**(`agency_name/agency_biz_no/agency_contact/agency_phone/bank_info`)은 **발송 스냅샷 `talent_distributions.sender_payout_info`**(jsonb: company_name·biz_no·rep_name·contact·address·bank)에서 가져온다 — A는 회사설정(`agencies.payout_bank_info` + 기존 상호·사업자번호·대표·주소)에 **1회 등록**, 발송 시 `SendTab`이 스냅샷으로 실어 보냄. B는 모델별 **마진(공급가 `fee_*` · 기준액 `payout_*_value`)만** 입력. 출처는 `models.source_agency_id/source_agency_name/source_distribution_id`에 자동 기록(모델목록 '출처' 필터 + '대대행' 배지). 정산화면은 기존 소속사 계산(`modelPayout=기준액×1.1`)을 **"A 지급액 (○○ 대대행)"** 으로 표기(집행은 수동) — **계산식 신규 생성 금지, 기존 company 경로 재사용**. ⚠️ DB: `supabase/talent_distribution_v4_subagency.sql`(컬럼 추가, 재실행 가능). **이 SQL 미적용 시 발송·편입·회사설정 저장이 실패**하므로 코드 배포 전 반드시 적용(모델 목록 로드는 `loadData`가 `MODEL_COLS_V4`→`MODEL_COLS` 자동 폴백으로 보호됨).
