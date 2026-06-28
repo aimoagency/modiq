@@ -155,7 +155,16 @@ export default function App() {
   }, []);
   const [members,   setMembers]   = useState<any[]>(_cachedData?.members || []);
 
-  const [page, setPage] = useState<Page>("dashboard");
+  // 현재 페이지 — 새로고침해도 마지막 페이지 유지(localStorage). 유효 값만 복원, 아니면 대시보드.
+  const [page, setPage] = useState<Page>(() => {
+    try {
+      const p = localStorage.getItem("modiq_page_v1");
+      const valid: Page[] = ["dashboard","bookings","models","customers","settlement","revenue","members","plan","calendar","company","packages","studio","distribution"];
+      if (p && valid.includes(p as Page)) return p as Page;
+    } catch {}
+    return "dashboard";
+  });
+  useEffect(() => { try { localStorage.setItem("modiq_page_v1", page); } catch {} }, [page]);
   // 캘린더를 벗어나면 pre-선택(모델/날짜)을 비워, 메뉴로 재진입 시 항상 "전체"로 복귀
   useEffect(() => { if (page !== "calendar") { setCalInitModel(""); setCalInitDate(null); } }, [page]);
   const [calInitModel, setCalInitModel] = useState("");  // 모델 상세 → 캘린더 이동 시 pre-선택

@@ -26,6 +26,7 @@ export type PackageItem = {
   instagram_url?: string;
   caption?: string;         // 자유 메모 (특기 등)
   photos: string[];         // base64 data URL 들
+  videos?: VideoRef[];      // 영상(YouTube/Vimeo/Instagram/TikTok 임베드 — 저장공간 0)
 };
 
 export type Pkg = {
@@ -46,6 +47,7 @@ export type Pkg = {
 };
 
 import { ageFromSSN6 } from "./utils";
+import type { VideoRef } from "./video";
 
 // ── 식별자 / 토큰 ──
 export const genPkgId = () => `PKG_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -61,7 +63,7 @@ export const genShareToken = () => {
   }
 };
 
-export const emptyItem = (): PackageItem => ({ name: "", photos: [] });
+export const emptyItem = (): PackageItem => ({ name: "", photos: [], videos: [] });
 
 // ── 공개 공유 URL (현재 앱 origin 기준) ──
 export const shareUrl = (token: string) =>
