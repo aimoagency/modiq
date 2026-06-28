@@ -101,18 +101,18 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
               const fee=bookingTotal(b), pay=bookingModelPay(b,models);
               const bt=top();
               if (isMobile) return (
+                // 매출 카드와 동일한 2줄 포맷 — 핵심(촬영일·모델→고객사·견적 / 입금·지급 상태·모델지급액)만 또렷하게
                 <div key={b.id} onClick={()=>openSettlement(b)} style={{ padding:"10px 14px", borderTop:bt, cursor:"pointer" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                    {avatar(model,24)}
-                    <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} <span style={{ color:C.muted, fontWeight:400 }}>→ {client?.name||"?"}</span></strong>
-                    {fee>0&&<span style={{ marginLeft:"auto", fontSize:13.5, fontWeight:800, color:C.text, whiteSpace:"nowrap", flexShrink:0 }}>{fee.toLocaleString()}원</span>}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
+                    <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flex:1 }}>{model?.name||"?"} <span style={{ color:C.muted }}>→ {client?.name||"?"}</span></span>
+                    {fee>0&&<span style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", flexShrink:0 }}>{fee.toLocaleString()}원</span>}
                   </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-                    {b.project_name&&<span style={{ fontSize:12, color:C.blue, whiteSpace:"nowrap" }}><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
-                    {payBadges(b)}
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", flexShrink:0, color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객입금</>:"고객미입금"}</span>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", flexShrink:0, color:b.model_paid?"#c9a96e":C.muted, background:(b.model_paid?"#c9a96e":C.muted)+"1a" }}>{b.model_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 모델지급</>:"모델미지급"}</span>
+                    {pay>0&&<span style={{ marginLeft:"auto", fontSize:11.5, color:"#c9a96e", fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>모델 {pay.toLocaleString()}원</span>}
                   </div>
-                  {fee>0&&<div style={{ fontSize:11, color:C.green, marginTop:4 }}>모델 실지급 {pay.toLocaleString()}원</div>}
                 </div>
               );
               return (
