@@ -103,13 +103,16 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
       {preset==="upcoming" && <p style={{ margin:"-4px 0 14px", fontSize:12, color:C.muted }}>📅 오늘 이후 촬영 예정인 확정 섭외의 <b style={{ color:C.textSub }}>예정 매출</b>입니다. 실제 매출은 촬영·입금 후 해당 월에 반영됩니다.</p>}
 
       {/* 매출 요약 카드 */}
-      <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(5,minmax(0,1fr))", gap:12, marginBottom:18 }}>
-        {cards.map(c=>(
-          <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px", ...(isMobile&&c.label==="매출총이익"?{ gridColumn:"1 / -1" }:{}) }}>
-            <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.label}</p>
-            <p style={{ margin:"8px 0 0", fontSize:isMobile?(c.label==="매출총이익"?20:16):22, fontWeight:400, color:c.color, whiteSpace:"nowrap", textAlign:"right" }}>{Number(c.value||0).toLocaleString("ko-KR")}<span style={{ fontSize:isMobile?12:14, fontWeight:400, marginLeft:1, opacity:0.8 }}>원</span></p>
-          </div>
-        ))}
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(5,minmax(0,1fr))", gap:10, marginBottom:18 }}>
+        {cards.map(c=>{
+          const oneLine = isMobile && c.label==="매출총이익"; // 한 줄(라벨·금액 가로 배치)
+          return (
+            <div key={c.label} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 16px", ...(oneLine?{ gridColumn:"1 / -1", display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }:{}) }}>
+              <p style={{ margin:0, fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>{c.label}</p>
+              <p style={{ margin:oneLine?0:"3px 0 0", fontSize:isMobile?(oneLine?17:16):21, fontWeight:400, color:c.color, whiteSpace:"nowrap", textAlign:"right" }}>{Number(c.value||0).toLocaleString("ko-KR")}<span style={{ fontSize:isMobile?12:14, fontWeight:400, marginLeft:1, opacity:0.8 }}>원</span></p>
+            </div>
+          );
+        })}
       </div>
 
       {/* 랭킹 탭 */}
