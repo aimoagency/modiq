@@ -105,19 +105,20 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
             <div key={b.id} onClick={()=>setSelectedBooking(b)}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
               onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
-              <span style={{ flexShrink:0, display:"inline-flex" }}>{typeBadge}</span>
-              {avatar(m,24)}
-              {/* 식별자·날짜·장소·담당자 = 왼쪽 클러스터(붙여서) */}
-              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{m?.name||"?"} → {cli}</strong>
-                <span style={{ color:C.textSub, fontWeight:600 }}> · <Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
-                {b.location ? <span style={{ color:C.muted }}> · <MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.location}</span> : null}
-                {b.manager ? <span style={{ color:C.muted }}> · <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.manager}</span> : null}
-              </p>
-              {/* 금액·상태 = 오른쪽 끝 고정 */}
-              {amt>0 ? <span style={{ flexShrink:0, color:C.yellow, fontWeight:700, fontSize:13, whiteSpace:"nowrap" }}>{amt.toLocaleString()}원</span> : null}
-              <span style={{ flexShrink:0, display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
+              style={{ display:"grid", gridTemplateColumns:"auto minmax(0,2fr) minmax(0,1.3fr) minmax(0,1.6fr) minmax(0,1fr) max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
+              <span style={{ display:"inline-flex" }}>{typeBadge}</span>
+              {/* 모델→고객사 */}
+              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>{avatar(m,24)}<strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"} → {cli}</strong></span>
+              {/* 날짜 (자체 컬럼 — 세로 일렬) */}
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
+              {/* 장소 (빈칸 그대로 유지) */}
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.location ? <><MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.location}</> : ""}</span>
+              {/* 담당자 (빈칸 그대로 유지) */}
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
+              {/* 금액 (우측 정렬·무잘림) */}
+              <span style={{ textAlign:"right", color:C.yellow, fontWeight:700, fontSize:13, whiteSpace:"nowrap" }}>{amt>0 ? amt.toLocaleString()+"원" : ""}</span>
+              {/* 상태 (오른쪽 끝) */}
+              <span style={{ display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
             </div>
           );
         };

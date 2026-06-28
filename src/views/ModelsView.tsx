@@ -90,7 +90,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
             <div key={m.id} onClick={()=>{ setSelectedModel(m); setMEditMode(false); }}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
               onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:"auto minmax(0,260px) auto auto minmax(0,180px) auto 1fr max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+              style={{ display:"grid", gridTemplateColumns:"44px minmax(0,1.6fr) minmax(0,1fr) 96px minmax(0,1.3fr) minmax(0,1.4fr) max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
               {/* 원형 썸네일 */}
               {avatar(36)}
               {/* 이름 + 출처(발송업체) 배지 */}
@@ -114,10 +114,8 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 {m.rate>0&&m.payout_pay_value>0&&" · "}
                 {m.payout_pay_value>0&&<span>정산방식 {m.payout_pay_type==="fixed"?`${Number(m.payout_pay_value).toLocaleString()}원`:`${m.payout_pay_value}%`}</span>}
               </span>
-              {/* 1fr 스페이서 */}
-              <span />
-              {/* 섭외 건수 */}
-              <span style={{ textAlign:"right", fontSize:11, color:C.muted, whiteSpace:"nowrap", paddingRight:16 }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
+              {/* 섭외 건수 (우측 끝) */}
+              <span style={{ textAlign:"right", fontSize:11, color:C.muted, whiteSpace:"nowrap" }}>섭외 {bookings.filter((b:any)=>b.model_id===m.id).length}건 →</span>
             </div>
           );
         };
