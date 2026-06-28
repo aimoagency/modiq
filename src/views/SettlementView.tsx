@@ -84,15 +84,15 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         return (
           <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
             {!isMobile&&(
-              <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
+              <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap", textAlign:"center" }}>
                 <span>모델 → 고객사</span>
                 <span>프로젝트</span>
                 <span>촬영일</span>
                 <span>상태</span>
                 <span>고객 입금</span>
-                <span style={{ textAlign:"right" }}>견적금액</span>
-                <span style={{ textAlign:"right" }}>모델 실지급</span>
-                <span style={{ textAlign:"right" }}>모델 미지급</span>
+                <span>견적금액</span>
+                <span>모델 실지급</span>
+                <span>모델 미지급</span>
               </div>
             )}
             {filteredSettlement.map(b=>{
