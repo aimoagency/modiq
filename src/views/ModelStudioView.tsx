@@ -540,9 +540,9 @@ export default function ModelStudioView({ models, setModels, setPackages, agency
                   </div>
                   {vidErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: C.red }}>{vidErr}</p>}
                   {videos.length > 0 && (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
                       {videos.map((v, i) => (
-                        <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", aspectRatio: v.vertical ? "9/16" : "16/9", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
+                        <div key={v.provider + v.id} onClick={() => setVideoOpen(v)} style={{ position: "relative", height: 168, aspectRatio: v.vertical ? "9/16" : "16/9", flex: "0 0 auto", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
                           {v.thumb
                             ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.85 }} />
                             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 12 }}>{VIDEO_LABEL[v.provider]}</div>}
