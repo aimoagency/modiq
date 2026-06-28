@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { C } from "../theme";
 import { fmtDate, fmt, fmtTime, bookingTotal, clientBalance, bookingAgencyFee } from "../lib/utils";
 import Badge from "../components/Badge";
-import TypeIcon from "../components/TypeIcon";
+import BookingsList from "../components/BookingsList";
 import { BOOKING_TYPES } from "../constants";
-import { ClipboardList, Calendar, AlertTriangle, FolderOpen, MessageSquare } from "../components/icons";
+import { ClipboardList, Calendar, AlertTriangle, MessageSquare } from "../components/icons";
 
 // ── 로딩 스켈레톤 ──
 function SkBox({ h=20, w="100%", r=8, mt=0 }: { h?:number; w?:number|string; r?:number; mt?:number }) {
@@ -133,15 +133,15 @@ export default function DashboardView({ bookings, models, customers, projects, s
                 <div key={it.b.id+it.label+idx} onClick={()=>setSelectedBooking(it.b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"max-content minmax(0,1.6fr) minmax(0,0.9fr) minmax(0,0.7fr) max-content", alignItems:"center", gap:10, borderTop:top(), padding:"11px 4px", cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:"max-content minmax(0,1.8fr) max-content max-content minmax(0,1fr)", alignItems:"center", gap:14, borderTop:top(), padding:"11px 4px", cursor:"pointer", transition:"background 0.12s" }}>
                   {/* D-day */}
                   <span style={{ fontSize:11, fontWeight:800, color, background:color+"1a", borderRadius:6, padding:"3px 8px", minWidth:54, textAlign:"center" }}>{ddayLabel}</span>
                   {/* 고객사 · 모델 */}
                   <span style={{ fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><strong style={{ fontWeight:700, color:C.text }}>{client?.name||"?"}</strong><span style={{ color:C.muted, fontWeight:600 }}> · {model?.name||"?"}</span></span>
-                  {/* 날짜 (별도 셀) */}
-                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><Calendar size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtDate(it.date)}</span>
-                  {/* 계약금/잔금 (별도 셀) */}
-                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>{it.label}</span>
+                  {/* 날짜 (별도 셀 · 세로 일렬) */}
+                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap" }}><Calendar size={10} style={{ verticalAlign:-1.5, flexShrink:0 }}/> {fmtDate(it.date)}</span>
+                  {/* 계약금/잔금 (별도 셀 · 세로 일렬) */}
+                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"center", minWidth:40 }}>{it.label}</span>
                   {/* 금액 (맨 오른쪽) */}
                   <span style={{ fontSize:13, fontWeight:800, color:it.label==="잔금"?C.text:C.textSub, whiteSpace:"nowrap", textAlign:"right" }}>{it.amount.toLocaleString()}원</span>
                 </div>
@@ -210,32 +210,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
             </div>
           </div>
 
-          {/* 리스트 */}
-          <div style={{ display:"grid", gap:8, gridTemplateColumns:"minmax(0,1fr)" }}>
-            {sorted.map(b=>{
-              const model  = models.find(m=>m.id===b.model_id);
-              const client = customers.find(c=>c.id===b.customer_id);
-              const ty = BOOKING_TYPES[b.booking_type||"SHOOT"]?.label || "일정";
-              const dgo = daysAgo(b.created_at);
-              const isToday = (b.created_at||"").slice(0,10)===todayS;
-              return (
-                <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${isToday?PINK+"99":C.border}`, borderRadius:10, padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, minWidth:0, transition:"transform .15s, border-color .15s, box-shadow .15s" }}
-                  onMouseEnter={e=>{ e.currentTarget.style.borderColor=PINK; e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 16px -8px ${PINK}aa`; }}
-                  onMouseLeave={e=>{ e.currentTarget.style.borderColor=isToday?PINK+"99":C.border; e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
-                >
-                  {isToday&&<span style={{ background:PINK, color:"#fff", borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:900, flexShrink:0, animation:"modiqPulse 1.4s ease-in-out infinite", boxShadow:`0 0 10px ${PINK}` }}>NEW</span>}
-                  <span style={{ background:PINK+"22", color:PINK, border:`1px solid ${PINK}44`, borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0 }}>{ty}</span>
-                  <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.textSub, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    <strong style={{ fontSize:14.5, fontWeight:800, color:C.text }}>{model?.name||"모델 미정"}</strong>
-                    <span style={{ color:C.textSub, fontWeight:600 }}> · {client?.name||"고객사 미정"}</span>
-                    <span> · {b.shoot_date?fmtDate(b.shoot_date):"일정 미정"}</span>
-                  </p>
-                  {dgo!==null&&dgo>0&&<span style={{ fontSize:11, fontWeight:800, color:dgo>=3?C.red:C.muted, flexShrink:0, whiteSpace:"nowrap", ...(dgo>=3?{ background:C.red+"1a", border:`1px solid ${C.red}44`, borderRadius:5, padding:"2px 7px" }:{}) }}>{dgo}일 경과</span>}
-                  <span style={{ color:PINK, fontWeight:800, fontSize:16, flexShrink:0 }}>{"›"}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* 리스트 (섭외 리스트 그대로 재사용 — 동일 컬럼/정렬) */}
+          <BookingsList bookings={sorted} models={models} customers={customers} isMobile={isMobile} onSelect={setSelectedBooking} showHeader={false} />
         </div>
       );
     })()}
@@ -336,114 +312,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
         <p style={{ margin:0, fontWeight:700, fontSize:15, color:C.text }}><ClipboardList size={14} style={{ verticalAlign:-2, flexShrink:0 }}/> 진행중 섭외 현황</p>
         <button onClick={()=>setPage("bookings")} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:13, fontWeight:600 }}>전체 보기 →</button>
       </div>
-      {activeBookings.length===0 ? <p style={{ color:C.muted, fontSize:13 }}>진행중인 섭외가 없습니다.</p> : (()=>{
-        // 프로젝트 단위 그루핑
-        const projGroup: Record<string, any[]> = {};
-        const singles: any[] = [];
-        const _now = new Date();
-        const todayS = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}`;
-        const isOverdue = (d:string) => !!d && d < todayS;
-        activeBookings.forEach(b=>{
-          if (b.project_id) {
-            if (!projGroup[b.project_id]) projGroup[b.project_id]=[];
-            projGroup[b.project_id].push(b);
-          } else { singles.push(b); }
-        });
-        // 아바타(섭외 리스트와 동일)
-        const avatar=(m:any,size:number)=> m?.thumb_url
-          ? <img src={m.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-          : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:size*0.42, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>;
-        let first=true; const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
-        // 프로젝트·단건 공통 9컬럼(모든 내용 별도 셀·세로 일렬): [유형] [썸네일] [모델→고객사] [프로젝트] [날짜] [모델수] [상태] [금액] [섭외상태]
-        const ROW_COLS = "max-content 28px minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) max-content minmax(0,1fr) max-content max-content";
-        const rows: ReactNode[] = [];
-        // 프로젝트 그룹 (섭외 리스트 그룹헤더 기준 — 폴더배지·아바타·프로젝트·고객사·날짜 / 우측 금액)
-        Object.entries(projGroup).forEach(([pid, bs])=>{
-          const proj = projects.find(p=>p.id===pid);
-          const client = customers.find(c=>c.id===bs[0]?.customer_id);
-          const hasHold = bs.some(b=>b.status==="HOLD");
-          const overdue = bs.some(x=>isOverdue(x.shoot_date));
-          const total = bs.reduce((s,b)=>s+bookingTotal(b),0);
-          const ms = bs.map(b=>models.find(m=>m.id===b.model_id)).filter(Boolean);
-          if (isMobile) { rows.push(
-            <div key={pid} onClick={()=>onSelectProject(pid)} style={{ padding:"10px 14px", borderTop:top(), cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                <span style={{ flexShrink:0, background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:10, fontWeight:700, whiteSpace:"nowrap" }}><FolderOpen size={10} style={{ verticalAlign:-2 }}/> 프로젝트</span>
-                <strong style={{ flex:1, minWidth:0, fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{proj?.name||bs[0]?.project_name||"프로젝트"} <span style={{ color:C.textSub, fontWeight:600 }}>· {client?.name||"?"}</span></strong>
-                {hasHold ? <span style={{ flexShrink:0, background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"1px 6px", fontSize:10, fontWeight:700 }}>HOLD</span> : null}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted }}>
-                <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(bs[0]?.shoot_date)} · 모델 {bs.length}명{overdue?<span style={{ color:C.red, fontWeight:700 }}> · 일정지남</span>:null}</span>
-                {canViewFinance&&total>0 ? <span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{total.toLocaleString()}원</span> : null}
-              </div>
-            </div>
-          ); return; }
-          rows.push(
-            <div key={pid} onClick={()=>onSelectProject(pid)}
-              onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
-              <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><FolderOpen size={11} style={{ verticalAlign:-2 }}/> 프로젝트</span>
-              <span style={{ display:"flex", justifyContent:"center" }}>{avatar(ms[0],24)}</span>
-              <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{client?.name||"?"}</strong>
-              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||bs[0]?.project_name||"프로젝트"}</span>
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, textAlign:"center" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(bs[0]?.shoot_date)}</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"center" }}>모델 {bs.length}명</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{overdue ? <span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : ""}</span>
-              <span style={{ textAlign:"right", fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{canViewFinance&&total>0 ? total.toLocaleString()+"원" : ""}</span>
-              <span style={{ display:"flex", justifyContent:"flex-end" }}>{hasHold ? <span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap" }}>HOLD</span> : null}</span>
-            </div>
-          );
-        });
-        // 단건 섭외 (섭외 리스트 단건 행 기준)
-        singles.forEach(b=>{
-          const model  = models.find(m=>m.id===b.model_id);
-          const client = customers.find(c=>c.id===b.customer_id);
-          const amt = bookingTotal(b);
-          const bk = BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT;
-          if (isMobile) { rows.push(
-            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ padding:"10px 14px", borderTop:top(), cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                <span style={{ color:bk.color, display:"inline-flex", flexShrink:0 }}><TypeIcon type={b.booking_type} size={13}/></span>
-                {avatar(model,24)}
-                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} → {client?.name||"?"}</strong>
-                <Badge code={b.status} type={b.booking_type} />
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.textSub }}>
-                <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}{b.project_name?` · ${b.project_name}`:""}{isOverdue(b.shoot_date)?<span style={{ color:C.red, fontWeight:700 }}> · 일정지남</span>:null}</span>
-                {canViewFinance&&amt>0?<span style={{ marginLeft:"auto", color:"#c9a96e", fontWeight:700, flexShrink:0 }}>{amt.toLocaleString()}원</span>:null}
-              </div>
-            </div>
-          ); return; }
-          rows.push(
-            <div key={b.id} onClick={()=>setSelectedBooking(b)}
-              onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
-              <span style={{ background:bk.color+"22", color:bk.color, border:`1px solid ${bk.color}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><TypeIcon type={b.booking_type} size={11}/> {bk.label}</span>
-              <span style={{ display:"flex", justifyContent:"center" }}>{avatar(model,24)}</span>
-              <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{model?.name||"?"} → {client?.name||"?"}</strong>
-              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.project_name ? <><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</> : ""}</span>
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, textAlign:"center" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"center" }}>{""}</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
-                {isOverdue(b.shoot_date) ? <span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}
-                {!b.deposit_amt&&b.status==="CONFIRMED" ? <span style={{ color:C.red, fontWeight:700 }}>{isOverdue(b.shoot_date)?" · ":""}계약금 미입금</span> : null}
-              </span>
-              <span style={{ textAlign:"right", fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{canViewFinance&&amt>0 ? amt.toLocaleString()+"원" : ""}</span>
-              <span style={{ display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
-            </div>
-          );
-        });
-        return <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
-          {!isMobile && (
-            <div style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
-              <span style={{ textAlign:"center" }}>유형</span><span></span><span>모델 → 고객사</span><span>프로젝트</span>
-              <span style={{ textAlign:"center" }}>날짜</span><span style={{ textAlign:"center" }}>모델수</span><span>비고</span>
-              <span style={{ textAlign:"right" }}>금액</span><span style={{ textAlign:"right" }}>상태</span>
-            </div>
-          )}
-          {rows}
-        </div>;
-      })()}
+      <BookingsList bookings={activeBookings} models={models} customers={customers} isMobile={isMobile} onSelect={setSelectedBooking} emptyText="진행중인 섭외가 없습니다." />
     </div>
   </div>
   );
