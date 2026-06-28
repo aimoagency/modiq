@@ -91,7 +91,7 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
 *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
 :root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#f0f2f5; --c-text-sub:#c8ccd8; --c-muted:#9aa1ad; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#f7f8fa; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e2e5ea; --c-text:#111827; --c-text-sub:#3f4754; --c-muted:#5b626d; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#e9ecef; }\n#root { min-height: 100vh; }
+html.light { --c-bg:#f6f7f9; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e3e6ea; --c-text:#0a0a0b; --c-text-sub:#23272e; --c-muted:#474c54; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#1c2027; }\n#root { min-height: 100vh; }
 /* 전역 폰트 확대 — 인라인 px 폰트를 한 번에 키우기 위해 루트 비례 확대. 웹 ~+2pt / 모바일 ~+1pt 체감. (조정 가능) */
 #root { zoom: 1.14; }
 @media (max-width: 767px) { #root { zoom: 1.07; } }`;
@@ -2122,8 +2122,8 @@ async function sharePdf(){
       {!isMobile&&(
       <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 22px", zIndex:300 }}>
         <div style={{ display:"flex", flexDirection:"column", lineHeight:1.05 }}>
-          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
-          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:"#A8FF00", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
+          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:theme==="light"?"#111111":"#A8FF00" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
+          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:theme==="light"?"#374151":"#A8FF00", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <span style={{ display:"flex", alignItems:"center", gap:7 }}>
@@ -2176,7 +2176,7 @@ async function sharePdf(){
       {/* ── 모바일 상단 헤더 ── */}
       {isMobile&&(
         <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", zIndex:300 }}>
-          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</p>
+          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:theme==="light"?"#111111":"#A8FF00" }}>m</span>odiq</p>
           <span style={{ fontSize:12, color:C.muted }}>{agency.name}</span>
         </div>
       )}
