@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { C, inp } from "../theme";
 import { fmt, fmtDate, bookingTotal, bookingModelPay } from "../lib/utils";
 import Badge from "../components/Badge";
@@ -107,7 +106,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 <div key={b.id} onClick={()=>openSettlement(b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"minmax(0,420px) auto 1fr max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr) max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   {/* 모델 → 고객사 (+프로젝트) */}
                   <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
                     {avatar(model,28)}
@@ -118,15 +117,13 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                     </span>
                   </span>
                   {/* 촬영일 */}
-                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-                  {/* 1fr spacer */}
-                  <span aria-hidden />
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{fmtDate(b.shoot_date)}</span>
                   {/* 금액 (우측 정렬 · NO CLIP) */}
                   <span style={{ textAlign:"right", whiteSpace:"nowrap" }}>
                     {fee>0?(<>
                       <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{fee.toLocaleString()}원</div>
                       <div style={{ fontSize:11, color:C.green, marginTop:3 }}>모델 실지급 {pay.toLocaleString()}원</div>
-                    </>):<span style={{ fontSize:13, color:C.muted }}>—</span>}
+                    </>):""}
                   </span>
                   {/* 상태 · 입금/지급 배지 (맨 오른쪽) */}
                   <span style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>{payBadges(b)}</span>

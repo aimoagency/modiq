@@ -553,15 +553,13 @@ function SentTab({ sent, sentLoaded, nameOf, refreshSent, isMobile }: any) {
       <div key={d.id}
         onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-        style={{ display: "grid", gridTemplateColumns: "minmax(0,320px) auto auto 1fr max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s", opacity: dim }}>
-        <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-          <strong title={d.message || undefined} style={{ fontSize: 12.5, fontWeight: 700, color: C.text, whiteSpace: "nowrap", flexShrink: 0 }}>모델 {(d.distribution_models || []).length}명 · 파트너 {recs.length}곳</strong>
-          <span style={{ fontSize: 12.5, color: C.textSub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{recNames || "-"}</span>
-        </span>
-        <span style={{ fontSize: 12.5, color: C.muted, whiteSpace: "nowrap" }}>{fmtDate(d.created_at)} 발송{d.expires_at ? ` · 만료 ${fmtDate(d.expires_at)}` : ""}</span>
+        style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1.6fr) minmax(0,1.3fr) minmax(0,0.9fr) max-content max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s", opacity: dim }}>
+        <strong title={d.message || undefined} style={{ fontSize: 12.5, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>모델 {(d.distribution_models || []).length}명 · 파트너 {recs.length}곳</strong>
+        <span style={{ fontSize: 12.5, color: C.textSub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{recNames || ""}</span>
+        <span style={{ fontSize: 12.5, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{fmtDate(d.created_at)} 발송{d.expires_at ? ` · 만료 ${fmtDate(d.expires_at)}` : ""}</span>
         <span style={{ fontSize: 12.5, color: C.muted, whiteSpace: "nowrap" }}>열람 {viewedCnt}/{recs.length}</span>
-        <span />
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, whiteSpace: "nowrap", paddingRight: 16 }}>{statusBadge}{revokeBtn}</span>
+        <span style={{ display: "flex", justifyContent: "flex-start", whiteSpace: "nowrap" }}>{statusBadge}</span>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", whiteSpace: "nowrap" }}>{revokeBtn || ""}</span>
       </div>
     );
   };
