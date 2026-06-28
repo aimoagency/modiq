@@ -70,6 +70,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         // 계산식·탭분류·발급버튼·입금/지급 토글 핸들러는 일절 변경하지 않음 — 행 레이아웃만 통일.
         let first=true;
         const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+        const GRID = "minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,0.9fr) max-content max-content minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)";
         const avatar=(model:any, size:number)=> model?.thumb_url
           ? <img src={model.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
           : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:800, fontSize:size*0.42, flexShrink:0 }}>{(model?.name||"?")[0]}</span>;
@@ -82,6 +83,18 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
         );
         return (
           <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+            {!isMobile&&(
+              <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
+                <span>모델 → 고객사</span>
+                <span>프로젝트</span>
+                <span>촬영일</span>
+                <span>상태</span>
+                <span>고객 입금</span>
+                <span style={{ textAlign:"right" }}>견적금액</span>
+                <span style={{ textAlign:"right" }}>모델 실지급</span>
+                <span style={{ textAlign:"right" }}>모델 미지급</span>
+              </div>
+            )}
             {filteredSettlement.map(b=>{
               const model = models.find((m:any)=>m.id===b.model_id);
               const client = customers.find((c:any)=>c.id===b.customer_id);
@@ -106,7 +119,7 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 <div key={b.id} onClick={()=>openSettlement(b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"max-content max-content max-content max-content max-content max-content max-content max-content 1fr", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   {/* 모델 → 고객사 */}
                   <span style={{ display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
                     {avatar(model,28)}

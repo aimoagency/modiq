@@ -18,6 +18,7 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
   const period = periodPreset==="custom" ? { from: cFrom||undefined, to: cTo||undefined } : periodRange(periodPreset);
+  const GRID = "minmax(0,1.6fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.6fr) max-content";
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
@@ -49,6 +50,16 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
       {sortMode==="rev" ? <RevenueRanking items={filteredCustomers} bookings={bookings} idKey="customer_id" basis={revBasis} period={period} onSelect={(c)=>{ setSelectedCustomer(c); setCEditMode(false); }} isMobile={isMobile} /> :
        filteredCustomers.length===0 ? <p style={{ color:C.muted }}>고객사가 없습니다.</p> : (
         <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+          {!isMobile&&(
+            <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
+              <span>업체명</span>
+              <span>브랜드</span>
+              <span>담당자</span>
+              <span>연락처</span>
+              <span>이메일</span>
+              <span style={{ textAlign:"right" }}>섭외</span>
+            </div>
+          )}
           {(()=>{
             let first=true;
             const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
@@ -77,13 +88,13 @@ export default function CustomersView({ filteredCustomers, customerQ, setCustome
                 <div key={c.id} onClick={()=>{ setSelectedCustomer(c); setCEditMode(false); }}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"max-content minmax(0,220px) max-content minmax(0,180px) minmax(0,220px) max-content 1fr", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
-                  <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap" }}>{c.name||""}</span>
+                  style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.name||""}</span>
                   <span style={{ fontSize:12.5, color:C.muted, fontWeight:500, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.brand||""}</span>
                   <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap" }}>{c.manager_name?<><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.manager_name}</>:""}</span>
                   <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.phone?<a href={`tel:${c.phone}`} onClick={e=>e.stopPropagation()} style={{ color:C.muted, textDecoration:"none" }}><Phone size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.phone}</a>:""}</span>
                   <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{c.email?<><Mail size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {c.email}</>:""}</span>
-                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>섭외 {cnt}건 →</span>
+                  <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"right" }}>섭외 {cnt}건 →</span>
                 </div>
               );
             });

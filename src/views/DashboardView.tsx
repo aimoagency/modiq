@@ -431,7 +431,15 @@ export default function DashboardView({ bookings, models, customers, projects, s
             </div>
           );
         });
-        return <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>{rows}</div>;
+        return <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+          {!isMobile && (
+            <div style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
+              <span>유형</span><span>모델 → 고객사</span><span>날짜</span><span>비고</span>
+              <span style={{ textAlign:"right" }}>금액</span><span style={{ textAlign:"right" }}>상태</span>
+            </div>
+          )}
+          {rows}
+        </div>;
       })()}
     </div>
   </div>
