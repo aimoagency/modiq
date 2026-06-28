@@ -3263,8 +3263,11 @@ async function sharePdf(){
       {/* ════ 모달: 고객사 수정 ════ */}
       {selectedCustomer&&cEditMode&&(
         <Modal onClose={()=>{setCEditMode(false);setSelectedCustomer(null);resetCustomerForm();setModalStack([]);}} wide>
-          <h3 style={{ marginTop:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
-          <p style={{ fontSize:11, color:C.muted, marginTop:0 }}>ID: {selectedCustomer.id}</p>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", paddingRight:48 }}>
+            <h3 style={{ margin:0, color:C.text }}><Building2 size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 정보 수정</h3>
+            <button onClick={handleDeleteCustomer} style={{ marginLeft:"auto", padding:"6px 12px", background:"transparent", color:C.red, border:`1px solid ${C.red}55`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12.5, whiteSpace:"nowrap" }}>삭제</button>
+          </div>
+          <p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedCustomer.id}</p>
           <BizLicenseUpload onExtracted={applyBizInfo} />
           {/* 사업자등록증 정보 (등록증 업로드 시 자동 입력) */}
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"minmax(0,1fr)":"repeat(3, minmax(0,1fr))", gap:10 }}>
@@ -3293,7 +3296,6 @@ async function sharePdf(){
           <textarea style={{ ...inp, height:60, resize:"none" }} value={cMemo} onChange={e=>setCMemo(e.target.value)} placeholder="특이사항" />
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={handleSaveCustomer} disabled={JSON.stringify(buildCustomerData())===customerBaseline} style={{ ...btnS(C.green, JSON.stringify(buildCustomerData())===customerBaseline), flex:1 }}>저장</button>
-            <button onClick={handleDeleteCustomer} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>
           </div>
         </Modal>
       )}
@@ -3301,6 +3303,7 @@ async function sharePdf(){
         <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8, flexWrap:"wrap", paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
+            {mEditMode&&<button onClick={handleDeleteModel} style={{ marginLeft:"auto", padding:"6px 12px", background:"transparent", color:C.red, border:`1px solid ${C.red}55`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12.5, whiteSpace:"nowrap" }}>삭제</button>}
           </div>
           {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedModel?.id}</p>}
 
@@ -3625,7 +3628,6 @@ async function sharePdf(){
           )}
           <div style={{ display:"flex", gap:10, marginTop:10 }}>
             <button onClick={mEditMode?handleSaveModel:handleAddModel} disabled={mEditMode && JSON.stringify(buildModelData())===modelBaseline} style={{ ...btnS(C.green, mEditMode && JSON.stringify(buildModelData())===modelBaseline), flex:1 }}>{mEditMode?"저장":"추가"}</button>
-            {mEditMode&&<button onClick={handleDeleteModel} style={{ ...btnS(C.red), flexShrink:0 }}>삭제</button>}
           </div>
         </Modal>
       )}
