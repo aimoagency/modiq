@@ -3,7 +3,7 @@
 //  · 목록 + 빌더 모달(드래그앤드롭 사진, 모델 선택, casting/compcard)
 //  · 공유 링크 복사 / PDF·인쇄 / 공개여부 토글 / 삭제
 // ════════════════════════════════════════════════════════════════
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { C, inp, btnS } from "../theme";
 import { sb, thumbUrl } from "../lib/supabase";
 import {
@@ -272,12 +272,15 @@ export default function PackagesView({ packages, setPackages, models, customers,
           // ── Vercel식 행: 하나의 컨테이너 안 얇은 divider 행 · 좌측 정보 / 우측 버튼 정렬 ──
           let first = true;
           const top = () => { const t = first ? "none" : `1px solid ${C.border}`; first = false; return t; };
+          // 액션 버튼 공통 컴팩트 스타일 — 표 행에 맞게 통일(M3 큰 pill 섞임 방지)
+          const aBase: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", fontSize: 12, fontWeight: 600, borderRadius: 6, whiteSpace: "nowrap", cursor: "pointer", lineHeight: 1.2 };
+          const off = { opacity: 0.5, cursor: "not-allowed" as const };
           const buttons = (p: Pkg) => (<>
-            <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={btnS(C.purple, busyId === p.id)}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
-            <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...btnS(C.blue, !p.is_public) }}><ExternalLink size={11} style={{ verticalAlign: -2 }} /> 링크 복사</button>
-            <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...btnS(C.muted, busyId === p.id) }}><Pencil size={11} style={{ verticalAlign: -2 }} /> 편집</button>
-            <button onClick={() => togglePublic(p)} style={{ padding: "6px 12px", background: "transparent", color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>{p.is_public ? "비공개로" : "공개로"}</button>
-            <button onClick={() => remove(p)} style={{ padding: "6px 12px", background: "transparent", color: C.red, border: `1px solid ${C.red}44`, borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12 }}>삭제</button>
+            <button onClick={() => openPreview(p)} disabled={busyId === p.id} style={{ ...aBase, background: C.purple + "1a", color: C.purple, border: `1px solid ${C.purple}33`, ...(busyId === p.id ? off : {}) }}><ExternalLink size={11} /> {busyId === p.id ? "여는 중…" : "바로보기"}</button>
+            <button onClick={() => copyLink(p)} disabled={!p.is_public} style={{ ...aBase, background: C.blue + "1a", color: C.blue, border: `1px solid ${C.blue}33`, ...(!p.is_public ? off : {}) }}><ExternalLink size={11} /> 링크복사</button>
+            <button onClick={() => openEdit(p)} disabled={busyId === p.id} style={{ ...aBase, background: C.card2, color: C.textSub, border: `1px solid ${C.border}`, ...(busyId === p.id ? off : {}) }}><Pencil size={11} /> 편집</button>
+            <button onClick={() => togglePublic(p)} style={{ ...aBase, background: "transparent", color: C.textSub, border: `1px solid ${C.border}` }}>{p.is_public ? "비공개로" : "공개로"}</button>
+            <button onClick={() => remove(p)} style={{ ...aBase, background: "transparent", color: C.red, border: `1px solid ${C.red}44` }}>삭제</button>
           </>);
           // 좌측 묶음: 제목 + 인원수 + 업체명 — 모바일은 한 줄에 붙여서
           const left = (p: Pkg) => {
@@ -298,7 +301,9 @@ export default function PackagesView({ packages, setPackages, models, customers,
               </span>
             );
           };
-          const PKG_GRID = "minmax(0,2.2fr) minmax(0,1.4fr) 92px max-content";
+          // ⚠️ 헤더·데이터 행은 별개 grid 컨테이너 → 모든 트랙을 고정 px 또는 minmax(0,fr)로(LIST_ALIGNMENT.md).
+          //    예전 마지막 컬럼 max-content는 헤더('관리' 글자폭)와 데이터(버튼묶음 폭)가 달라 제목·거래처가 어긋났음.
+          const PKG_GRID = "minmax(0,2fr) minmax(0,1.2fr) 96px minmax(0,2.8fr)";
           return (
             <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
               {!isMobile && (
