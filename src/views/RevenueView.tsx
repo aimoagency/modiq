@@ -11,8 +11,9 @@ import { exportAoaXlsx } from "../lib/xlsx";
 export default function RevenueView({ bookings, models, customers, agency, isMobile = false, onSelectBooking }: {
   bookings: any[]; models: any[]; customers: any[]; agency?: any; isMobile?: boolean; onSelectBooking: (b:any)=>void;
 }) {
-  // 데스크탑 목록 = 엑셀형 균일 컬럼(헤더+데이터 행 동일 grid): 모델→고객사 · 촬영일 · 상태 · 매출(금액+총이익) · 입금
-  const GRID = "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1.1fr) max-content minmax(0,1.4fr) max-content";
+  // 데스크탑 목록 = 엑셀형 균일 컬럼(헤더+데이터 행 동일 grid · 모든 값 별도 셀): 모델→고객사 · 프로젝트 · 촬영일 · 상태 · 매출 · 계약금 · 총이익 · 입금
+  // 금액 컬럼은 minmax(max-content, n fr) → 내용폭은 보장(잘림 방지)하면서 남는 폭을 균등 분배
+  const GRID = "minmax(0,1.8fr) minmax(0,1.2fr) minmax(max-content,0.8fr) minmax(max-content,0.7fr) minmax(max-content,1fr) minmax(max-content,1fr) minmax(max-content,1fr) minmax(max-content,0.9fr)";
   const [preset, setPreset] = useState("3m");
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
@@ -135,10 +136,12 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
             <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
               <span>모델 → 고객사</span>
               <span>프로젝트</span>
-              <span>촬영일</span>
-              <span>상태</span>
-              <span style={{ textAlign:"right" }}>매출 · 총이익</span>
-              <span>입금</span>
+              <span style={{ textAlign:"center" }}>촬영일</span>
+              <span style={{ textAlign:"center" }}>상태</span>
+              <span style={{ textAlign:"right" }}>매출</span>
+              <span style={{ textAlign:"right" }}>계약금</span>
+              <span style={{ textAlign:"right" }}>총이익</span>
+              <span style={{ textAlign:"center" }}>입금</span>
             </div>
           )}
           {(()=>{
@@ -171,13 +174,12 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
                   style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
                   <span style={{ fontSize:12.5, color:C.blue, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.project_name || ""}</span>
-                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
-                  <span style={{ display:"flex" }}><Badge code={b.status} /></span>
-                  <span style={{ whiteSpace:"nowrap", textAlign:"right" }}>
-                    <span style={{ fontSize:13.5, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</span>
-                    <span style={{ fontSize:11, color:C.blue, marginLeft:8 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
-                  </span>
-                  {payBadge}
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", textAlign:"center" }}>{fmtDate(b.shoot_date)}</span>
+                  <span style={{ display:"flex", justifyContent:"center" }}><Badge code={b.status} /></span>
+                  <span style={{ fontSize:13.5, fontWeight:800, color:C.text, whiteSpace:"nowrap", textAlign:"right" }}>{bookingTotal(b).toLocaleString()}원</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:C.textSub, whiteSpace:"nowrap", textAlign:"right" }}>{b.deposit_amt ? Number(b.deposit_amt).toLocaleString()+"원" : ""}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:C.blue, whiteSpace:"nowrap", textAlign:"right" }}>{bookingAgencyFee(b,models).toLocaleString()}원</span>
+                  <span style={{ display:"flex", justifyContent:"center" }}>{payBadge}</span>
                 </div>
               );
             });

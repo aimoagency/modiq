@@ -354,8 +354,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
           ? <img src={m.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
           : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:size*0.42, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>;
         let first=true; const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
-        // 프로젝트·단건 공통 7컬럼(세로 일렬·섭외 리스트와 동일 배열): [유형] [모델→고객사] [프로젝트] [날짜] [비고] [금액] [상태]
-        const ROW_COLS = "max-content minmax(0,1.7fr) minmax(0,1.2fr) minmax(0,1.1fr) minmax(0,1.1fr) max-content max-content";
+        // 프로젝트·단건 공통 9컬럼(모든 내용 별도 셀·세로 일렬): [유형] [썸네일] [모델→고객사] [프로젝트] [날짜] [모델수] [상태] [금액] [섭외상태]
+        const ROW_COLS = "max-content 28px minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) max-content minmax(0,1fr) max-content max-content";
         const rows: ReactNode[] = [];
         // 프로젝트 그룹 (섭외 리스트 그룹헤더 기준 — 폴더배지·아바타·프로젝트·고객사·날짜 / 우측 금액)
         Object.entries(projGroup).forEach(([pid, bs])=>{
@@ -383,13 +383,12 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
               style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
               <span style={{ background:C.blue+"22", color:C.blue, border:`1px solid ${C.blue}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><FolderOpen size={11} style={{ verticalAlign:-2 }}/> 프로젝트</span>
-              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
-                <span style={{ display:"flex", flexShrink:0 }}>{ms.slice(0,3).map((m:any,i:number)=>(<span key={i} style={{ marginLeft:i?-7:0, border:`2px solid ${C.card}`, borderRadius:"50%", display:"inline-flex" }}>{avatar(m,20)}</span>))}</span>
-                <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{client?.name||"?"}</strong>
-              </span>
-              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||bs[0]?.project_name||"프로젝트"}</span>
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(bs[0]?.shoot_date)}</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>모델 {bs.length}명{overdue ? <span style={{ color:C.red, fontWeight:700 }}> · <AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}</span>
+              <span style={{ display:"flex", justifyContent:"center" }}>{avatar(ms[0],24)}</span>
+              <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{client?.name||"?"}</strong>
+              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {proj?.name||bs[0]?.project_name||"프로젝트"}</span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, textAlign:"center" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(bs[0]?.shoot_date)}</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"center" }}>모델 {bs.length}명</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{overdue ? <span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : ""}</span>
               <span style={{ textAlign:"right", fontSize:13, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap" }}>{canViewFinance&&total>0 ? total.toLocaleString()+"원" : ""}</span>
               <span style={{ display:"flex", justifyContent:"flex-end" }}>{hasHold ? <span style={{ background:C.yellow+"22", color:C.yellow, border:`1px solid ${C.yellow}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap" }}>HOLD</span> : null}</span>
             </div>
@@ -420,10 +419,12 @@ export default function DashboardView({ bookings, models, customers, projects, s
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
               style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"11px 16px", borderTop:top(), cursor:"pointer", transition:"background 0.12s" }}>
               <span style={{ background:bk.color+"22", color:bk.color, border:`1px solid ${bk.color}44`, borderRadius:4, padding:"2px 7px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3 }}><TypeIcon type={b.booking_type} size={11}/> {bk.label}</span>
-              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>{avatar(model,24)}<strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{model?.name||"?"} → {client?.name||"?"}</strong></span>
-              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.project_name ? <><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</> : ""}</span>
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
-              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+              <span style={{ display:"flex", justifyContent:"center" }}>{avatar(model,24)}</span>
+              <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{model?.name||"?"} → {client?.name||"?"}</strong>
+              <span style={{ fontSize:12.5, color:C.blue, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.project_name ? <><FolderOpen size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</> : ""}</span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, textAlign:"center" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)}</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", textAlign:"center" }}>{""}</span>
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
                 {isOverdue(b.shoot_date) ? <span style={{ color:C.red, fontWeight:700 }}><AlertTriangle size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>일정지남</span> : null}
                 {!b.deposit_amt&&b.status==="CONFIRMED" ? <span style={{ color:C.red, fontWeight:700 }}>{isOverdue(b.shoot_date)?" · ":""}계약금 미입금</span> : null}
               </span>
@@ -435,7 +436,8 @@ export default function DashboardView({ bookings, models, customers, projects, s
         return <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
           {!isMobile && (
             <div style={{ display:"grid", gridTemplateColumns:ROW_COLS, alignItems:"center", gap:14, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, fontSize:11, fontWeight:700, color:C.muted, whiteSpace:"nowrap" }}>
-              <span>유형</span><span>모델 → 고객사</span><span>프로젝트</span><span>날짜</span><span>비고</span>
+              <span style={{ textAlign:"center" }}>유형</span><span></span><span>모델 → 고객사</span><span>프로젝트</span>
+              <span style={{ textAlign:"center" }}>날짜</span><span style={{ textAlign:"center" }}>모델수</span><span>비고</span>
               <span style={{ textAlign:"right" }}>금액</span><span style={{ textAlign:"right" }}>상태</span>
             </div>
           )}
