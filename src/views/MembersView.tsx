@@ -3,10 +3,11 @@ import { C, btnS, inp } from "../theme";
 import { Users, Crown, Pencil, Save } from "../components/icons";
 
 // 담당자 행 — Vercel식 정렬 컬럼 리스트(보기) → 수정(연필) 시 폼으로 펼침
-function MemberRow({ m, isOwner, bt, onUpdate, onDelete }: {
+function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
   m: any; isOwner: boolean; bt: string;
   onUpdate: (id: string, updates: any) => void;
   onDelete?: (id: string) => void;
+  isMobile?: boolean;
 }) {
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(m.name || "");
@@ -42,7 +43,7 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete }: {
   }
 
   const actions = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" }}>
       {!isOwner && (
         <button onClick={() => onUpdate(m.id, { can_view_finance: !m.can_view_finance })}
           aria-label="매출·정산 열람 권한 토글"
@@ -63,33 +64,51 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete }: {
     </div>
   );
 
-  // 이름 셀: 대표는 왕관 배지 노출
+  // 이름 셀: 대표는 왕관 배지 노출 · 직위(role) 배지 동반
   const nameCell = (
-    <span style={{ ...cell(C.text, 700), display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
       {isOwner && <Crown size={12} color={C.green} style={{ flexShrink: 0 }} />}
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}{isOwner ? " (대표)" : ""}</span>
+      <span style={{ ...cell(C.text, 700), maxWidth: "100%" }}>{m.name}{isOwner ? " (대표)" : ""}</span>
+      {m.position && <span style={{ fontSize: 11, color: C.textSub, fontWeight: 600, background: C.card2, border: `1px solid ${C.border}`, borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}>{m.position}</span>}
     </span>
   );
+
+  // 모바일: 그리드 없이 세로 스택 · 액션은 필요 시 아래로 줄바꿈
+  if (isMobile) {
+    return (
+      <div style={{ padding: "11px 14px", borderTop: bt }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {nameCell}
+        </div>
+        <div style={{ marginTop: 4, fontSize: 12.5, color: C.muted, display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={cell(C.muted)}>{m.phone || "—"}</span>
+          <span style={cell(C.muted)}>{m.email}</span>
+        </div>
+        <div style={{ marginTop: 8 }}>{actions}</div>
+      </div>
+    );
+  }
 
   return (
     <div
       onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-      style={{ display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr) 150px minmax(0,1.4fr) minmax(0,auto)", alignItems: "center", gap: 12, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+      style={{ display: "grid", gridTemplateColumns: "minmax(0,220px) auto minmax(0,240px) 1fr max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
       {nameCell}
-      <span style={cell(C.textSub)}>{m.position || "—"}</span>
       <span style={cell(C.muted)}>{m.phone || "—"}</span>
       <span style={cell(C.muted)}>{m.email}</span>
-      {actions}
+      <span aria-hidden style={{ minWidth: 0 }} />
+      <div style={{ display: "flex", justifyContent: "flex-end", paddingRight: 0, whiteSpace: "nowrap" }}>{actions}</div>
     </div>
   );
 }
 
-export default function MembersView({ members, maxMembers, memberPct, setShowMemberForm, handleDeleteMember, handleUpdateMember }: {
+export default function MembersView({ members, maxMembers, memberPct, setShowMemberForm, handleDeleteMember, handleUpdateMember, isMobile = false }: {
   members: any[]; maxMembers: number; memberPct: number;
   setShowMemberForm: (v: boolean) => void;
   handleDeleteMember: (id: string) => void;
   handleUpdateMember: (id: string, updates: any) => void;
+  isMobile?: boolean;
 }) {
   const owners = members.filter(m => m.role === "owner");
   const staff = members.filter(m => m.role !== "owner");
@@ -122,14 +141,14 @@ export default function MembersView({ members, maxMembers, memberPct, setShowMem
       </div>
 
       {owners.length > 0 && listContainer(owners, (m, bt) => (
-        <MemberRow key={m.id} m={m} isOwner bt={bt} onUpdate={handleUpdateMember} />
+        <MemberRow key={m.id} m={m} isOwner bt={bt} onUpdate={handleUpdateMember} isMobile={isMobile} />
       ))}
 
       <p style={{ fontWeight: 700, color: C.text, margin: "16px 0 10px" }}>추가 담당자 ({staff.length}명)</p>
       {staff.length === 0
         ? <p style={{ color: C.muted, fontSize: 13 }}>추가된 담당자가 없습니다.</p>
         : listContainer(staff, (m, bt) => (
-          <MemberRow key={m.id} m={m} isOwner={false} bt={bt} onUpdate={handleUpdateMember} onDelete={handleDeleteMember} />
+          <MemberRow key={m.id} m={m} isOwner={false} bt={bt} onUpdate={handleUpdateMember} onDelete={handleDeleteMember} isMobile={isMobile} />
         ))}
     </div>
   );

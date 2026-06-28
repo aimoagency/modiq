@@ -105,13 +105,14 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
             <div key={b.id} onClick={()=>setSelectedBooking(b)}
               onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
               onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-              style={{ display:"grid", gridTemplateColumns:"66px minmax(0,1.5fr) 152px minmax(0,1fr) 116px 104px 84px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
+              style={{ display:"grid", gridTemplateColumns:"auto minmax(0,260px) auto minmax(0,200px) auto 1fr max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
               {typeBadge}
               <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>{avatar(m,24)}<strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"} → {cli}</strong></span>
-              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
-              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.location ? <><MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.location}</> : ""}</span>
-              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
-              <span style={{ textAlign:"right", color:amt>0?C.yellow:C.muted, fontWeight:700, fontSize:13, whiteSpace:"nowrap" }}>{amt>0 ? amt.toLocaleString()+"원" : "—"}</span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.location ? <><MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.location}</> : ""}</span>
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap" }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
+              <span />
+              <span style={{ textAlign:"right", color:amt>0?C.yellow:C.muted, fontWeight:700, fontSize:13, whiteSpace:"nowrap", paddingRight:16 }}>{amt>0 ? amt.toLocaleString()+"원" : "—"}</span>
               <span style={{ display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
             </div>
           );
