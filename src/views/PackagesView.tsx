@@ -298,8 +298,14 @@ export default function PackagesView({ packages, setPackages, models, customers,
               </span>
             );
           };
+          const PKG_GRID = "minmax(0,2.2fr) minmax(0,1.4fr) 92px max-content";
           return (
             <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
+              {!isMobile && (
+                <div style={{ display: "grid", gridTemplateColumns: PKG_GRID, alignItems: "center", gap: 14, padding: "9px 16px", background: C.card2, borderBottom: `1px solid ${C.border}`, fontSize: 11, fontWeight: 700, color: C.muted, whiteSpace: "nowrap" }}>
+                  <span>제목</span><span>거래처</span><span>모델수</span><span style={{ textAlign: "right" }}>관리</span>
+                </div>
+              )}
               {packages.map(p => {
                 const bt = top();
                 if (isMobile) return (
@@ -313,13 +319,13 @@ export default function PackagesView({ packages, setPackages, models, customers,
                   <div key={p.id}
                     onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                    style={{ display: "grid", gridTemplateColumns: "minmax(0,2.2fr) 92px minmax(0,1.4fr) max-content", alignItems: "center", gap: 14, padding: "12px 16px", borderTop: bt, transition: "background 0.12s" }}>
+                    style={{ display: "grid", gridTemplateColumns: PKG_GRID, alignItems: "center", gap: 14, padding: "12px 16px", borderTop: bt, transition: "background 0.12s" }}>
                     {/* 제목 */}
                     <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14, fontWeight: 700, color: C.text }}>{p.title || "(제목 없음)"}</span>
-                    {/* 인원수 */}
-                    <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap", justifySelf: "start" }}><User size={11} style={{ verticalAlign: -2 }} /> 모델 {count}명</span>
-                    {/* 업체명 (빈칸 그대로 유지) */}
+                    {/* 거래처 (빈칸 그대로 유지) */}
                     <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{p.client_name ? <><Building size={11} style={{ verticalAlign: -2 }} /> {p.client_name}</> : ""}</span>
+                    {/* 모델수 */}
+                    <span style={{ fontSize: 11, color: C.textSub, background: C.card2, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap", justifySelf: "start" }}><User size={11} style={{ verticalAlign: -2 }} /> 모델 {count}명</span>
                     {/* 액션 버튼 (오른쪽 끝) */}
                     <span style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>{buttons(p)}</span>
                   </div>

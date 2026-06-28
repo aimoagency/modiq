@@ -12,7 +12,7 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
   bookings: any[]; models: any[]; customers: any[]; agency?: any; isMobile?: boolean; onSelectBooking: (b:any)=>void;
 }) {
   // 데스크탑 목록 = 엑셀형 균일 컬럼(헤더+데이터 행 동일 grid): 모델→고객사 · 촬영일 · 상태 · 매출(금액+총이익) · 입금
-  const GRID = "minmax(0,2fr) minmax(0,1.1fr) max-content minmax(0,1.4fr) max-content";
+  const GRID = "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1.1fr) max-content minmax(0,1.4fr) max-content";
   const [preset, setPreset] = useState("3m");
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
@@ -134,6 +134,7 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
           {!isMobile && (
             <div style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, fontSize:11, fontWeight:700, color:C.muted, padding:"9px 16px", background:C.card2, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
               <span>모델 → 고객사</span>
+              <span>프로젝트</span>
               <span>촬영일</span>
               <span>상태</span>
               <span style={{ textAlign:"right" }}>매출 · 총이익</span>
@@ -169,6 +170,7 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
                   style={{ display:"grid", gridTemplateColumns:GRID, alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
                   <span style={{ fontSize:13.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
+                  <span style={{ fontSize:12.5, color:C.blue, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{b.project_name || ""}</span>
                   <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
                   <span style={{ display:"flex" }}><Badge code={b.status} /></span>
                   <span style={{ whiteSpace:"nowrap", textAlign:"right" }}>
