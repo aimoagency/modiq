@@ -24,7 +24,10 @@ export default function BookingsList({ bookings, models, customers, isMobile = f
     ? <img src={m.thumb_url} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
     : <span style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg,#c9a96e,#8b6a3e)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: size * 0.42, fontWeight: 800, flexShrink: 0 }}>{(m?.name || "?")[0]}</span>;
   // 엑셀형 균일 컬럼: 헤더·데이터 행이 공유하는 단일 그리드 정의
-  const GRID = "56px 32px minmax(0,2fr) minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) max-content";
+  // ⚠️ 헤더와 각 데이터 행은 서로 다른 grid 컨테이너라 max-content/auto 트랙은 컨테이너마다 폭이 달라져
+  //    금액·상태 제목이 아래 셀과 어긋난다. 모든 트랙을 고정 px 또는 minmax(0,fr)로 두어 폭을 일치시킨다.
+  //    (상태=배지 폭 고정 88px, 금액=fr 우측정렬)
+  const GRID = "56px 32px minmax(0,2fr) minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) 88px";
   const Row = (b: any, bt: string, inGroup = false) => {
     const m = models.find((mm: any) => mm.id === b.model_id);
     const cli = customers.find((c: any) => c.id === b.customer_id)?.name || "?";
