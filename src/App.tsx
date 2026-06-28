@@ -89,9 +89,9 @@ import SettlementStatementModal from "./components/SettlementStatementModal";
   style.id = "pretendard-global";
   style.textContent = `@font-face { font-family: 'Pretendard-fallback'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'), local('Malgun Gothic'), local('Noto Sans KR'), local('Roboto'); size-adjust: 105.6%; ascent-override: 95.2%; descent-override: 24.1%; line-gap-override: 0%; }
 *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', 'Pretendard-fallback', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif !important; }\nhtml, body { margin: 0; padding: 0; background: var(--c-bg); max-width: 100%; overflow-x: hidden; }
-:root { --c-bg:#0f1117; --c-card:#1a1d27; --c-card2:#22263a; --c-border:#2a2d3e; --c-text:#f0f2f5; --c-text-sub:#c8ccd8; --c-muted:#9aa1ad; --c-sidebar:#111318; --c-side-hover:#1e2128; --c-nav-active:#23262e; }
+:root { --c-bg:#0C0F14; --c-card:#151A21; --c-card2:#1D232C; --c-border:#2A313C; --c-text:#ECEFF3; --c-text-sub:#B0B8C4; --c-muted:#79818E; --c-sidebar:#0E1218; --c-side-hover:#181E26; --c-nav-active:#1E2530; --c-primary:#2E5FE0; --c-on-primary:#FFFFFF; --c-primary-container:#15336E; --c-on-primary-container:#BBD0FF; --c-accent:#e4fc3f; }
 @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
-html.light { --c-bg:#f6f7f9; --c-card:#ffffff; --c-card2:#f1f3f5; --c-border:#e3e6ea; --c-text:#0a0a0b; --c-text-sub:#23272e; --c-muted:#474c54; --c-sidebar:#fbfbfc; --c-side-hover:#eef0f3; --c-nav-active:#1c2027; }\n#root { min-height: 100vh; }
+html.light { --c-bg:#F6F8FB; --c-card:#FFFFFF; --c-card2:#EEF1F6; --c-border:#D9DEE7; --c-text:#121620; --c-text-sub:#444C5A; --c-muted:#6B7382; --c-sidebar:#F1F4F9; --c-side-hover:#E7ECF4; --c-nav-active:#E3EAF6; --c-primary:#1D4ED8; --c-on-primary:#FFFFFF; --c-primary-container:#DCE6FF; --c-on-primary-container:#1D4ED8; --c-accent:#7d9400; }\n#root { min-height: 100vh; }\ninput:focus, select:focus, textarea:focus { border-color: var(--c-primary) !important; outline: none; }
 /* 전역 폰트 확대 — 인라인 px 폰트를 한 번에 키우기 위해 루트 비례 확대. 웹 ~+2pt / 모바일 ~+1pt 체감. (조정 가능) */
 #root { zoom: 1.14; }
 @media (max-width: 767px) { #root { zoom: 1.07; } }`;
@@ -1990,7 +1990,8 @@ async function sharePdf(){
       justifyContent:expanded?"flex-start":"center",
       padding:expanded?"9px 12px":"10px 0", borderRadius:8, border:"none", cursor:"pointer",
       background:page===target?"var(--c-nav-active)":"transparent",
-      color:page===target?"white":C.textSub,
+      boxShadow:page===target?"inset 3px 0 0 0 var(--c-accent)":undefined,
+      color:page===target?C.text:C.textSub,  // 라이트=어두운 글자, 다크=밝은 글자(흰색 고정 시 라이트 nav-active(연파랑)에서 안 보임)
       fontSize:13, fontWeight:page===target?700:500, marginBottom:2, textAlign:"left",
       transition:"background 0.15s,color 0.15s", whiteSpace:"nowrap", overflow:"hidden",
     }}
@@ -2020,8 +2021,8 @@ async function sharePdf(){
       <div style={{ minHeight:"100vh", width:"100%", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", zoom: isMobile ? 0.935 : 0.877 }}>
         <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:40, width:"90%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:22 }}>
-            <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"#A8FF00" }}>m</span>odiq</h1>
-            <p style={{ color:"#A8FF00", fontSize:11, margin:0, fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase" }}>talent agency OS</p>
+            <h1 style={{ color:C.text, fontSize:30, margin:"0 0 5px", fontWeight:800, letterSpacing:"-1px" }}><span style={{ color:"var(--c-accent)" }}>m</span>odiq</h1>
+            <p style={{ color:"var(--c-accent)", fontSize:11, margin:0, fontWeight:700, letterSpacing:"2.5px", textTransform:"uppercase" }}>talent agency OS</p>
             <p style={{ color:C.muted, fontSize:10, margin:"4px 0 0" }}>v{APP_VERSION}</p>
           </div>
           <div style={{ display:"flex", background:"var(--c-bg)", borderRadius:8, padding:4, marginBottom:22 }}>
@@ -2122,8 +2123,8 @@ async function sharePdf(){
       {!isMobile&&(
       <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 22px", zIndex:300 }}>
         <div style={{ display:"flex", flexDirection:"column", lineHeight:1.05 }}>
-          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:theme==="light"?"#111111":"#A8FF00" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
-          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:theme==="light"?"#374151":"#A8FF00", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
+          <p style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.7px" }}><span style={{ color:theme==="light"?"#111111":"var(--c-accent)" }}>m</span>odiq <span style={{ fontSize:9, color:C.muted, fontWeight:500 }}>v{APP_VERSION}</span></p>
+          <span style={{ fontSize:8, fontWeight:700, letterSpacing:"1.8px", color:theme==="light"?"#374151":"var(--c-accent)", textTransform:"uppercase", marginTop:2 }}>talent agency OS</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <span style={{ display:"flex", alignItems:"center", gap:7 }}>
@@ -2176,7 +2177,7 @@ async function sharePdf(){
       {/* ── 모바일 상단 헤더 ── */}
       {isMobile&&(
         <div style={{ position:"fixed", top:0, left:0, right:0, height:52, background:C.sidebar, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", zIndex:300 }}>
-          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:theme==="light"?"#111111":"#A8FF00" }}>m</span>odiq</p>
+          <p style={{ margin:0, fontSize:18, fontWeight:900, color:C.text, letterSpacing:"-0.5px" }}><span style={{ color:theme==="light"?"#111111":"var(--c-accent)" }}>m</span>odiq</p>
           <span style={{ fontSize:12, color:C.muted }}>{agency.name}</span>
         </div>
       )}
@@ -2733,12 +2734,12 @@ async function sharePdf(){
             { t:"bookings",  l:"섭외",     I:ClipboardList },
             { t:"models",    l:"모델",     I:User },
           ] as {t:Page;l:string;I:any}[]).map(({t,l,I})=>(
-            <button key={t} onClick={()=>setPage(t)} style={{ flex:1, background:"none", border:"none", padding:"8px 0 10px", cursor:"pointer", color:page===t?C.blue:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:page===t?700:500 }}>
-              <I size={20} strokeWidth={page===t?2.2:1.8} /><span>{l}</span>
+            <button key={t} onClick={()=>setPage(t)} style={{ flex:1, background:"none", border:"none", padding:"6px 0 9px", cursor:"pointer", color:page===t?C.text:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontSize:10, fontWeight:page===t?700:500 }}>
+              <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:56, height:30, borderRadius:16, background:page===t?"var(--c-primary-container)":"transparent", color:page===t?"var(--c-on-primary-container)":C.muted, transition:"background .15s" }}><I size={20} strokeWidth={page===t?2.2:1.8} /></span><span>{l}</span>
             </button>
           ))}
-          <button onClick={()=>setShowMoreMenu(true)} style={{ flex:1, background:"none", border:"none", padding:"8px 0 10px", cursor:"pointer", color:["customers","settlement","members","plan"].includes(page)?C.blue:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:500 }}>
-            <Menu size={20} strokeWidth={1.8} /><span>더보기</span>
+          <button onClick={()=>setShowMoreMenu(true)} style={{ flex:1, background:"none", border:"none", padding:"6px 0 9px", cursor:"pointer", color:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?C.text:C.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontSize:10, fontWeight:500 }}>
+            <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:56, height:30, borderRadius:16, background:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?"var(--c-primary-container)":"transparent", color:["customers","settlement","members","plan","revenue","studio","packages","company"].includes(page)?"var(--c-on-primary-container)":C.muted, transition:"background .15s" }}><Menu size={20} strokeWidth={1.8} /></span><span>더보기</span>
           </button>
         </div>
       )}
