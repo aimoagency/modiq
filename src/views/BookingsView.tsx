@@ -4,7 +4,7 @@ import { STATUS, BOOKING_TYPES, statusOptionsForType } from "../constants";
 import { fmtDate, fmtTime, bookingTotal } from "../lib/utils";
 import Badge from "../components/Badge";
 import TypeIcon from "../components/TypeIcon";
-import { ClipboardList, Calendar, MapPin, User, Coins, Folder, Search } from "../components/icons";
+import { ClipboardList, Calendar, MapPin, User, Folder, Search } from "../components/icons";
 
 export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, bookingStatusF, setBookingStatusF, bookingTypeF, setBookingTypeF, bookingManagerF, setBookingManagerF, bookingMonthF, setBookingMonthF, bookingMonths, memberNames, models, customers, openAddPicker, setSelectedBooking, isMobile = false }: {
   filteredBookings: any[]; bookingQ: string; setBookingQ: (v:string)=>void;
@@ -75,84 +75,74 @@ export default function BookingsView({ filteredBookings, bookingQ, setBookingQ, 
           if(b.project_id){ if(!groups[b.project_id]){ groups[b.project_id]=[]; order.push({type:"group",pid:b.project_id}); } groups[b.project_id].push(b); }
           else order.push({type:"single",b});
         });
-        const Card=(b:any)=> isMobile ? (
-            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
+        // 모델 아바타(공통)
+        const avatar=(m:any, size:number)=> m?.thumb_url
+          ? <img src={m.thumb_url} alt="" style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+          : <span style={{ width:size, height:size, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:size*0.42, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>;
+        // ── Vercel식 행: 하나의 컨테이너 안 얇은 divider 행 · 고정 컬럼 정렬 · hover 하이라이트 ──
+        const Row=(b:any, bt:string, inGroup=false)=>{
+          const m=models.find((mm:any)=>mm.id===b.model_id);
+          const cli=customers.find((c:any)=>c.id===b.customer_id)?.name||"?";
+          const bk=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT;
+          const amt=bookingTotal(b);
+          const accent=inGroup?{ boxShadow:`inset 3px 0 0 ${C.blue}55` }:{};
+          const typeBadge=<span style={{ background:bk.color+"22", color:bk.color, border:`1px solid ${bk.color}44`, borderRadius:4, padding:"2px 6px", fontSize:11, fontWeight:700, whiteSpace:"nowrap", display:"inline-flex", alignItems:"center", gap:3, justifySelf:"start" }}><TypeIcon type={b.booking_type} size={11}/> {bk.label}</span>;
+          if (isMobile) return (
+            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ padding:"10px 14px", borderTop:bt, cursor:"pointer", ...accent }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ color:bt.color, display:"inline-flex", flexShrink:0 }}><TypeIcon type={b.booking_type} size={13}/></span>; })()}
-                {(()=>{ const m=models.find((mm:any)=>mm.id===b.model_id); return m?.thumb_url
-                  ? <img src={m.thumb_url} alt="" style={{ width:24, height:24, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                  : <span style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:10, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>; })()}
-                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{models.find((m:any)=>m.id===b.model_id)?.name||"?"} → {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</strong>
+                <span style={{ color:bk.color, display:"inline-flex", flexShrink:0 }}><TypeIcon type={b.booking_type} size={13}/></span>
+                {avatar(m,24)}
+                <strong style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"} → {cli}</strong>
                 <Badge code={b.status} type={b.booking_type} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:C.textSub }}>
                 <span style={{ flex:1, minWidth:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
-                {bookingTotal(b)>0?<span style={{ marginLeft:"auto", color:C.yellow, fontWeight:700, flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>:null}
+                {amt>0?<span style={{ marginLeft:"auto", color:C.yellow, fontWeight:700, flexShrink:0 }}>{amt.toLocaleString()}원</span>:null}
               </div>
             </div>
-            ) : (
-            <div key={b.id} onClick={()=>setSelectedBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"border-color 0.2s" }}
-              onMouseEnter={e=>(e.currentTarget.style.borderColor=C.blue)}
-              onMouseLeave={e=>(e.currentTarget.style.borderColor=C.border)}
-            >
-              {(()=>{ const bt=BOOKING_TYPES[b.booking_type||"SHOOT"]||BOOKING_TYPES.SHOOT; return <span style={{ background:bt.color+"22", color:bt.color, border:`1px solid ${bt.color}44`, borderRadius:4, padding:"1px 7px", fontSize:11, fontWeight:700, flexShrink:0 }}><TypeIcon type={b.booking_type} size={11}/> {bt.label}</span>; })()}
-              {(()=>{ const m=models.find((mm:any)=>mm.id===b.model_id); return m?.thumb_url
-                ? <img src={m.thumb_url} alt="" style={{ width:26, height:26, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                : <span style={{ width:26, height:26, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:10, fontWeight:800, flexShrink:0 }}>{(m?.name||"?")[0]}</span>; })()}
-              <p style={{ flex:1, minWidth:0, margin:0, fontSize:13, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                <strong style={{ fontSize:14, fontWeight:700, color:C.text }}>{models.find((m:any)=>m.id===b.model_id)?.name||"?"} → {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</strong>
-                <span style={{ color:C.textSub, fontWeight:700 }}> · <Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
-                {b.location?<span style={{ color:C.textSub, fontWeight:700 }}> · <MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.location}</span>:null}
-                {b.manager?<span style={{ color:C.textSub, fontWeight:700 }}> · <User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/>{b.manager}</span>:null}
-              </p>
-              {bookingTotal(b)>0?<span style={{ color:C.yellow, fontWeight:700, fontSize:13, flexShrink:0, marginRight:4 }}><Coins size={12} style={{ verticalAlign:-2, flexShrink:0 }}/>{bookingTotal(b).toLocaleString()}원</span>:null}
-              <Badge code={b.status} type={b.booking_type} />
+          );
+          return (
+            <div key={b.id} onClick={()=>setSelectedBooking(b)}
+              onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
+              onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
+              style={{ display:"grid", gridTemplateColumns:"66px minmax(0,1.5fr) 152px minmax(0,1fr) 116px 104px 84px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s", ...accent }}>
+              {typeBadge}
+              <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>{avatar(m,24)}<strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m?.name||"?"} → {cli}</strong></span>
+              <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}><Calendar size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {fmtDate(b.shoot_date)} {fmtTime(b.start_time,b.end_time)}</span>
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.location ? <><MapPin size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.location}</> : ""}</span>
+              <span style={{ fontSize:12.5, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.manager ? <><User size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.manager}</> : ""}</span>
+              <span style={{ textAlign:"right", color:amt>0?C.yellow:C.muted, fontWeight:700, fontSize:13, whiteSpace:"nowrap" }}>{amt>0 ? amt.toLocaleString()+"원" : "—"}</span>
+              <span style={{ display:"flex", justifyContent:"flex-end" }}><Badge code={b.status} type={b.booking_type} /></span>
             </div>
-            );
+          );
+        };
+        const GroupHeader=(bs:any[], oi:number, bt:string)=>{
+          const total=bs.reduce((s,b)=>s+bookingTotal(b),0);
+          const ms=bs.map(b=>models.find((m:any)=>m.id===b.model_id)).filter(Boolean);
+          const avs=<div style={{ display:"flex", flexShrink:0 }}>{ms.slice(0,3).map((m:any,i:number)=>(
+            <span key={i} style={{ marginLeft:i?-7:0, border:`2px solid ${C.card}`, borderRadius:"50%", display:"inline-flex" }}>{avatar(m,20)}</span>
+          ))}</div>;
+          return (
+            <div key={"g"+oi} style={{ display:"flex", alignItems:"center", gap:8, padding:isMobile?"9px 12px":"9px 16px", borderTop:bt, background:C.blue+"10", flexWrap:isMobile?"wrap":"nowrap" }}>
+              <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
+              <span style={{ flex:"1 1 auto", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:13.5, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
+              {avs}
+              <span style={{ fontSize:12, color:C.muted, whiteSpace:"nowrap" }}>모델 {bs.length}명 · {fmtDate(bs[0].shoot_date)}</span>
+              {total>0&&<span style={{ marginLeft:"auto", fontSize:13.5, color:C.yellow, fontWeight:800, whiteSpace:"nowrap" }}>{total.toLocaleString()}원</span>}
+            </div>
+          );
+        };
         return (
-          <div style={{ width:"100%", boxSizing:"border-box", display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:8 }}>
-            {order.map((item,oi)=>{
-              if(item.type==="single") return Card(item.b);
-              const bs=groups[item.pid!]; const total=bs.reduce((s,b)=>s+bookingTotal(b),0);
-              const ms=bs.map(b=>models.find((m:any)=>m.id===b.model_id)).filter(Boolean);
-              return (
-                <div key={"g"+oi} style={{ border:`1px solid ${C.blue}55`, borderRadius:12, overflow:"hidden" }}>
-                  {isMobile ? (
-                    <div style={{ padding:"10px 12px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33` }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
-                        <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
-                        <span style={{ flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <div style={{ display:"flex", flexShrink:0 }}>
-                          {ms.slice(0,3).map((m:any,i:number)=>(m.thumb_url
-                            ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />
-                            : <span key={i} style={{ width:20, height:20, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", border:`2px solid ${C.card}`, marginLeft:i?-7:0, display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:9, fontWeight:800 }}>{(m.name||"?")[0]}</span>
-                          ))}
-                        </div>
-                        <span style={{ flex:1, minWidth:0, fontSize:12, color:C.muted, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>모델 {bs.length}명 · {fmtDate(bs[0].shoot_date)}</span>
-                        {total>0&&<span style={{ marginLeft:"auto", fontSize:14, color:C.yellow, fontWeight:800, whiteSpace:"nowrap", flexShrink:0 }}>{total.toLocaleString()}원</span>}
-                      </div>
-                    </div>
-                  ) : (
-                  <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", background:C.blue+"14", borderBottom:`1px solid ${C.blue}33`, flexWrap:"wrap" }}>
-                    <Folder size={13} color={C.blue} style={{ flexShrink:0 }}/>
-                    <span style={{ flex:"1 1 auto", minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontSize:14, fontWeight:700, color:C.text }}>{bs[0].project_name||"프로젝트"} <span style={{ color:C.muted, fontWeight:400 }}>· {customers.find((c:any)=>c.id===bs[0].customer_id)?.name||"?"}</span></span>
-                    <div style={{ display:"flex", marginLeft:4 }}>
-                      {ms.slice(0,3).map((m:any,i:number)=>(m.thumb_url
-                        ? <img key={i} src={m.thumb_url} alt="" style={{ width:20, height:20, borderRadius:"50%", objectFit:"cover", border:`2px solid ${C.card}`, marginLeft:i?-7:0 }} />
-                        : <span key={i} style={{ width:20, height:20, borderRadius:"50%", background:"linear-gradient(135deg,#c9a96e,#8b6a3e)", border:`2px solid ${C.card}`, marginLeft:i?-7:0, display:"inline-flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:9, fontWeight:800 }}>{(m.name||"?")[0]}</span>
-                      ))}
-                    </div>
-                    <span style={{ fontSize:12, color:C.muted }}>모델 {bs.length}명</span>
-                    <span style={{ fontSize:12, color:C.muted }}>· {fmtDate(bs[0].shoot_date)}</span>
-                    {total>0&&<span style={{ marginLeft:"auto", fontSize:14, color:C.yellow, fontWeight:800 }}>{total.toLocaleString()}원</span>}
-                  </div>
-                  )}
-                  <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:8, padding:isMobile?8:10 }}>{bs.map(Card)}</div>
-                </div>
-              );
-            })}
+          <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+            {(()=>{
+              const out:any[]=[]; let first=true;
+              const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+              order.forEach((item,oi)=>{
+                if(item.type==="single") out.push(Row(item.b, top()));
+                else { const bs=groups[item.pid!]; out.push(GroupHeader(bs, oi, top())); bs.forEach((b:any)=>out.push(Row(b, top(), true))); }
+              });
+              return out;
+            })()}
           </div>
         );
       })()}

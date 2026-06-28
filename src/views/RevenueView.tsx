@@ -128,27 +128,47 @@ export default function RevenueView({ bookings, models, customers, agency, isMob
         {sel && <button onClick={()=>setSel(null)} style={{ padding:"4px 12px", borderRadius:20, border:`1px solid ${C.border}`, background:"transparent", color:C.blue, fontSize:12, fontWeight:700, cursor:"pointer" }}>✕ 전체 보기</button>}
       </div>
       {listed.length===0 ? <p style={{ color:C.muted }}>{preset==="upcoming"?"예정된(미래 촬영일) 확정 섭외가 없습니다.":"이 기간에 매출이 없습니다."}</p> : (
-        <div style={{ display:"grid", gap:6, gridTemplateColumns:"minmax(0,1fr)" }}>
-          {listed.map(b=>(
-            <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12, minWidth:0 }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                  <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
-                  <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>
-                    {models.find((m:any)=>m.id===b.model_id)?.name||"?"} <span style={{ color:C.muted }}>→ {customers.find((c:any)=>c.id===b.customer_id)?.name||"?"}</span>
+        <div style={{ width:"100%", boxSizing:"border-box", border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", background:C.card }}>
+          {(()=>{
+            let first=true; const top=()=>{ const t=first?"none":`1px solid ${C.border}`; first=false; return t; };
+            return listed.map(b=>{
+              const bt=top();
+              const mName=models.find((m:any)=>m.id===b.model_id)?.name||"?";
+              const cName=customers.find((c:any)=>c.id===b.customer_id)?.name||"?";
+              const payBadge=<span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a", justifySelf:"start" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>;
+              if (isMobile) return (
+                <div key={b.id} onClick={()=>onSelectBooking(b)} style={{ padding:"10px 14px", borderTop:bt, cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", flexShrink:0 }}>{fmtDate(b.shoot_date)}</span>
+                    <span style={{ fontSize:13, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flex:1 }}>
+                      {mName} <span style={{ color:C.muted }}>→ {cName}</span>
+                    </span>
+                    <span style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", flexShrink:0 }}>{bookingTotal(b).toLocaleString()}원</span>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                    {payBadge}
+                    <Badge code={b.status} />
+                    <span style={{ marginLeft:"auto", fontSize:11, color:C.blue, whiteSpace:"nowrap" }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
+                  </div>
+                </div>
+              );
+              return (
+                <div key={b.id} onClick={()=>onSelectBooking(b)}
+                  onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
+                  onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
+                  style={{ display:"grid", gridTemplateColumns:"92px minmax(0,1.6fr) 116px 84px 150px", alignItems:"center", gap:12, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{fmtDate(b.shoot_date)}</span>
+                  <span style={{ fontSize:12.5, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{mName} <span style={{ color:C.muted, fontWeight:400 }}>→ {cName}</span></span>
+                  {payBadge}
+                  <span style={{ display:"flex", justifyContent:"flex-start" }}><Badge code={b.status} /></span>
+                  <span style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+                    <span style={{ fontSize:13.5, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</span>
+                    <span style={{ fontSize:11, color:C.blue, marginLeft:8 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</span>
                   </span>
                 </div>
-                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객사 입금</>:"고객사 미입금"}</span>
-                  <Badge code={b.status} />
-                </div>
-              </div>
-              <div style={{ flexShrink:0, textAlign:"right", whiteSpace:"nowrap" }}>
-                <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{bookingTotal(b).toLocaleString()}원</div>
-                <div style={{ fontSize:11, color:C.blue, marginTop:3 }}>총이익 {bookingAgencyFee(b,models).toLocaleString()}원</div>
-              </div>
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
       )}
     </div>

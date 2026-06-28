@@ -112,7 +112,7 @@ export default function DistributionView({ agency, models, createdBy, senderName
 
       {tab === "partners" && <PartnersTab {...{ myId, partners, counterparty, nameOf, createdBy, refreshPartners }} />}
       {tab === "send" && <SendTab {...{ myId, agency, models, acceptedPartners, counterparty, nameOf, createdBy, senderName, isMobile, onSent: () => { setSentLoaded(false); setTab("sent"); } }} />}
-      {tab === "sent" && <SentTab {...{ sent, sentLoaded, nameOf, refreshSent }} />}
+      {tab === "sent" && <SentTab {...{ sent, sentLoaded, nameOf, refreshSent, isMobile }} />}
       {tab === "inbox" && <InboxTab {...{ received, inboxLoaded, nameOf, refreshInbox, agency, isMobile, models, onImportModel }} />}
     </div>
   );
@@ -503,7 +503,7 @@ function PreviewCard({ m, logoUrl, travel, busy, onImport, imported, importBusy 
 }
 
 // ═══════════════════════════ 보낸함 탭 ═══════════════════════════
-function SentTab({ sent, sentLoaded, nameOf, refreshSent }: any) {
+function SentTab({ sent, sentLoaded, nameOf, refreshSent, isMobile }: any) {
   const [busyId, setBusyId] = useState("");
   const revoke = async (id: string) => {
     if (!confirm("이 발송을 철회하면 상대 수신함에서 사라집니다. 철회할까요?")) return;
@@ -516,40 +516,62 @@ function SentTab({ sent, sentLoaded, nameOf, refreshSent }: any) {
   if (!sentLoaded) return <p style={{ color: C.muted, fontSize: 13 }}>불러오는 중…</p>;
   if (!sent.length) return <p style={{ color: C.muted, fontSize: 13 }}>보낸 발송이 없습니다.</p>;
 
+  // ── Vercel식 행: 하나의 컨테이너 안 얇은 divider 행 · 고정 컬럼 정렬 · hover 하이라이트 ──
+  const Row = (d: TalentDistribution, bt: string) => {
+    const recs = d.distribution_recipients || [];
+    const viewedCnt = recs.filter(r => r.viewed_at).length;
+    const expired = d.status === "active" && d.expires_at && new Date(d.expires_at) < new Date();
+    const statusLabel = d.status === "revoked" ? "철회됨" : expired ? "만료됨" : "발송중";
+    const statusColor = d.status === "revoked" ? C.muted : expired ? C.yellow : C.green;
+    const recNames = recs.map(r => nameOf(r.recipient_agency_id)).join(", ");
+    const dim = d.status === "revoked" ? 0.65 : 1;
+    const statusBadge = (
+      <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, background: statusColor + "1e", borderRadius: 20, padding: "3px 10px", whiteSpace: "nowrap" }}>{statusLabel}</span>
+    );
+    const revokeBtn = d.status === "active" && !expired
+      ? <button onClick={() => revoke(d.id)} disabled={busyId === d.id} style={{ ...btnS(C.card2, busyId === d.id), color: C.red, border: `1px solid ${C.red}55` }}>철회</button>
+      : null;
+
+    if (isMobile) return (
+      <div key={d.id} style={{ padding: "10px 14px", borderTop: bt, opacity: dim }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <strong style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>모델 {(d.distribution_models || []).length}명 · 파트너 {recs.length}곳</strong>
+          {statusBadge}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.textSub }}>
+          <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{recNames || "-"}</span>
+          <span style={{ flexShrink: 0, color: C.muted }}>열람 {viewedCnt}/{recs.length}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fmtDate(d.created_at)} 발송{d.expires_at ? ` · 만료 ${fmtDate(d.expires_at)}` : ""}</span>
+          {revokeBtn}
+        </div>
+      </div>
+    );
+
+    return (
+      <div key={d.id}
+        onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
+        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+        style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1.6fr) 150px 96px 80px 64px", alignItems: "center", gap: 12, padding: "11px 16px", borderTop: bt, transition: "background 0.12s", opacity: dim }}>
+        <strong title={d.message || undefined} style={{ fontSize: 12.5, fontWeight: 700, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>모델 {(d.distribution_models || []).length}명 · 파트너 {recs.length}곳</strong>
+        <span style={{ fontSize: 12.5, color: C.textSub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{recNames || "-"}</span>
+        <span style={{ fontSize: 12.5, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fmtDate(d.created_at)} 발송{d.expires_at ? ` · 만료 ${fmtDate(d.expires_at)}` : ""}</span>
+        <span style={{ fontSize: 12.5, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>열람 {viewedCnt}/{recs.length}</span>
+        <span style={{ display: "flex", justifyContent: "flex-end" }}>{statusBadge}</span>
+        <span style={{ display: "flex", justifyContent: "flex-end" }}>{revokeBtn}</span>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ maxWidth: 760 }}>
-      {sent.map((d: TalentDistribution) => {
-        const recs = d.distribution_recipients || [];
-        const viewedCnt = recs.filter(r => r.viewed_at).length;
-        const expired = d.status === "active" && d.expires_at && new Date(d.expires_at) < new Date();
-        const statusLabel = d.status === "revoked" ? "철회됨" : expired ? "만료됨" : "발송중";
-        const statusColor = d.status === "revoked" ? C.muted : expired ? C.yellow : C.green;
-        return (
-          <div key={d.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 12, opacity: d.status === "revoked" ? 0.65 : 1 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>모델 {(d.distribution_models || []).length}명 · 파트너 {recs.length}곳</p>
-                <p style={{ margin: "3px 0 0", fontSize: 11, color: C.muted }}>{fmtDate(d.created_at)} 발송{d.expires_at ? ` · 만료 ${fmtDate(d.expires_at)}` : ""}</p>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, background: statusColor + "1e", borderRadius: 20, padding: "3px 10px", whiteSpace: "nowrap" }}>{statusLabel}</span>
-            </div>
-            {d.message && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.textSub, background: C.card2, borderRadius: 6, padding: "7px 10px" }}>{d.message}</p>}
-            <div style={{ margin: "10px 0 0", display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {recs.map(r => (
-                <span key={r.id} style={{ fontSize: 11, color: r.viewed_at ? C.green : C.textSub, background: C.card2, border: `1px solid ${r.viewed_at ? C.green + "55" : C.border}`, borderRadius: 6, padding: "3px 8px" }}>
-                  {nameOf(r.recipient_agency_id)} {r.viewed_at ? "· 열람" : "· 미열람"}
-                </span>
-              ))}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-              <span style={{ fontSize: 11, color: C.muted }}>열람 {viewedCnt}/{recs.length}</span>
-              {d.status === "active" && !expired && (
-                <button onClick={() => revoke(d.id)} disabled={busyId === d.id} style={{ ...btnS(C.card2, busyId === d.id), color: C.red, border: `1px solid ${C.red}55` }}>철회</button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+    <div style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: C.card }}>
+      {(() => {
+        const out: any[] = []; let first = true;
+        const top = () => { const t = first ? "none" : `1px solid ${C.border}`; first = false; return t; };
+        sent.forEach((d: TalentDistribution) => out.push(Row(d, top())));
+        return out;
+      })()}
     </div>
   );
 }
