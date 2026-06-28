@@ -106,27 +106,26 @@ export default function SettlementView({ settlementTab, setSettlementTab, settle
                 <div key={b.id} onClick={()=>openSettlement(b)}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.card2)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                  style={{ display:"grid", gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr) max-content max-content", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
-                  {/* 모델 → 고객사 (+프로젝트) */}
-                  <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
+                  style={{ display:"grid", gridTemplateColumns:"max-content max-content max-content max-content max-content max-content max-content max-content 1fr", alignItems:"center", gap:14, padding:"11px 16px", borderTop:bt, cursor:"pointer", transition:"background 0.12s" }}>
+                  {/* 모델 → 고객사 */}
+                  <span style={{ display:"flex", alignItems:"center", gap:8, whiteSpace:"nowrap" }}>
                     {avatar(model,28)}
-                    <span style={{ minWidth:0, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                      <strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong>
-                      <span style={{ fontSize:12.5, color:C.muted }}> → {client?.name||"?"}</span>
-                      {b.project_name&&<span style={{ fontSize:12.5, color:C.blue }}> · <Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</span>}
-                    </span>
+                    <span><strong style={{ fontSize:13.5, fontWeight:700, color:C.text }}>{model?.name||"?"}</strong><span style={{ fontSize:12.5, color:C.muted }}> → {client?.name||"?"}</span></span>
                   </span>
+                  {/* 프로젝트명 (분리·세로 일렬) */}
+                  <span style={{ fontSize:12.5, color:C.blue, whiteSpace:"nowrap" }}>{b.project_name ? <><Folder size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> {b.project_name}</> : ""}</span>
                   {/* 촬영일 */}
-                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{fmtDate(b.shoot_date)}</span>
-                  {/* 금액 (우측 정렬 · NO CLIP) */}
-                  <span style={{ textAlign:"right", whiteSpace:"nowrap" }}>
-                    {fee>0?(<>
-                      <div style={{ fontSize:14, fontWeight:800, color:C.text }}>{fee.toLocaleString()}원</div>
-                      <div style={{ fontSize:11, color:C.green, marginTop:3 }}>모델 실지급 {pay.toLocaleString()}원</div>
-                    </>):""}
-                  </span>
-                  {/* 상태 · 입금/지급 배지 (맨 오른쪽) */}
-                  <span style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>{payBadges(b)}</span>
+                  <span style={{ fontSize:12.5, color:C.textSub, fontWeight:600, whiteSpace:"nowrap" }}>{fmtDate(b.shoot_date)}</span>
+                  {/* 상태(촬영완료) */}
+                  <span style={{ display:"flex" }}><Badge code={b.status} type={b.booking_type} /></span>
+                  {/* 고객 입금상태(미입금) */}
+                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 7px", borderRadius:6, whiteSpace:"nowrap", justifySelf:"start", color:b.is_paid?C.green:C.red, background:(b.is_paid?C.green:C.red)+"1a" }}>{b.is_paid?<><CheckCircle2 size={11} style={{ verticalAlign:-2, flexShrink:0 }}/> 고객 입금</>:"고객 미입금"}</span>
+                  {/* 견적금액 */}
+                  <span style={{ fontSize:13, fontWeight:800, color:C.text, whiteSpace:"nowrap", textAlign:"right" }}>{fee>0?fee.toLocaleString()+"원":""}</span>
+                  {/* 모델 실지급금 */}
+                  <span style={{ fontSize:12.5, fontWeight:700, color:"#c9a96e", whiteSpace:"nowrap", textAlign:"right" }}>{b.model_paid&&pay>0?pay.toLocaleString()+"원":""}</span>
+                  {/* 모델 미지급금 */}
+                  <span style={{ fontSize:12.5, fontWeight:700, color:C.red, whiteSpace:"nowrap", textAlign:"right" }}>{!b.model_paid&&pay>0?pay.toLocaleString()+"원":""}</span>
                 </div>
               );
             })}

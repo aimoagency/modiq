@@ -64,12 +64,20 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
     </div>
   );
 
-  // 이름 셀: 대표는 왕관 배지 노출 · 직위(role) 배지 동반
+  // 이름 셀: 대표는 왕관 배지 노출 (직책은 별도 컬럼으로 분리)
   const nameCell = (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
       {isOwner && <Crown size={12} color={C.green} style={{ flexShrink: 0 }} />}
       <span style={{ ...cell(C.text, 700), maxWidth: "100%" }}>{m.name}{isOwner ? " (대표)" : ""}</span>
-      {m.position && <span style={{ fontSize: 11, color: C.textSub, fontWeight: 600, background: C.card2, border: `1px solid ${C.border}`, borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap", flexShrink: 0 }}>{m.position}</span>}
+    </span>
+  );
+
+  // 직책(직위) 셀 — 자체 컬럼(행 간 세로 정렬). 빈 값이면 슬롯만 유지
+  const titleCell = (
+    <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+      {m.position
+        ? <span style={{ fontSize: 11, color: C.textSub, fontWeight: 600, background: C.card2, border: `1px solid ${C.border}`, borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap" }}>{m.position}</span>
+        : ""}
     </span>
   );
 
@@ -79,6 +87,7 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
       <div style={{ padding: "11px 14px", borderTop: bt }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {nameCell}
+          {titleCell}
         </div>
         <div style={{ marginTop: 4, fontSize: 12.5, color: C.muted, display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={cell(C.muted)}>{m.phone || ""}</span>
@@ -93,10 +102,12 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
     <div
       onMouseEnter={e => (e.currentTarget.style.background = C.card2)}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-      style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.4fr) max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
+      style={{ display: "grid", gridTemplateColumns: "max-content max-content max-content max-content 1fr max-content", alignItems: "center", gap: 14, padding: "11px 16px", borderTop: bt, transition: "background 0.12s" }}>
       {nameCell}
+      {titleCell}
       <span style={cell(C.muted)}>{m.phone || ""}</span>
       <span style={cell(C.muted)}>{m.email || ""}</span>
+      <span />
       <div style={{ display: "flex", justifyContent: "flex-end", paddingRight: 0, whiteSpace: "nowrap" }}>{actions}</div>
     </div>
   );
