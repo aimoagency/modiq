@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { sb, thumbUrl } from "../lib/supabase";
 import { type Pkg, type PackageItem, sizeLine, openPackageWindow, downloadCompCardPdf, compCardInnerHtml } from "../lib/packages";
+import { VIDEO_LABEL, type VideoRef } from "../lib/video";
 import { useBackClose } from "../lib/backstack";
 
 export default function PackagePublicView({ token, pkg: pkgProp }: { token?: string; pkg?: Pkg }) {
@@ -14,6 +15,7 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
   const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 가운데 플로팅 확대
   const [downloading, setDownloading] = useState<string | null>(null);              // 컴카드 PDF 생성 중인 항목
   const [compItem, setCompItem] = useState<PackageItem | null>(null);                // 컴카드 미리보기 대상
+  const [vidPlay, setVidPlay] = useState<VideoRef | null>(null);                      // 영상 재생 모달
 
   useEffect(() => {
     if (pkgProp) { setPkg(pkgProp); setState("ok"); return; }
@@ -165,6 +167,22 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
                   ))}
                 </div>
               ) : <p style={{ color: "#9aa2af" }}>등록된 사진이 없습니다.</p>}
+              {Array.isArray(g.videos) && g.videos.length > 0 && (
+                <div style={{ marginTop: 22 }}>
+                  <p style={{ color: "#c8ccd8", fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>영상</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+                    {g.videos.map((v, i) => (
+                      <div key={i} onClick={() => setVidPlay(v)} style={{ position: "relative", height: 200, aspectRatio: v.vertical ? "9/16" : "16/9", flex: "0 0 auto", borderRadius: 8, overflow: "hidden", background: "#000", cursor: "pointer" }}>
+                        {v.thumb ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9, display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9aa2af", fontSize: 12 }}>{VIDEO_LABEL[v.provider]}</div>}
+                        <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ width: 46, height: 46, borderRadius: "50%", background: "rgba(0,0,0,.55)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, paddingLeft: 3 }}>▶</span>
+                        </span>
+                        <span style={{ position: "absolute", bottom: 5, left: 6, fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.5)", padding: "1px 6px", borderRadius: 4 }}>{VIDEO_LABEL[v.provider]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p style={{ textAlign: "center", color: "#6b7280", fontSize: 12, marginTop: 18 }}>사진을 클릭하면 가운데에서 크게 볼 수 있습니다.</p>
             </div>
           </div>
@@ -186,6 +204,16 @@ export default function PackagePublicView({ token, pkg: pkgProp }: { token?: str
               style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#fff", fontSize: 42, cursor: "pointer", padding: 12, userSelect: "none" }}>›</span>
           )}
           <span style={{ position: "absolute", bottom: 16, left: 0, right: 0, textAlign: "center", color: "#9aa2af", fontSize: 12 }}>{zoom.idx + 1} / {zoom.photos.length} · 바깥을 클릭하면 갤러리로</span>
+        </div>
+      )}
+
+      {/* 영상 재생 모달 */}
+      {vidPlay && (
+        <div onClick={() => setVidPlay(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.93)", zIndex: 2200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <span onClick={() => setVidPlay(null)} style={{ position: "absolute", top: 14, right: 18, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          <div onClick={e => e.stopPropagation()} style={{ ...(vidPlay.vertical ? { height: "min(88vh, 100%)", maxWidth: "94%", aspectRatio: "9/16" } : { width: "min(960px, 94%)", aspectRatio: "16/9" }), background: "#000", borderRadius: 10, overflow: "hidden" }}>
+            <iframe src={vidPlay.embed + (vidPlay.provider === "youtube" ? "?autoplay=1&rel=0" : vidPlay.provider === "instagram" ? "" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen scrolling="no" style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
+          </div>
         </div>
       )}
 

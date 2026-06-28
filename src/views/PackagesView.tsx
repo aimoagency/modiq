@@ -12,6 +12,7 @@ import {
 } from "../lib/packages";
 import { useBackClose } from "../lib/backstack";
 import { ageFromSSN6 } from "../lib/utils";
+import { parseVideoUrl, enrichVideo, VIDEO_LABEL, type VideoRef } from "../lib/video";
 import { CardCheck, User, Building, ExternalLink, Pencil } from "../components/icons";
 import CompCardModal from "../components/CompCardModal";
 import SearchInput from "../components/SearchInput";
@@ -49,6 +50,8 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const [draft, setDraft] = useState<Pkg | null>(null);   // null = 목록 화면
   const [preview, setPreview] = useState<Pkg | null>(null); // 패키지 미리보기(고객 화면)
   const [zoom, setZoom] = useState<{ photos: string[]; idx: number } | null>(null); // 빌더 사진 확대
+  const [vidInputs, setVidInputs] = useState<Record<number, string>>({}); // 아이템별 영상 링크 입력
+  const [vidPlay, setVidPlay] = useState<VideoRef | null>(null); // 빌더 영상 재생 모달
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modelPick, setModelPick] = useState(false);      // 모델 선택 모달
@@ -117,6 +120,10 @@ export default function PackagesView({ packages, setPackages, models, customers,
     // 포트폴리오 갤러리 순서(m.photos) 그대로 사용 — 좋아요(liked) 우선정렬 없이 갤러리와 1:1 일치
     const all = Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : []);
     const manual = (it.photos || []).filter((p: string) => typeof p === "string" && p.startsWith("data:"));
+    // 영상: 모델 포트폴리오 영상 최신 반영 + 패키지에서 직접 추가한(모델에 없는) 영상 보존
+    const modelVids: VideoRef[] = Array.isArray(m.videos) ? m.videos : [];
+    const itemVids: VideoRef[] = Array.isArray(it.videos) ? it.videos : [];
+    const extraVids = itemVids.filter(iv => !modelVids.some(mv => mv.provider === iv.provider && mv.id === iv.id));
     return {
       ...it,
       name: m.name || it.name, category: m.category || "", gender: m.gender || "",
@@ -125,6 +132,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       hair_color: m.hair_color || "", tattoo: !!m.tattoo,
       followers: m.instagram_followers || "", instagram_url: m.instagram_url || "",
       photos: [...all, ...manual].slice(0, 30),
+      videos: [...modelVids, ...extraVids].slice(0, 8),
     };
   };
   const startEdit = (p: Pkg) => {
@@ -153,6 +161,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
       followers: m.instagram_followers || "",
       instagram_url: m.instagram_url || "", caption: "",
       photos: (Array.isArray(m.photos) && m.photos.length > 0 ? m.photos : (m.thumb_url ? [m.thumb_url] : [])).slice(0, 30), // 포트폴리오 갤러리 순서 그대로
+      videos: Array.isArray(m.videos) ? [...m.videos].slice(0, 8) : [], // 포트폴리오 영상 상속
     };
     setDraft(d => d ? { ...d, items: [...d.items, it] } : d);
   };
@@ -171,6 +180,23 @@ export default function PackagesView({ packages, setPackages, models, customers,
   };
   const removePhoto = (idx: number, pi: number) =>
     updItem(idx, { photos: (draft?.items[idx].photos || []).filter((_, x) => x !== pi) });
+
+  // ── 아이템 영상(외부 임베드) ──
+  const addItemVideo = async (idx: number) => {
+    const raw = vidInputs[idx] || "";
+    const v = parseVideoUrl(raw);
+    if (!v) { alert("YouTube·Vimeo·Instagram·TikTok 링크를 인식할 수 없어요. (TikTok은 전체 주소 .../video/숫자)"); return; }
+    const cur = draft?.items[idx]?.videos || [];
+    if (cur.length >= 8) { alert("영상은 항목당 최대 8개"); return; }
+    if (cur.some(x => x.provider === v.provider && x.id === v.id)) { alert("이미 추가된 영상이에요."); return; }
+    const ref = await enrichVideo(v);
+    updItem(idx, { videos: [...cur, ref] });
+    setVidInputs(s => ({ ...s, [idx]: "" }));
+  };
+  const removeItemVideo = (idx: number, vi: number) =>
+    updItem(idx, { videos: (draft?.items[idx].videos || []).filter((_, x) => x !== vi) });
+  const toggleItemVideoOrient = (idx: number, vi: number) =>
+    updItem(idx, { videos: (draft?.items[idx].videos || []).map((v, x) => x === vi ? { ...v, vertical: !v.vertical } : v) });
 
   const save = async () => {
     if (!draft) return;
@@ -392,6 +418,29 @@ export default function PackagesView({ packages, setPackages, models, customers,
               <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>이미지를 끌어다 놓거나 ＋ 사진을 눌러 추가 (최대 30장) · 사진을 누르면 크게 보기</p>
             </div>
 
+            {/* 영상(외부 임베드 — 모델 포트폴리오 영상 자동 포함 + 직접 추가) */}
+            <div style={{ border: `1px dashed ${C.border}`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: (it.videos && it.videos.length) ? 8 : 0 }}>
+                <input style={{ ...inp, marginBottom: 0, flex: 1, minWidth: 0, fontSize: 12 }} placeholder="영상 링크 (YouTube·Vimeo·Instagram·TikTok)" value={vidInputs[idx] || ""}
+                  onChange={e => setVidInputs(s => ({ ...s, [idx]: e.target.value }))}
+                  onKeyDown={e => { if (e.key === "Enter") addItemVideo(idx); }} />
+                <button type="button" onClick={() => addItemVideo(idx)} disabled={!(vidInputs[idx] || "").trim()} style={{ ...btnS(C.blue, !(vidInputs[idx] || "").trim()), padding: "0 12px", whiteSpace: "nowrap" }}>영상</button>
+              </div>
+              {it.videos && it.videos.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
+                  {it.videos.map((v, vi) => (
+                    <div key={v.provider + v.id} onClick={() => setVidPlay(v)} style={{ position: "relative", height: 110, aspectRatio: v.vertical ? "9/16" : "16/9", flex: "0 0 auto", borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}`, background: "#000", cursor: "pointer" }}>
+                      {v.thumb ? <img src={v.thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.85, display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 10 }}>{VIDEO_LABEL[v.provider]}</div>}
+                      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 15 }}>▶</span>
+                      <span onClick={e => { e.stopPropagation(); toggleItemVideoOrient(idx, vi); }} style={{ position: "absolute", bottom: 3, right: 3, fontSize: 8, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.55)", padding: "1px 4px", borderRadius: 3, cursor: "pointer" }}>{v.vertical ? "세로" : "가로"}</span>
+                      <span onClick={e => { e.stopPropagation(); removeItemVideo(idx, vi); }} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center", cursor: "pointer" }}>×</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted }}>모델 포트폴리오 영상은 자동 포함 · 링크로 직접 추가도 가능 (항목당 최대 8개 · 저장공간 차지 없음)</p>
+            </div>
+
             {/* 모델 정보 — DB 연결 모델은 등록 정보를 그대로 표시(재입력 불필요), 직접추가 항목만 입력칸 노출 */}
             {it.model_id ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center", fontSize: 12.5, color: C.textSub, lineHeight: 1.6 }}>
@@ -436,6 +485,15 @@ export default function PackagesView({ packages, setPackages, models, customers,
       ); })()}
 
       {/* 모델 선택 모달 */}
+      {vidPlay && (
+        <div onClick={() => setVidPlay(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <span onClick={() => setVidPlay(null)} style={{ position: "absolute", top: 14, right: 20, color: "#fff", fontSize: 30, cursor: "pointer", lineHeight: 1 }}>×</span>
+          <div onClick={e => e.stopPropagation()} style={{ ...(vidPlay.vertical ? { height: "min(88vh, 100%)", maxWidth: "94%", aspectRatio: "9/16" } : { width: "min(960px, 94%)", aspectRatio: "16/9" }), background: "#000", borderRadius: 10, overflow: "hidden" }}>
+            <iframe src={vidPlay.embed + (vidPlay.provider === "youtube" ? "?autoplay=1&rel=0" : vidPlay.provider === "instagram" ? "" : "?autoplay=1")} title="model video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen scrolling="no" style={{ width: "100%", height: "100%", border: 0, display: "block" }} />
+          </div>
+        </div>
+      )}
+
       {modelPick && (
         <div onClick={() => setModelPick(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, width: "92%", maxWidth: 460, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
