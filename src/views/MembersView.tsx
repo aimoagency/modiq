@@ -3,7 +3,9 @@ import { C, btnS, inp } from "../theme";
 import { Users, Crown, Pencil, Save } from "../components/icons";
 
 // 엑셀식 표 — 헤더/데이터 행 공통 컬럼(이름·직책·연락처·이메일·관리)
-const GRID = "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.6fr) max-content";
+// ⚠️ 관리 컬럼은 고정 px — max-content면 대표 행(수정만)과 추가담당자 행(토글+수정+삭제)이 별개 grid라
+//    폭이 달라져 이름·직책·연락처·이메일이 어긋난다. 추가담당자(가장 넓은 액션) 기준 고정.
+const GRID = "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.6fr) 260px";
 
 // 담당자 행 — Vercel식 정렬 컬럼 리스트(보기) → 수정(연필) 시 폼으로 펼침
 function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
@@ -70,7 +72,7 @@ function MemberRow({ m, isOwner, bt, onUpdate, onDelete, isMobile = false }: {
   // 이름 셀: 대표는 왕관 배지 노출 (직책은 별도 컬럼으로 분리)
   const nameCell = (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-      {isOwner && <Crown size={12} color={C.green} style={{ flexShrink: 0 }} />}
+      {isOwner ? <Crown size={12} color={C.green} style={{ flexShrink: 0 }} /> : <span style={{ width: 12, flexShrink: 0 }} />}
       <span style={{ ...cell(C.text, 700), maxWidth: "100%" }}>{m.name}{isOwner ? " (대표)" : ""}</span>
     </span>
   );
