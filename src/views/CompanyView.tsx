@@ -3,6 +3,7 @@ import { C, btnS, inp } from "../theme";
 import { Building2, Crown, Save, Pencil, Calendar } from "../components/icons";
 import { validateBizNo } from "../lib/utils";
 import { startGoogleConnect } from "../lib/gcal";
+import { sbAuth, updateAuthPassword, setAuthTokens } from "../lib/supabase";
 
 // 회사(에이전시) 정보 + 소유권 이전 — owner 전용
 // 패턴: 보기 → 수정(연필) → 저장/취소 (모델·섭외 상세와 통일)
@@ -238,6 +239,52 @@ export default function CompanyView({ agency, members, session, onSave, onTransf
           </div>
         )}
       </div>
+
+      {/* 비밀번호 변경 (로그인 본인) */}
+      <PasswordChange email={session?.email} />
+    </div>
+  );
+}
+
+// 로그인 상태에서 본인 비밀번호 변경 — 현재 비밀번호 재확인 후 적용
+function PasswordChange({ email }: { email?: string }) {
+  const [cur, setCur] = useState("");
+  const [nw, setNw] = useState("");
+  const [cf, setCf] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const lbl = (t: string) => <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 5 }}>{t}</label>;
+  const submit = async () => {
+    setMsg(null);
+    if (!email) return setMsg({ ok: false, t: "로그인 정보를 찾을 수 없습니다." });
+    if (nw.length < 6) return setMsg({ ok: false, t: "새 비밀번호는 6자 이상이어야 합니다." });
+    if (nw !== cf) return setMsg({ ok: false, t: "새 비밀번호가 일치하지 않습니다." });
+    if (nw === cur) return setMsg({ ok: false, t: "현재와 다른 비밀번호를 입력하세요." });
+    setBusy(true);
+    try {
+      // 1) 현재 비밀번호 재확인(재인증) → 새 토큰 갱신
+      const auth = await sbAuth("token?grant_type=password", { email, password: cur });
+      setAuthTokens(auth.access_token || null, auth.refresh_token || null);
+      // 2) 새 비밀번호로 변경
+      await updateAuthPassword(nw);
+      setMsg({ ok: true, t: "비밀번호가 변경되었습니다." });
+      setCur(""); setNw(""); setCf("");
+    } catch (e: any) {
+      const s = String(e?.message || e);
+      setMsg({ ok: false, t: (s.includes("Invalid") || s.includes("invalid_grant") || s.includes("credential")) ? "현재 비밀번호가 올바르지 않습니다." : "변경 실패: " + s });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginTop: 16 }}>
+      <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 800, color: C.text }}>🔑 비밀번호 변경</p>
+      <p style={{ margin: "0 0 14px", fontSize: 12, color: C.muted }}>로그인 비밀번호를 변경합니다. 현재 비밀번호 확인 후 적용됩니다. {email ? `(${email})` : ""}</p>
+      <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+        <div>{lbl("현재 비밀번호")}<input type="password" autoComplete="current-password" style={{ ...inp, marginBottom: 0 }} value={cur} onChange={e => setCur(e.target.value)} /></div>
+        <div>{lbl("새 비밀번호 (6자 이상)")}<input type="password" autoComplete="new-password" style={{ ...inp, marginBottom: 0 }} value={nw} onChange={e => setNw(e.target.value)} /></div>
+        <div>{lbl("새 비밀번호 확인")}<input type="password" autoComplete="new-password" style={{ ...inp, marginBottom: 0 }} value={cf} onChange={e => setCf(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} /></div>
+      </div>
+      {msg && <p style={{ margin: "12px 0 0", fontSize: 12.5, fontWeight: 600, color: msg.ok ? C.green : C.red }}>{msg.ok ? "✓ " : "⚠ "}{msg.t}</p>}
+      <button onClick={submit} disabled={busy || !cur || !nw || !cf} style={{ ...btnS(C.blue, busy || !cur || !nw || !cf), marginTop: 14 }}>{busy ? "변경 중…" : "비밀번호 변경"}</button>
     </div>
   );
 }

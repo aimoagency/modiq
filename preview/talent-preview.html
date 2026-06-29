@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko" class="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>modiq · 탤런트 시스템 프리뷰 (검증용)</title>
+<style>
+  :root{
+    --bg:#0C0F14; --card:#151A21; --card2:#1D232C; --border:#2A313C;
+    --text:#ECEFF3; --sub:#B0B8C4; --muted:#79818E;
+    --primary:#2E5FE0; --accent:#e4fc3f; --green:#10b981; --amber:#f59e0b; --purple:#8b5cf6; --red:#ef4444;
+  }
+  html.light{
+    --bg:#F6F8FB; --card:#FFFFFF; --card2:#EEF1F6; --border:#D9DEE7;
+    --text:#121620; --sub:#444C5A; --muted:#6B7382; --primary:#1D4ED8; --accent:#7d9400;
+  }
+  *{box-sizing:border-box; font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple SD Gothic Neo',sans-serif;}
+  body{margin:0; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;}
+  a{color:inherit}
+  .wrap{max-width:1080px; margin:0 auto; padding:20px 16px 80px;}
+  .top{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;}
+  h1{font-size:22px; font-weight:800; margin:0;}
+  h1 .accent{color:var(--accent)}
+  .lead{color:var(--sub); font-size:13px; margin:4px 0 22px; line-height:1.6}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:9999px; border:1px solid var(--border); background:transparent; color:var(--sub); font-size:13px; font-weight:600; cursor:pointer;}
+  .sec{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:18px;}
+  .sec > h2{font-size:15px; font-weight:800; margin:0 0 4px;}
+  .sec > .desc{color:var(--muted); font-size:12px; margin:0 0 14px;}
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .tab{padding:7px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  .tab.on{border-color:var(--primary); background:color-mix(in srgb, var(--primary) 16%, transparent); color:var(--primary);}
+  .tab.on.crew{border-color:var(--amber); background:color-mix(in srgb, var(--amber) 16%, transparent); color:var(--amber);}
+  .list{border:1px solid var(--border); border-radius:10px; overflow:hidden;}
+  .row{display:grid; grid-template-columns:44px minmax(0,1.5fr) 96px minmax(0,1.3fr) minmax(0,1fr) max-content; align-items:center; gap:14px; padding:11px 14px; border-top:1px solid var(--border); cursor:default;}
+  .row:first-child{border-top:none;}
+  .row:hover{background:var(--card2);}
+  .av{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#fff; flex-shrink:0;}
+  .av.model{background:linear-gradient(135deg,#c9a96e,#8b6a3e);}
+  .av.crew{background:var(--card2); color:var(--amber); border:1px solid color-mix(in srgb,var(--amber) 45%, transparent); font-size:9px; font-weight:800; text-align:center; line-height:1.05; letter-spacing:.3px;}
+  .nm{display:flex; align-items:center; gap:8px; min-width:0;}
+  .nm strong{font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .badge{font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px; white-space:nowrap; flex-shrink:0;}
+  .b-cast{color:var(--green); background:color-mix(in srgb,var(--green) 13%,transparent); border:1px solid color-mix(in srgb,var(--green) 40%,transparent);}
+  .b-crew{color:var(--amber); background:color-mix(in srgb,var(--amber) 13%,transparent); border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);}
+  .cell{font-size:12.5px; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cell.r{text-align:right; color:var(--muted); font-size:11px;}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  label.l{display:block; font-size:11px; color:var(--muted); margin:0 0 5px; font-weight:600;}
+  input.i, select.i{width:100%; padding:10px 12px; background:var(--card2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px;}
+  .seg{display:inline-flex; gap:6px; flex-wrap:wrap;}
+  .seg button{padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;}
+  .seg button.on{border-color:var(--primary); background:color-mix(in srgb,var(--primary) 16%,transparent); color:var(--primary);}
+  .note{background:color-mix(in srgb,var(--primary) 9%,transparent); border:1px solid color-mix(in srgb,var(--primary) 35%,transparent); border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--sub); line-height:1.65;}
+  .note b{color:var(--text)}
+  .pkg{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px;}
+  .pcard{border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--card2);}
+  .pcard .ph{aspect-ratio:3/4; background:linear-gradient(135deg,#3a4150,#222833); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px;}
+  .pcard.crew .ph{background:linear-gradient(135deg, color-mix(in srgb,var(--amber) 28%,#1d232c), #1d232c); flex-direction:column; gap:6px;}
+  .pcard.crew .role{font-size:15px; font-weight:900; letter-spacing:1px; color:var(--amber); text-transform:uppercase;}
+  .pcard .meta{padding:9px 11px;}
+  .pcard .meta b{font-size:13px;} .pcard .meta div{font-size:11px; color:var(--muted); margin-top:2px;}
+  .ck{display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text); user-select:none;}
+  .btn{padding:9px 16px; border-radius:9999px; border:none; background:var(--primary); color:#fff; font-weight:700; font-size:13px; cursor:pointer;}
+  .ghost{background:transparent; border:1px solid var(--border); color:var(--sub);}
+  .hide{display:none !important;}
+  @media(max-width:680px){ .row{grid-template-columns:40px minmax(0,1fr) max-content; } .row .hcol{display:none;} .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1><span class="accent">m</span>odiq · 탤런트 시스템 <span class="muted" style="font-size:13px;font-weight:600">프리뷰</span></h1>
+    <button class="pill" id="theme">🌙 다크 / ☀️ 라이트</button>
+  </div>
+  <p class="lead">검증용 프로토타입입니다(실제 DB·로직 미연동, 더미 데이터). 탭·폼·패키지 노출을 클릭해 보세요.
+    <br><b style="color:var(--text)">탤런트 = 출연(모델) + 제작(포토·헤어·메이크업·스타일·영상)</b>. 모델은 매출, 제작군은 비용으로 분리됩니다.</p>
+
+  <!-- 1. 리스트 -->
+  <div class="sec">
+    <h2>1. 탤런트 목록 — 유형 탭</h2>
+    <p class="desc">메뉴 1개("탤런트") + 유형 필터. 모델=출연(초록), 제작군=제작(주황)·썸네일 대신 유형 라벨.</p>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-f="all">전체</button>
+      <button class="tab" data-f="모델">모델</button>
+      <button class="tab" data-f="포토그래퍼">포토그래퍼</button>
+      <button class="tab" data-f="헤어">헤어</button>
+      <button class="tab" data-f="메이크업">메이크업</button>
+      <button class="tab" data-f="스타일리스트">스타일리스트</button>
+      <button class="tab" data-f="영상">영상</button>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+
+  <!-- 2. 추가 폼 -->
+  <div class="sec">
+    <h2>2. 탤런트 추가 — 유형에 따라 폼 분기</h2>
+    <p class="desc">유형을 고르면 출연/제작에 맞는 입력칸으로 바뀝니다. 정산(프리/사업자)은 공통.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <div>
+        <label class="l">유형</label>
+        <select class="i" id="roleSel">
+          <option value="모델">모델 (출연)</option>
+          <option value="포토그래퍼">포토그래퍼 (제작)</option>
+          <option value="헤어">헤어 (제작)</option>
+          <option value="메이크업">메이크업 (제작)</option>
+          <option value="스타일리스트">스타일리스트 (제작)</option>
+          <option value="영상">영상 (제작)</option>
+          <option value="__add">＋ 유형 추가… (설정 추가형)</option>
+        </select>
+      </div>
+      <div><label class="l">이름</label><input class="i" placeholder="이름" /></div>
+    </div>
+
+    <!-- 출연(모델) 필드 -->
+    <div id="castFields">
+      <div class="grid2">
+        <div><label class="l">성별</label><select class="i"><option>여성</option><option>남성</option></select></div>
+        <div><label class="l">출생연도</label><input class="i" placeholder="예: 1998" /></div>
+        <div><label class="l">키 / 신체(키·B·W·H·신발)</label><input class="i" placeholder="175 · 82-60-88 · 250" /></div>
+        <div><label class="l">비자 / 외국인</label><input class="i" placeholder="외국인 토글 · 입출국 · 등록번호" /></div>
+      </div>
+      <div style="margin-top:10px"><label class="l">컴카드 · 프로필 사진</label><input class="i" placeholder="사진 업로드 (드래그앤드롭)" /></div>
+    </div>
+
+    <!-- 제작(크루) 필드 -->
+    <div id="crewFields" class="hide">
+      <div class="grid2">
+        <div><label class="l">분야</label><input class="i" placeholder="예: 광고 · 화보 · 뷰티" /></div>
+        <div><label class="l">일당 (₩)</label><input class="i" placeholder="예: 500,000" /></div>
+        <div><label class="l">장비</label><input class="i" placeholder="예: Sony A1 · 조명 2등" /></div>
+        <div><label class="l">경력</label><input class="i" placeholder="예: 8년" /></div>
+      </div>
+      <div style="margin-top:10px"><label class="l">포트폴리오 (작업물 URL)</label><input class="i" placeholder="https://… (인스타·비핸스·드라이브)" /></div>
+    </div>
+
+    <div style="margin-top:14px">
+      <label class="l">정산 · 세무 (출연·제작 공통)</label>
+      <div class="seg" id="taxSeg">
+        <button class="on" data-t="free">프리랜서 (원천징수 3.3%)</button>
+        <button data-t="biz">사업자 (세금계산서)</button>
+        <button data-t="foreign">외국인</button>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px" id="formNote"></p>
+  </div>
+
+  <!-- 3. 패키지 노출 -->
+  <div class="sec">
+    <h2>3. 패키지 / 포트폴리오 — 고객 제안 노출</h2>
+    <p class="desc">모델은 사진(컴카드). 제작군은 <b>선택 시 함께 노출</b>하되 <b>썸네일 대신 유형 라벨</b>로 표기.</p>
+    <label class="ck" style="margin-bottom:14px"><input type="checkbox" id="crewToggle" checked /> 제작군(크루) 함께 노출</label>
+    <div class="pkg" id="pkg"></div>
+  </div>
+
+  <!-- 설계 노트 -->
+  <div class="sec">
+    <h2>설계 노트 (확정 사양 v1)</h2>
+    <p class="note">
+      • <b>엔티티</b>: 기존 <code>models</code> 테이블 유지(rename 없음) + <code>role</code>(유형)·<code>class</code>(출연/제작) 컬럼 추가. DB·계산식 보존, UI 라벨만 "탤런트".<br>
+      • <b>군 매핑</b>: 모델=출연 / 포토·헤어·메이크업·스타일·영상=제작. 유형은 <b>설정 추가형</b>(추가 시 군 지정).<br>
+      • <b>섭외</b>: 프로젝트 섭외에 모델(계약형=<b>매출</b>) + 크루(비계약형=<b>비용/지급만</b>) 함께 배정 → 매출 필터·계산식 안 깨짐.<br>
+      • <b>정산</b>: 출연·제작 모두 프리/사업자/외국인 분기 재사용. 크루는 매출 미반영(원가).<br>
+      • <b>요금제</b>: 출연·제작 모두 무제한 인력, 한도는 담당자 좌석.<br>
+      • <b>상태</b>: 활동중/보관 그대로 적용.
+    </p>
+    <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn">✅ 검증 OK → 구현 요청</button>
+      <button class="btn ghost">✏️ 수정할 점 메모</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 더미 데이터 ──
+  const TALENTS = [
+    {name:"BARBARE", role:"모델", cls:"cast", sub:"여성 · 26세 · 175cm", pay:"화보 1,800,000원"},
+    {name:"nano marmedovi", role:"모델", cls:"cast", sub:"여성 · 24세 · 178cm", pay:"광고 1,500,000원"},
+    {name:"김지영", role:"모델", cls:"cast", sub:"여성 · 22세 · 169cm", pay:"룩북 1,200,000원"},
+    {name:"이현우", role:"포토그래퍼", cls:"crew", short:"PHOTO", sub:"광고·화보 · Sony A1", pay:"일당 600,000원"},
+    {name:"박세라", role:"메이크업", cls:"crew", short:"M·U", sub:"뷰티·광고 · 8년", pay:"일당 400,000원"},
+    {name:"정민호", role:"헤어", cls:"crew", short:"HAIR", sub:"화보·CF · 6년", pay:"일당 350,000원"},
+    {name:"한지수", role:"스타일리스트", cls:"crew", short:"STYL", sub:"패션·룩북 · 10년", pay:"일당 450,000원"},
+    {name:"오감독", role:"영상", cls:"crew", short:"FILM", sub:"바이럴·CF · 7년", pay:"일당 900,000원"},
+  ];
+  const ROLE_EN = {포토그래퍼:"PHOTOGRAPHER", 헤어:"HAIR", 메이크업:"MAKE-UP", 스타일리스트:"STYLIST", 영상:"FILM MAKER"};
+
+  const listEl = document.getElementById('list');
+  function render(filter){
+    listEl.innerHTML = TALENTS.filter(t=>filter==='all'||t.role===filter).map(t=>{
+      const av = t.cls==='cast'
+        ? `<div class="av model">${t.name[0]}</div>`
+        : `<div class="av crew">${t.short}</div>`;
+      const badge = t.cls==='cast'
+        ? `<span class="badge b-cast">출연 · ${t.role}</span>`
+        : `<span class="badge b-crew">제작 · ${t.role}</span>`;
+      return `<div class="row">
+        ${av}
+        <span class="nm"><strong>${t.name}</strong>${badge}</span>
+        <span class="cell hcol">${t.cls==='cast'?'모델':t.role}</span>
+        <span class="cell hcol">${t.sub}</span>
+        <span class="cell hcol">${t.pay}</span>
+        <span class="cell r">${t.cls==='cast'?'섭외 →':'배정 →'}</span>
+      </div>`;
+    }).join('') || `<div class="row" style="grid-template-columns:1fr"><span class="muted small">해당 유형 없음</span></div>`;
+  }
+  render('all');
+  document.getElementById('tabs').addEventListener('click', e=>{
+    const b = e.target.closest('.tab'); if(!b) return;
+    document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('on','crew'));
+    b.classList.add('on'); if(b.dataset.f!=='모델' && b.dataset.f!=='all') b.classList.add('crew');
+    render(b.dataset.f);
+  });
+
+  // ── 폼 분기 ──
+  const roleSel = document.getElementById('roleSel');
+  const note = document.getElementById('formNote');
+  function syncForm(){
+    const v = roleSel.value;
+    if(v==='__add'){ alert('설정 추가형: 새 유형명 입력 → 군(출연/제작) 지정 → 목록에 추가됩니다. (프리뷰에선 데모만)'); roleSel.value='모델'; return syncForm(); }
+    const cast = v==='모델';
+    document.getElementById('castFields').classList.toggle('hide', !cast);
+    document.getElementById('crewFields').classList.toggle('hide', cast);
+    note.innerHTML = cast
+      ? '이 유형은 <b style="color:var(--green)">출연(모델)</b> — 섭외 시 <b>매출</b>(고객 청구)이 잡히고, 패키지에 사진(컴카드)으로 노출됩니다.'
+      : `이 유형은 <b style="color:var(--amber)">제작(크루)</b> — 섭외 배정은 <b>비용(지급)만</b>(매출 미반영), 패키지엔 <b>유형 라벨 카드</b>(${ROLE_EN[v]||v})로 노출됩니다.`;
+  }
+  roleSel.addEventListener('change', syncForm); syncForm();
+  document.getElementById('taxSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b)return; document.querySelectorAll('#taxSeg button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+
+  // ── 패키지 ──
+  const models = [{n:"BARBARE",d:"여성 · 175"},{n:"nano",d:"여성 · 178"},{n:"김지영",d:"여성 · 169"}];
+  const crew = [{n:"이현우",r:"PHOTOGRAPHER"},{n:"박세라",r:"MAKE-UP"},{n:"오감독",r:"FILM MAKER"},{n:"한지수",r:"STYLIST"}];
+  const pkgEl = document.getElementById('pkg');
+  function renderPkg(){
+    const showCrew = document.getElementById('crewToggle').checked;
+    let html = models.map(m=>`<div class="pcard"><div class="ph">📷 사진</div><div class="meta"><b>${m.n}</b><div>${m.d}</div></div></div>`).join('');
+    if(showCrew) html += crew.map(c=>`<div class="pcard crew"><div class="ph"><span class="role">${c.r}</span></div><div class="meta"><b>${c.n}</b><div>제작 크루</div></div></div>`).join('');
+    pkgEl.innerHTML = html;
+  }
+  renderPkg();
+  document.getElementById('crewToggle').addEventListener('change', renderPkg);
+
+  // ── 테마 ──
+  document.getElementById('theme').addEventListener('click', ()=>document.documentElement.classList.toggle('light'));
+</script>
+</body>
+</html>
