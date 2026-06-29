@@ -14,21 +14,25 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
   legacyIdCount?: number;
   onMigrateIds?: ()=>void;
 }) {
-  // 발송업체 필터 + 이름 정렬(가나다/ABC)
+  // 발송업체 필터 + 이름 정렬(가나다/ABC) + 상태 탭(활동중/보관)
   const [srcFilter, setSrcFilter] = useState<string>(""); // "" 전체 · "__own__" 직접등록 · 그 외 발송처명
   const [sort, setSort] = useState<"reg"|"ganada"|"abc">("reg");
+  const [statusTab, setStatusTab] = useState<"active"|"archived">("active");
   const sources = useMemo(() => Array.from(new Set(filteredModels.map(m=>m.source_agency_name).filter(Boolean))) as string[], [filteredModels]);
+  const archivedCount = useMemo(() => filteredModels.filter(m=>m.status==="archived").length, [filteredModels]);
+  const activeCount = filteredModels.length - archivedCount;
+  const effTab = archivedCount===0 ? "active" : statusTab; // 보관 0건이면 항상 활동중(탭 숨김 대비)
   const displayModels = useMemo(() => {
-    let base = filteredModels;
-    if (srcFilter==="__own__") base = filteredModels.filter(m=>!m.source_agency_id);
-    else if (srcFilter) base = filteredModels.filter(m=>m.source_agency_name===srcFilter);
+    let base = filteredModels.filter(m => effTab==="archived" ? m.status==="archived" : m.status!=="archived");
+    if (srcFilter==="__own__") base = base.filter(m=>!m.source_agency_id);
+    else if (srcFilter) base = base.filter(m=>m.source_agency_name===srcFilter);
     if (sort==="reg") return base;
     const isKo = (s:string)=>/[가-힣]/.test(s||"");
     const arr = [...base];
     if (sort==="ganada") arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?-1:1; return String(a.name||"").localeCompare(String(b.name||""),"ko"); });
     else arr.sort((a,b)=>{ const ka=isKo(a.name),kb=isKo(b.name); if(ka!==kb) return ka?1:-1; return String(a.name||"").localeCompare(String(b.name||""),"en"); });
     return arr;
-  }, [filteredModels, srcFilter, sort]);
+  }, [filteredModels, srcFilter, sort, effTab]);
   // 점진 렌더 — 1000명+ 목록을 한 번에 다 그리지 않음(스크롤 시 추가)
   const { visible, hasMore, sentinelRef } = useVisibleCount(displayModels, 60);
   return (
@@ -42,6 +46,14 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
         </div>
       </div>
       <SearchInput placeholder="이름·국적·전화·이메일·고객사/브랜드명 검색" value={modelQ} onChange={setModelQ} />
+      {/* 상태 탭 — 보관 모델이 생기면 노출(활동중 기본). 보관은 목록·섭외/패키지 선택·공개에서 숨김, 이력 보존. */}
+      {archivedCount>0 && (
+        <div style={{ display:"flex", gap:8, margin:"10px 0 0" }}>
+          {([["active","활동중",activeCount,C.blue],["archived","보관",archivedCount,C.muted]] as const).map(([k,l,n,col])=>(
+            <button key={k} onClick={()=>setStatusTab(k)} style={{ padding:"6px 16px", borderRadius:8, border:`2px solid ${effTab===k?col:C.border}`, background:effTab===k?col+"22":C.card, color:effTab===k?(k==="archived"?C.textSub:col):C.muted, fontSize:13, fontWeight:700, cursor:"pointer" }}>{l} {n}</button>
+          ))}
+        </div>
+      )}
       <div style={{ display:"flex", alignItems:"center", gap:8, margin:"10px 0 12px", flexWrap:"wrap" }}>
         {([["reg","등록순"],["ganada","가나다"],["abc","ABC"]] as const).map(([k,l])=>(
           <button key={k} onClick={()=>setSort(k)} style={{ padding:"5px 14px", borderRadius:20, border:`1px solid ${sort===k?C.blue:C.border}`, background:sort===k?C.blue+"22":"transparent", color:sort===k?C.blue:C.muted, fontSize:12, fontWeight:sort===k?700:500, cursor:"pointer" }}>{l}</button>
@@ -70,6 +82,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
                 {avatar(32)}
                 <strong style={{ fontSize:14, fontWeight:800, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flexShrink:1 }}>{m.name}</strong>
                 {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 발송 편입`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{m.source_agency_name||"소속사"}</span>}
+                {m.status==="archived" && <span style={{ background:C.muted+"22", color:C.muted, border:`1px solid ${C.muted}55`, fontSize:9, fontWeight:700, padding:"1px 6px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>보관</span>}
                 {m.is_foreigner&&dday&&<span style={{ background:ddayColor+"22", color:ddayColor, border:`1px solid ${ddayColor}50`, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}><Plane size={9} style={{ verticalAlign:-1, flexShrink:0 }}/> {dday}</span>}
                 {chip&&<span style={{ background:C.card2, color:C.textSub, fontSize:10, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0, marginLeft:"auto" }}>{chip}</span>}
               </div>
@@ -97,6 +110,7 @@ export default function ModelsView({ filteredModels, modelQ, setModelQ, setShowM
               <span style={{ display:"flex", alignItems:"center", gap:8, minWidth:0 }}>
                 <strong style={{ fontSize:13.5, fontWeight:700, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.name}</strong>
                 {m.source_agency_id && <span title={`${m.source_agency_name||"발송처"} 발송 편입`} style={{ background:C.blue+"1e", color:C.blue, border:`1px solid ${C.blue}50`, fontSize:10, fontWeight:800, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>{m.source_agency_name||"소속사"}</span>}
+                {m.status==="archived" && <span style={{ background:C.muted+"22", color:C.muted, border:`1px solid ${C.muted}55`, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10, whiteSpace:"nowrap", flexShrink:0 }}>보관</span>}
               </span>
               {/* 성별 · 나이 · 경력 */}
               <span style={{ fontSize:12.5, color:C.textSub, whiteSpace:"nowrap" }}>{chip||""}</span>

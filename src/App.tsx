@@ -578,7 +578,7 @@ export default function App() {
   // ⚠️ models 테이블에 컬럼을 추가하면 이 목록에도 추가할 것(누락 시 그 값이 안 불러와짐).
   const MODEL_COLS = "id,name,ssn6,phone,is_foreigner,visa_entry,visa_exit,memo,agency_id,created_at,email,category,rate,commission,instagram_url,drive_url,kakao_id,bank_info,aimo_url,payout_tax_type,payout_pay_type,payout_pay_value,payout_biz_no,country,height,shoe,bust,waist,hip,hair_length,hair_color,eye_color,tattoo,underwear_ok,fields,specialty,instagram_followers,photos,cal_token,gender,nationality_type,visa_type,has_alien_card,payment_method,payment_detail,tax_rate,payout_day_value,payout_half_value,fee_day,fee_half,fee_hour,payout_hour_value,liked_photos,career,national_id_masked,national_id_type,address,agency_name,agency_contact,agency_phone,agency_email,agency_biz_no,career_years,thumb_url,birth_year,share_consent";
   // V4 대대행 출처 컬럼(마이그레이션 적용 후 존재) — 미적용 환경에선 loadData가 자동 폴백
-  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id,videos";
+  const MODEL_COLS_V4 = MODEL_COLS + ",source_agency_id,source_agency_name,source_distribution_id,source_model_id,videos,status";
 
   const loadData = async (agencyId: string) => {
     setSyncing(true);
@@ -943,6 +943,24 @@ export default function App() {
       setModels(models.filter(m=>m.id!==selectedModel.id));
       setMEditMode(false); setSelectedModel(null); resetModelForm();
     } catch (e) { alert("삭제 실패: "+String(e)); }
+  };
+  // 모델 상태(2단계: 활동중/보관) — 보관은 목록·섭외/패키지 선택·공개에서 숨김, 이력 보존(복귀 가능). 계산식 불변.
+  const handleArchiveModel = async () => {
+    if (!selectedModel) return;
+    if (!confirm(`'${selectedModel.name}' 모델을 보관할까요?\n목록·섭외/패키지 선택·공개 페이지에서 숨겨지고, 과거 섭외·정산 이력은 그대로 보존됩니다. 언제든 복귀할 수 있어요.`)) return;
+    try {
+      await sb("models","PATCH",{ status:"archived" },`?id=eq.${selectedModel.id}`);
+      setModels(models.map(m=>m.id===selectedModel.id?{...m, status:"archived"}:m));
+      setMEditMode(false); setSelectedModel(null); resetModelForm();
+    } catch (e) { alert("보관 실패: "+String(e)); }
+  };
+  const handleRestoreModel = async () => {
+    if (!selectedModel) return;
+    try {
+      await sb("models","PATCH",{ status:"active" },`?id=eq.${selectedModel.id}`);
+      setModels(models.map(m=>m.id===selectedModel.id?{...m, status:"active"}:m));
+      setMEditMode(false); setSelectedModel(null); resetModelForm();
+    } catch (e) { alert("복귀 실패: "+String(e)); }
   };
 
   // ── 고객사 추가 ──
@@ -3303,7 +3321,20 @@ async function sharePdf(){
         <Modal onClose={()=>{setShowModelForm(false);setMEditMode(false);setSelectedModel(null);resetModelForm();setModalStack([]);}} wide>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-start", gap:8, flexWrap:"wrap", paddingRight:48 }}>
             <h3 style={{ margin:0, color:C.text }}><User size={17} style={{ verticalAlign:-2, flexShrink:0 }}/> {mEditMode?"모델 정보 수정":"모델 추가"}</h3>
-            {mEditMode&&<button onClick={handleDeleteModel} style={{ marginLeft:"auto", padding:"6px 12px", background:"transparent", color:C.red, border:`1px solid ${C.red}55`, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12.5, whiteSpace:"nowrap" }}>삭제</button>}
+            {mEditMode&&selectedModel&&(()=>{
+              const sbtn = { padding:"6px 12px", background:"transparent", borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:12.5, whiteSpace:"nowrap" } as const;
+              const archived = selectedModel.status==="archived";
+              const histCnt = bookings.filter(b=>b.model_id===selectedModel.id).length;
+              const canHardDelete = histCnt===0 && myRole==="owner"; // 이력 0건 + 대표만
+              return (
+                <span style={{ marginLeft:"auto", display:"inline-flex", gap:6, flexWrap:"wrap" }}>
+                  {archived
+                    ? <button onClick={handleRestoreModel} style={{ ...sbtn, color:C.green, border:`1px solid ${C.green}55` }}>↩ 활동중으로 복귀</button>
+                    : <button onClick={handleArchiveModel} style={{ ...sbtn, color:C.textSub, border:`1px solid ${C.border}` }}>보관</button>}
+                  {canHardDelete&&<button onClick={handleDeleteModel} style={{ ...sbtn, color:C.red, border:`1px solid ${C.red}55` }}>완전삭제</button>}
+                </span>
+              );
+            })()}
           </div>
           {mEditMode&&<p style={{ fontSize:11, color:C.muted, marginTop:4 }}>ID: {selectedModel?.id}</p>}
 
@@ -3854,9 +3885,9 @@ async function sharePdf(){
               <input style={{ ...inp, marginBottom:0 }} placeholder="모델 검색 후 클릭으로 추가..." value={pModelSearch} onChange={e=>setPModelSearch(e.target.value)} />
               {pModelSearch ? (
                 <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, maxHeight:150, overflowY:"auto", marginTop:2 }}>
-                  {models.filter(m=>m.name.toLowerCase().includes(pModelSearch.toLowerCase())&&!pModelLines.find(l=>l.modelId===m.id)).length===0
+                  {models.filter(m=>m.status!=="archived"&&m.name.toLowerCase().includes(pModelSearch.toLowerCase())&&!pModelLines.find(l=>l.modelId===m.id)).length===0
                     ? <div onClick={async()=>{ const id=await quickAddModel(pModelSearch); if(id){ addProjectModelLine(id); setPModelSearch(""); } }} style={{ padding:"9px 14px", cursor:"pointer", color:C.blue, fontSize:13, fontWeight:700 }}>+ "{pModelSearch.trim()}" 새 모델 등록 후 추가</div>
-                    : models.filter(m=>m.name.toLowerCase().includes(pModelSearch.toLowerCase())&&!pModelLines.find(l=>l.modelId===m.id)).map(m=>(
+                    : models.filter(m=>m.status!=="archived"&&m.name.toLowerCase().includes(pModelSearch.toLowerCase())&&!pModelLines.find(l=>l.modelId===m.id)).map(m=>(
                       <div key={m.id} onClick={()=>addProjectModelLine(m.id)}
                         style={{ padding:"9px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:8, borderBottom:`1px solid ${C.border}` }}
                         onMouseEnter={e=>(e.currentTarget.style.background=C.sideHover)}
@@ -4177,9 +4208,9 @@ async function sharePdf(){
                 <input style={inp} placeholder="모델 이름 검색..." value={bModelSearch} onChange={e=>{ setBModelSearch(e.target.value); setBModel(""); }} />
                 {bModelSearch&&(
                   <div style={{ background:C.card2, border:`1px solid ${C.border}`, borderRadius:8, maxHeight:160, overflowY:"auto", marginTop:-8, marginBottom:10 }}>
-                    {models.filter(m=>m.name.toLowerCase().includes(bModelSearch.toLowerCase())).length===0
+                    {models.filter(m=>m.status!=="archived"&&m.name.toLowerCase().includes(bModelSearch.toLowerCase())).length===0
                       ? <div onClick={async()=>{ const id=await quickAddModel(bModelSearch); if(id){ setBModel(id); setBModelSearch(bModelSearch.trim()); } }} style={{ padding:"10px 14px", cursor:"pointer", color:C.blue, fontSize:13, fontWeight:700 }}>+ "{bModelSearch.trim()}" 새 모델 등록</div>
-                      : models.filter(m=>m.name.toLowerCase().includes(bModelSearch.toLowerCase())).map(m=>(
+                      : models.filter(m=>m.status!=="archived"&&m.name.toLowerCase().includes(bModelSearch.toLowerCase())).map(m=>(
                         <div key={m.id} onClick={()=>{ setBModel(m.id); setBModelSearch(m.name); }}
                           style={{ padding:"9px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:8, borderBottom:`1px solid ${C.border}` }}
                           onMouseEnter={e=>(e.currentTarget.style.background=C.sideHover)}
