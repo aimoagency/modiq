@@ -247,7 +247,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   const pickModels = useMemo(() => {
     const q = pickQ.trim().toLowerCase();
     const used = new Set((draft?.items || []).map(i => i.model_id).filter(Boolean));
-    return models.filter(m => !used.has(m.id) && (!q || (m.name || "").toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q) || (m.source_agency_name || "").toLowerCase().includes(q)));
+    return models.filter(m => m.status !== "archived" && !used.has(m.id) && (!q || (m.name || "").toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q) || (m.source_agency_name || "").toLowerCase().includes(q)));
   }, [models, pickQ, draft]);
 
   // ──────────────────────────────── 목록 화면 ────────────────────────────────
@@ -357,7 +357,7 @@ export default function PackagesView({ packages, setPackages, models, customers,
   // ──────────────────────────────── 빌더 화면 ────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
-      <ModelBrowser models={models} isMobile={isMobile} multi pickedIds={picked} addedIds={addedIds} onSelect={togglePicked} onAddPicked={addPicked} onSelectAll={(ids) => setPicked(new Set(ids))} />
+      <ModelBrowser models={models.filter((m: any) => m.status !== "archived")} isMobile={isMobile} multi pickedIds={picked} addedIds={addedIds} onSelect={togglePicked} onAddPicked={addPicked} onSelectAll={(ids) => setPicked(new Set(ids))} />
       <div style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.text }}>{isNew ? "새 패키지" : "패키지 편집"}</h1>

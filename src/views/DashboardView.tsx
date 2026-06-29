@@ -172,7 +172,7 @@ export default function DashboardView({ bookings, models, customers, projects, s
         { label:"진행중 섭외",  value:`${unitCount(activeBookings)}건`,  color:C.blue   },
         { label:"HOLD",         value:`${holdBookings.length}건`,    color:C.yellow },
         ...(canViewFinance ? [{ label:"계약금 미입금", value:`${unitCount(unpaidDeposit)}건`, color:C.red }] : []),
-        { label:"등록 모델",     value:`${models.length}명`,          color:"#c9a96e"},
+        { label:"등록 모델",     value:`${models.filter((m:any)=>m.status!=="archived").length}명`,          color:"#c9a96e"},
       ];
       return (
         <div style={{ display:"grid", gridTemplateColumns:`repeat(${statCards.length},minmax(0,1fr))`, gap:isMobile?6:12, marginBottom:16 }}>
