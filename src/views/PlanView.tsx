@@ -37,15 +37,15 @@ export default function PlanView({ agency, myRole, handleChangePlan }: {
             <div key={plan.id} style={{
               position:"relative", display:"flex", flexDirection:"column",
               background:best?`linear-gradient(180deg, ${plan.color}12, var(--c-card))`:"var(--c-card)",
-              border:`${best?2:1}px solid ${isCurrent?plan.color:best?plan.color:C.border}`,
-              borderRadius:18, padding:best?"30px 22px 24px":"26px 22px 24px",
-              marginTop:best?0:6,
+              border:`2px solid ${isCurrent?plan.color:best?plan.color:C.border}`,
+              borderRadius:18, padding:"26px 22px 24px",
+              marginTop:6,
               boxShadow:best?`0 16px 40px -8px ${plan.color}55, 0 2px 8px rgba(0,0,0,0.18)`:"0 1px 3px rgba(0,0,0,0.16)",
-              transform:best?"translateY(-6px)":"none",
+              transform:"none",
               transition:"transform 0.18s ease, box-shadow 0.18s ease",
             }}
               onMouseEnter={e=>{ e.currentTarget.style.transform = best?"translateY(-10px)":"translateY(-4px)"; e.currentTarget.style.boxShadow = best?`0 22px 50px -8px ${plan.color}66, 0 4px 12px rgba(0,0,0,0.22)`:`0 10px 26px -6px ${plan.color}40`; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform = best?"translateY(-6px)":"none"; e.currentTarget.style.boxShadow = best?`0 16px 40px -8px ${plan.color}55, 0 2px 8px rgba(0,0,0,0.18)`:"0 1px 3px rgba(0,0,0,0.16)"; }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = best?`0 16px 40px -8px ${plan.color}55, 0 2px 8px rgba(0,0,0,0.18)`:"0 1px 3px rgba(0,0,0,0.16)"; }}
             >
               {/* BEST 리본 */}
               {best && (
@@ -63,13 +63,13 @@ export default function PlanView({ agency, myRole, handleChangePlan }: {
 
               {/* 이름 + 태그라인 */}
               <h3 style={{ margin:"6px 0 3px", fontSize:21, fontWeight:900, color:best?plan.color:C.text }}>{plan.name}</h3>
-              <p style={{ margin:"0 0 16px", fontSize:12, color:C.muted, minHeight:32, lineHeight:1.4 }}>{plan.tagline}</p>
+              <p style={{ margin:"0 0 16px", fontSize:12, color:C.muted, minHeight:36, lineHeight:1.4 }}>{plan.tagline}</p>
 
               {/* 가격 (부가세 포함가 · 천원 단위) */}
-              <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:14, flexWrap:"wrap" }}>
-                <span style={{ fontSize:34, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:"-1px" }}>{fmtWon(plan.price)}</span>
-                <span style={{ fontSize:14, color:C.muted, fontWeight:600 }}>/월</span>
-                <span style={{ fontSize:11, color:C.muted, fontWeight:600 }}>(VAT포함)</span>
+              <div style={{ display:"flex", alignItems:"baseline", gap:3, marginBottom:14, whiteSpace:"nowrap" }}>
+                <span style={{ fontSize:28, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:"-1px" }}>{fmtWon(plan.price)}</span>
+                <span style={{ fontSize:12, color:C.muted, fontWeight:600 }}>/월</span>
+                <span style={{ fontSize:9.5, color:C.muted, fontWeight:600 }}>(VAT포함)</span>
               </div>
               {/* 담당자 칩 */}
               <div style={{ display:"inline-flex", alignSelf:"flex-start", alignItems:"center", gap:5, padding:"4px 11px",
