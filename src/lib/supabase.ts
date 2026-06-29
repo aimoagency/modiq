@@ -154,3 +154,15 @@ export const sbAuth = async (endpoint: string, body: any): Promise<any> => {
   if (!res.ok) throw new Error(data.error_description || data.msg || data.message || "인증 오류");
   return data;
 };
+
+// 로그인 상태에서 본인 비밀번호 변경 (PUT /auth/v1/user · 현재 세션 토큰 사용)
+export const updateAuthPassword = async (newPassword: string): Promise<any> => {
+  const res = await fetchT(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json", Authorization: `Bearer ${accessToken || SUPABASE_KEY}` },
+    body: JSON.stringify({ password: newPassword }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || data.message || "비밀번호 변경 오류");
+  return data;
+};
